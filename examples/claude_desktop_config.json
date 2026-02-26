@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "clarifyprompt": {
+      "command": "node",
+      "args": ["/Users/ar/Code/clarifyprompt-mcp/dist/index.js"],
+      "env": {
+        "LLM_API_URL": "http://localhost:11434/v1",
+        "LLM_API_KEY": "",
+        "LLM_MODEL": "qwen2.5:7b",
+        "SEARCH_PROVIDER": "tavily",
+        "SEARCH_API_KEY": "your-key-here"
+      }
+    }
+  }
+}

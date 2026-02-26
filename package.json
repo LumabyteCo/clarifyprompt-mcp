@@ -1,0 +1,63 @@
+{
+  "name": "clarifyprompt-mcp",
+  "version": "1.0.1",
+  "description": "MCP server for AI prompt optimization — 58 platforms across 7 categories (image, video, voice, music, code, chat, document)",
+  "type": "module",
+  "bin": {
+    "clarifyprompt-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@types/node": "^22.15.3"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "prompt-engineering",
+    "prompt-optimization",
+    "ai",
+    "midjourney",
+    "dall-e",
+    "stable-diffusion",
+    "sora",
+    "runway",
+    "elevenlabs",
+    "suno",
+    "claude",
+    "chatgpt",
+    "gemini",
+    "deepseek",
+    "cursor",
+    "copilot"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LumabyteCo/clarifyprompt-mcp.git"
+  },
+  "homepage": "https://github.com/LumabyteCo/clarifyprompt-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/LumabyteCo/clarifyprompt-mcp/issues"
+  },
+  "author": "Lumabyte Co. (https://github.com/LumabyteCo)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  }
+}
