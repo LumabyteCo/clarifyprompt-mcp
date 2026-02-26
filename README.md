@@ -1,5 +1,9 @@
 # ClarifyPrompt MCP
 
+[![npm version](https://img.shields.io/npm/v/clarifyprompt-mcp.svg)](https://www.npmjs.com/package/clarifyprompt-mcp)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+
 An MCP server that transforms vague prompts into platform-optimized prompts for 58 AI platforms across 7 categories.
 
 Send a raw prompt. Get back a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, or any of the 58 supported platforms — with the right syntax, parameters, and structure each platform expects.
