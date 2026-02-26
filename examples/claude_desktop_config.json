@@ -2,7 +2,7 @@
   "mcpServers": {
     "clarifyprompt": {
       "command": "node",
-      "args": ["/Users/ar/Code/clarifyprompt-mcp/dist/index.js"],
+      "args": ["/path/to/clarifyprompt-mcp/dist/index.js"],
       "env": {
         "LLM_API_URL": "http://localhost:11434/v1",
         "LLM_API_KEY": "",
