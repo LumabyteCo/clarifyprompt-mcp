@@ -1,7 +1,7 @@
 {
   "name": "clarifyprompt-mcp",
-  "version": "1.0.1",
-  "description": "MCP server for AI prompt optimization — 58 platforms across 7 categories (image, video, voice, music, code, chat, document)",
+  "version": "1.1.0",
+  "description": "MCP server for AI prompt optimization — 58+ platforms across 7 categories with custom platform registration and instruction files",
   "type": "module",
   "bin": {
     "clarifyprompt-mcp": "./dist/index.js"

@@ -6,6 +6,13 @@ export interface PlatformConfig {
   label: string;
   description: string;
   syntaxHints?: string[];
+  instructions?: string;
+  instructionsFile?: string;
+  isCustom?: boolean;
+}
+
+export interface ResolvedPlatformConfig extends PlatformConfig {
+  resolvedInstructions?: string;
 }
 
 export interface CategoryConfig {

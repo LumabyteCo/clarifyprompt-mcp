@@ -6,10 +6,12 @@ export class MusicStrategy extends BaseStrategy {
   readonly name = 'MusicStrategy';
   readonly category: Category = 'music';
 
-  buildSystemPrompt(context: OptimizationContext): string {
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
     const platformGuidance = this.getPlatformGuidance(context.platform);
     const modeInstructions = this.getModeInstructions(context.mode);
-
+    const customInstructions = platformInstructions
+      ? `\nAdditional Custom Instructions:\n${platformInstructions}`
+      : '';
     return `${this.getBaseSystemPrompt()}
 
 Category: Music Generation
@@ -24,7 +26,7 @@ Music Prompt Optimization Principles:
 - Specify vocal style or "instrumental" for no vocals
 - Add production style references (lo-fi, polished, raw, etc.)
 
-${platformGuidance}
+${platformGuidance}${customInstructions}
 
 ${modeInstructions}`;
   }

@@ -37,8 +37,8 @@ export interface OptimizationStrategy {
   readonly name: string;
   readonly category: Category;
 
-  optimize(prompt: string, context: OptimizationContext, platformHints?: string[]): Promise<string>;
-  buildSystemPrompt(context: OptimizationContext): string;
+  optimize(prompt: string, context: OptimizationContext, platformHints?: string[], platformInstructions?: string): Promise<string>;
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string;
 }
 
 export interface EnrichedContext {

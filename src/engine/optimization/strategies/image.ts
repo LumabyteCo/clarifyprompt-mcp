@@ -6,10 +6,12 @@ export class ImageStrategy extends BaseStrategy {
   readonly name = 'ImageStrategy';
   readonly category: Category = 'image';
 
-  buildSystemPrompt(context: OptimizationContext): string {
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
     const platformGuidance = this.getPlatformGuidance(context.platform);
     const modeInstructions = this.getModeInstructions(context.mode);
-
+    const customInstructions = platformInstructions
+      ? `\nAdditional Custom Instructions:\n${platformInstructions}`
+      : '';
     return `${this.getBaseSystemPrompt()}
 
 Category: Image Generation
@@ -22,7 +24,7 @@ Image Prompt Optimization Principles:
 - Specify composition, lighting, and mood
 - Add negative prompt elements when helpful for the platform
 
-${platformGuidance}
+${platformGuidance}${customInstructions}
 
 ${modeInstructions}`;
   }

@@ -6,10 +6,12 @@ export class VideoStrategy extends BaseStrategy {
   readonly name = 'VideoStrategy';
   readonly category: Category = 'video';
 
-  buildSystemPrompt(context: OptimizationContext): string {
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
     const platformGuidance = this.getPlatformGuidance(context.platform);
     const modeInstructions = this.getModeInstructions(context.mode);
-
+    const customInstructions = platformInstructions
+      ? `\nAdditional Custom Instructions:\n${platformInstructions}`
+      : '';
     return `${this.getBaseSystemPrompt()}
 
 Category: Video Generation
@@ -23,7 +25,7 @@ Video Prompt Optimization Principles:
 - Add visual style references
 - Include audio/music suggestions when relevant
 
-${platformGuidance}
+${platformGuidance}${customInstructions}
 
 ${modeInstructions}`;
   }

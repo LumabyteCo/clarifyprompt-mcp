@@ -6,10 +6,12 @@ export class VoiceStrategy extends BaseStrategy {
   readonly name = 'VoiceStrategy';
   readonly category: Category = 'voice';
 
-  buildSystemPrompt(context: OptimizationContext): string {
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
     const platformGuidance = this.getPlatformGuidance(context.platform);
     const modeInstructions = this.getModeInstructions(context.mode);
-
+    const customInstructions = platformInstructions
+      ? `\nAdditional Custom Instructions:\n${platformInstructions}`
+      : '';
     return `${this.getBaseSystemPrompt()}
 
 Category: Voice/Speech Synthesis
@@ -23,7 +25,7 @@ Voice Prompt Optimization Principles:
 - Include pauses and emphasis markers
 - Define the speaking context (narration, conversation, presentation)
 
-${platformGuidance}
+${platformGuidance}${customInstructions}
 
 ${modeInstructions}`;
   }

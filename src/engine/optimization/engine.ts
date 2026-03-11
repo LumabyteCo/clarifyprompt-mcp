@@ -1,5 +1,6 @@
 import type { Category, Mode } from '../config/categories.js';
-import { CATEGORIES, getPlatformById, getCategoryById } from '../config/categories.js';
+import { CATEGORIES, getCategoryById } from '../config/categories.js';
+import { getPlatformRegistry } from '../config/registry.js';
 import type { OptimizationResult, OptimizationContext } from './types.js';
 import { getStrategy } from './strategies/index.js';
 import { getSearchClient } from '../search/client.js';
@@ -83,8 +84,9 @@ Rules:
 
     const strategy = getStrategy(category);
 
+    const registry = getPlatformRegistry();
     const platformConfig = platform
-      ? getPlatformById(category, platform)
+      ? await registry.getPlatformById(category, platform)
       : undefined;
 
     let contextData: { enriched: boolean; context: string; sources: string[] } = {
@@ -112,7 +114,8 @@ Rules:
     const optimizedPrompt = await strategy.optimize(
       request.prompt,
       context,
-      platformConfig?.syntaxHints
+      platformConfig?.syntaxHints,
+      platformConfig?.resolvedInstructions
     );
 
     const processingTimeMs = Date.now() - startTime;

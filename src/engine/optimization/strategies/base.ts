@@ -8,7 +8,7 @@ export abstract class BaseStrategy implements OptimizationStrategy {
 
   protected llmClient = getLLMClient();
 
-  abstract buildSystemPrompt(context: OptimizationContext): string;
+  abstract buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string;
 
   protected getModeInstructions(mode: Mode): string {
     const modeInstructions: Record<Mode, string> = {
@@ -89,11 +89,15 @@ Important Rules:
 - If the input is already well-optimized, enhance it minimally`;
   }
 
-  async optimize(prompt: string, context: OptimizationContext, platformHints?: string[]): Promise<string> {
-    const systemPrompt = this.buildSystemPrompt(context);
+  async optimize(prompt: string, context: OptimizationContext, platformHints?: string[], platformInstructions?: string): Promise<string> {
+    const systemPrompt = this.buildSystemPrompt(context, platformInstructions);
 
-    const platformInstructions = platformHints?.length
+    const hintsBlock = platformHints?.length
       ? `\nPlatform-Specific Requirements:\n- ${platformHints.join('\n- ')}`
+      : '';
+
+    const instructionsBlock = platformInstructions
+      ? `\nCustom Platform Instructions:\n${platformInstructions}`
       : '';
 
     const userPrompt = `Original Prompt:
@@ -101,7 +105,7 @@ Important Rules:
 ${prompt}
 """
 
-Optimize this prompt for the ${context.category} category.${context.platform ? ` Target platform: ${context.platform}.` : ''}${platformInstructions}
+Optimize this prompt for the ${context.category} category.${context.platform ? ` Target platform: ${context.platform}.` : ''}${hintsBlock}${instructionsBlock}
 ${context.enrichWithContext && context.contextSources?.length ? `
 Additional Context (from web search):
 ${context.contextSources.join('\n')}

@@ -6,10 +6,12 @@ export class DocumentStrategy extends BaseStrategy {
   readonly name = 'DocumentStrategy';
   readonly category: Category = 'document';
 
-  buildSystemPrompt(context: OptimizationContext): string {
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
     const platformGuidance = this.getPlatformGuidance(context.platform);
     const modeInstructions = this.getModeInstructions(context.mode);
-
+    const customInstructions = platformInstructions
+      ? `\nAdditional Custom Instructions:\n${platformInstructions}`
+      : '';
     return `${this.getBaseSystemPrompt()}
 
 Category: Document/Writing
@@ -23,7 +25,7 @@ Document Prompt Optimization Principles:
 - Specify call-to-action if applicable
 - Include brand voice or style guide references when relevant
 
-${platformGuidance}
+${platformGuidance}${customInstructions}
 
 ${modeInstructions}`;
   }

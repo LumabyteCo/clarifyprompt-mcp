@@ -6,10 +6,12 @@ export class CodeStrategy extends BaseStrategy {
   readonly name = 'CodeStrategy';
   readonly category: Category = 'code';
 
-  buildSystemPrompt(context: OptimizationContext): string {
+  buildSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
     const platformGuidance = this.getPlatformGuidance(context.platform);
     const modeInstructions = this.getModeInstructions(context.mode);
-
+    const customInstructions = platformInstructions
+      ? `\nAdditional Custom Instructions:\n${platformInstructions}`
+      : '';
     return `${this.getBaseSystemPrompt()}
 
 Category: Code/Programming
@@ -32,7 +34,7 @@ General Guidance:
 - For conversions: Specify source/target languages and idioms
 - For testing: Specify framework, test types, and edge cases
 
-${platformGuidance}
+${platformGuidance}${customInstructions}
 
 ${modeInstructions}`;
   }
