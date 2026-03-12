@@ -1,6 +1,7 @@
 {
   "name": "clarifyprompt-mcp",
-  "version": "1.1.0",
+  "version": "1.1.3",
+  "mcpName": "io.github.LumabyteCo/clarifyprompt",
   "description": "MCP server for AI prompt optimization — 58+ platforms across 7 categories with custom platform registration and instruction files",
   "type": "module",
   "bin": {

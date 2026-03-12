@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.LumabyteCo/clarifyprompt",
+  "description": "AI prompt optimization for 58+ platforms across 7 categories with custom platforms",
+  "repository": {
+    "url": "https://github.com/LumabyteCo/clarifyprompt-mcp",
+    "source": "github"
+  },
+  "version": "1.1.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "clarifyprompt-mcp",
+      "version": "1.1.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "LLM API endpoint URL (OpenAI-compatible or Anthropic)",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false,
+          "name": "LLM_API_URL"
+        },
+        {
+          "description": "API key for the LLM provider (not needed for local Ollama)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "LLM_API_KEY"
+        },
+        {
+          "description": "Model name/ID to use for optimization",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false,
+          "name": "LLM_MODEL"
+        }
+      ]
+    }
+  ]
+}
