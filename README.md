@@ -3,10 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/clarifyprompt-mcp.svg)](https://www.npmjs.com/package/clarifyprompt-mcp)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+<a href="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp"><img width="380" height="200" src="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp/badge" alt="ClarifyPrompt MCP server" /></a>
 
-An MCP server that transforms vague prompts into platform-optimized prompts for 58 AI platforms across 7 categories.
+An MCP server that transforms vague prompts into platform-optimized prompts for 58+ AI platforms across 7 categories — with support for registering custom platforms and providing markdown instruction files.
 
-Send a raw prompt. Get back a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, or any of the 58 supported platforms — with the right syntax, parameters, and structure each platform expects.
+Send a raw prompt. Get back a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, or any of the 58+ supported platforms — with the right syntax, parameters, and structure each platform expects. Register your own platforms and provide custom optimization instructions via `.md` files.
 
 ## How It Works
 
@@ -76,7 +77,7 @@ Add to your `.cursor/mcp.json`:
 }
 ```
 
-## Supported Platforms (58)
+## Supported Platforms (58+ built-in, unlimited custom)
 
 | Category | Platforms | Default |
 |----------|-----------|---------|
@@ -150,15 +151,119 @@ The `detection` field only appears when auto-detection was used. When `category`
 
 ### `list_categories`
 
-Lists all 7 categories with platform counts and defaults.
+Lists all 7 categories with platform counts (built-in and custom) and defaults.
 
 ### `list_platforms`
 
-Lists available platforms for a given category, including which is the default.
+Lists available platforms for a given category, including custom registered platforms. Shows which is the default and whether custom instructions are configured.
 
 ### `list_modes`
 
 Lists all 7 output modes with descriptions.
+
+### `register_platform`
+
+Register a new custom AI platform for prompt optimization.
+
+```json
+{
+  "id": "my-llm",
+  "category": "chat",
+  "label": "My Custom LLM",
+  "description": "Internal fine-tuned model",
+  "syntax_hints": ["JSON mode", "max 2000 tokens"],
+  "instructions": "Always use structured output format",
+  "instructions_file": "my-llm.md"
+}
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `id` | Yes | Unique ID (lowercase, alphanumeric with hyphens) |
+| `category` | Yes | Category this platform belongs to |
+| `label` | Yes | Human-readable platform name |
+| `description` | Yes | Short description |
+| `syntax_hints` | No | Platform-specific syntax hints |
+| `instructions` | No | Inline optimization instructions |
+| `instructions_file` | No | Path to a `.md` file with detailed instructions |
+
+### `update_platform`
+
+Update a custom platform or add instruction overrides to a built-in platform.
+
+For **built-in platforms** (e.g. Midjourney, Claude), you can add custom instructions and extra syntax hints without modifying the originals:
+
+```json
+{
+  "id": "midjourney",
+  "category": "image",
+  "instructions": "Always use --v 6.1, prefer --style raw",
+  "syntax_hints_append": ["--no plants", "--tile for patterns"]
+}
+```
+
+For **custom platforms**, all fields can be updated.
+
+### `unregister_platform`
+
+Remove a custom platform or clear instruction overrides from a built-in platform.
+
+```json
+{
+  "id": "my-llm",
+  "category": "chat"
+}
+```
+
+For built-in platforms, use `remove_override_only: true` to clear your custom instructions without affecting the platform itself.
+
+## Custom Platforms & Instructions
+
+ClarifyPrompt supports registering custom platforms and providing optimization instructions — similar to how `.cursorrules` or `CLAUDE.md` guide AI behavior.
+
+### How It Works
+
+1. **Register** a custom platform via `register_platform`
+2. **Provide instructions** inline or as a `.md` file
+3. **Optimize prompts** targeting your custom platform — instructions are injected into the optimization pipeline
+
+### Instruction Files
+
+Instructions can be provided as markdown files stored at `~/.clarifyprompt/instructions/`:
+
+```
+~/.clarifyprompt/
+  config.json                    # custom platforms + overrides
+  instructions/
+    my-llm.md                   # instructions for custom platform
+    midjourney-overrides.md     # extra instructions for built-in platform
+```
+
+Example instruction file (`my-llm.md`):
+
+```markdown
+# My Custom LLM Instructions
+
+## Response Format
+- Always output valid JSON
+- Include a "reasoning" field before the answer
+
+## Constraints
+- Max 2000 tokens
+- Temperature should be set low (0.1-0.3) for factual queries
+
+## Style
+- Be concise and technical
+- Avoid filler phrases
+```
+
+### Override Built-in Platforms
+
+You can add custom instructions to any of the 58 built-in platforms using `update_platform`. This lets you customize how prompts are optimized for platforms like Midjourney, Claude, or Sora without modifying the defaults.
+
+### Config Directory
+
+The config directory defaults to `~/.clarifyprompt/` and can be changed via the `CLARIFYPROMPT_CONFIG_DIR` environment variable. Custom platforms and overrides persist across server restarts.
 
 ## LLM Configuration
 
@@ -296,9 +401,12 @@ After:  "Compose an instrumental chill lo-fi beat for studying.
 ```
 clarifyprompt-mcp/
   src/
-    index.ts                           MCP server entry point (4 tools, 1 resource)
+    index.ts                           MCP server entry point (7 tools, 1 resource)
     engine/
-      config/categories.ts             7 categories, 58 platforms, 7 modes
+      config/
+        categories.ts                  7 categories, 58 platforms, 7 modes
+        persistence.ts                 ConfigStore — JSON config + .md file loading
+        registry.ts                    PlatformRegistry — merges built-in + custom platforms
       llm/client.ts                    Multi-provider LLM client (OpenAI + Anthropic)
       search/client.ts                 Web search (6 providers)
       optimization/
@@ -313,6 +421,13 @@ clarifyprompt-mcp/
           music.ts                     4 platforms
           code.ts                      9 platforms
           document.ts                  8 platforms
+```
+
+## Docker
+
+```bash
+docker build -t clarifyprompt-mcp .
+docker run -e LLM_API_URL=http://host.docker.internal:11434/v1 -e LLM_MODEL=qwen2.5:7b clarifyprompt-mcp
 ```
 
 ## Development
