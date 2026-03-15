@@ -1,7 +1,11 @@
 node_modules/
 dist/
 .env
+.env.*
 *.tsbuildinfo
 .DS_Store
 *.tgz
 .npmrc
+.smithery/
+.mcpregistry_*
+mcp-publisher
