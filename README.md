@@ -24,6 +24,10 @@ ClarifyPrompt returns (for DALL-E):
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects.
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/lumabyteco-clarifyprompt-mcp).
+
 ## Quick Start
 
 ### With Claude Desktop
