@@ -5,9 +5,11 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 <a href="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp"><img width="380" height="200" src="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp/badge" alt="ClarifyPrompt MCP server" /></a>
 
-An MCP server that transforms vague prompts into platform-optimized prompts for 58+ AI platforms across 7 categories — with support for registering custom platforms and providing markdown instruction files.
+A **context-aware MCP prompt compiler** that transforms vague prompts into platform-optimized prompts for 58+ AI platforms across 7 categories — grounded in your workspace signals (CLAUDE.md, AGENTS.md, .cursorrules, package.json), resolved intent, and the capabilities of the target model.
 
-Send a raw prompt. Get back a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, or any of the 58+ supported platforms — with the right syntax, parameters, and structure each platform expects. Register your own platforms and provide custom optimization instructions via `.md` files.
+Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
+
+> **New in 1.2.0:** Context Engine — automatic workspace signal gathering, intent resolution, target-model capability hints, and local JSONL tracing. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -22,7 +24,19 @@ ClarifyPrompt returns (for DALL-E):
   "A majestic dragon flying over a castle at sunset. Size: 1024x1024"
 ```
 
-Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects.
+Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's in the box (1.2.0)
+
+- **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
+- **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
+- **Target-model-aware prompt shaping** — system prompt, `maxTokens`, and `temperature` adapt to the downstream LLM's context window and the resolved intent. Small local models get a compact prompt; Claude/GPT-4/Gemini get the full richness.
+- **Grounding Context (single, priority-ordered)** — user pinned instructions → project rules → active file → prior accepted examples → web search → workspace metadata → target-model hints → custom platform instructions → built-in syntax hints. No more parallel context silos.
+- **Session retrieval (save_outcome)** — the caller reports `accepted | edited | rejected` per optimization; similar accepted outputs in the same session get injected as few-shot examples into future similar prompts. Persistent memory lands in 1.3.
+- **Local JSONL tracing** — every optimization writes a structured trace line (now with `shape`, `groundingSources`, `error` fields) to `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl`. **Nothing is uploaded.** Toggle via `CLARIFYPROMPT_TRACE=off`.
+- **Unified `$CLARIFYPROMPT_HOME`** — one env var for everything ClarifyPrompt writes. Legacy `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` still work (deprecation hint, silenceable).
+- **58+ platforms, 7 categories, custom platforms** — the original core is unchanged and fully backward-compatible.
+- **Apache-2.0, forever.** Open-source core, no relicensing.
 
 ## Quick Start
 
@@ -123,31 +137,106 @@ Three calling modes:
 | `platform` | No | Platform ID (e.g. `midjourney`, `dall-e`, `sora`, `claude`). Uses category default when omitted. |
 | `mode` | No | Output style: `concise`, `detailed`, `structured`, `step-by-step`, `bullet-points`, `technical`, `simple`. Default: `detailed`. |
 | `enrich_context` | No | Set `true` to use web search for context enrichment. Default: `false`. |
+| `session_id` | No | Stitches related optimizations together so session memory can bias subsequent calls. Auto-generated when omitted. |
+| `file_path` | No | Active file path — infers language and shapes platform hints. |
+| `file_language` | No | Explicit language override for the active file. |
+| `file_excerpt` | No | Short excerpt (≤2 KB) of the active file to ground the rewrite. |
+| `cwd` | No | Working directory to scan for `CLAUDE.md` / `AGENTS.md` / `.cursorrules` / `package.json`. Defaults to server cwd. |
+| `user_locale` | No | Locale hint (e.g. `en-US`, `ar-EG`) to inform tone and language. |
+| `user_pinned_instructions` | No | Pinned, always-applied user instructions (short core-memory block). |
+| `include_bundle` | No | Include the resolved ContextBundle summary in the response. Default: `false`. |
+| `skip_intent_resolution` | No | Skip the intent classifier LLM call (faster; loses intent signal). Default: `false`. |
 
-**Response:**
+**Response (1.2.0):**
 
 ```json
 {
+  "id": "opt_mo9vlg9i_foohjx",
+  "sessionId": "sess_mo9vlfn3_abc123",
   "originalPrompt": "a dragon flying over a castle at sunset",
   "optimizedPrompt": "a majestic dragon flying over a medieval castle at sunset --ar 16:9 --v 6.1 --style raw --q 2 --s 700",
   "category": "image",
   "platform": "midjourney",
   "mode": "concise",
-  "detection": {
-    "autoDetected": true,
-    "detectedCategory": "image",
-    "detectedPlatform": "midjourney",
-    "confidence": "high"
+  "modeSource": "analyzer",
+  "analysis": {
+    "category": "image",
+    "intent": "creative-media",
+    "recommendedMode": "detailed",
+    "confidence": "high",
+    "source": "llm"
+  },
+  "grounding": {
+    "sources": ["project-rules", "workspace-meta", "target-model", "platform-hints"],
+    "acceptedExamplesUsed": 0
+  },
+  "shape": {
+    "systemPromptBudget": "standard",
+    "maxTokens": 2048,
+    "temperature": 0.9
   },
   "metadata": {
     "model": "qwen2.5:14b-instruct-q4_K_M",
     "processingTimeMs": 3911,
     "strategy": "ImageStrategy"
-  }
+  },
+  "detection": { "autoDetected": true, "detectedCategory": "image", "detectedPlatform": "midjourney", "confidence": "high" },
+  "intent": { "detected": "creative-media", "confidence": "high" }
 }
 ```
 
-The `detection` field only appears when auto-detection was used. When `category` and `platform` are provided explicitly, detection is skipped.
+The canonical classification field is `analysis`. The `detection` and `intent` fields are **deprecated aliases** kept for 1.x back-compat; they will be removed in 2.x.
+
+`modeSource` tells you how the final mode was decided (`user` if you passed one, `analyzer` if intent-driven, `default` if neither).
+
+`grounding.sources` lists which Grounding Context sections contributed, in priority order. `grounding.acceptedExamplesUsed` tells you how many few-shot examples the engine pulled from `save_outcome` history.
+
+`shape` tells you how the system prompt was sized for your target model.
+
+### `inspect_context` *(new in 1.2.0)*
+
+Preview the **ContextBundle** ClarifyPrompt would assemble for a given prompt — workspace rules, frameworks, target-model capabilities, resolved intent, and session history — without running the full optimization. Useful for debugging why an optimization turned out the way it did.
+
+```json
+{
+  "prompt": "Write an email to finance explaining the Q2 spend variance",
+  "category": "document",
+  "cwd": "/path/to/your/project"
+}
+```
+
+Returns the full `ContextBundle` as JSON.
+
+### `list_traces` *(new in 1.2.0)*
+
+Summary list of recent optimization traces captured by the local tracer (when `CLARIFYPROMPT_TRACE=local`, the default).
+
+```json
+{ "day": "2026-04-22", "limit": 50 }
+```
+
+Returns trace IDs, inputs previews, resolved intents, target families, and latencies — never the full system prompt (use `get_trace` for that). Omit `day` to get the most recent day with data.
+
+### `get_trace` *(new in 1.2.0)*
+
+Fetch the full trace for a single optimization by ID, including the exact system prompt, bundle summary, and output.
+
+```json
+{ "id": "opt_xxx", "lookback_days": 7 }
+```
+
+### `save_outcome` *(new in 1.2.0)*
+
+Tell ClarifyPrompt whether a past optimization was `accepted`, `edited`, or `rejected`. Accepted outputs become few-shot examples for similar future prompts in the same session. In 1.3+ this will also feed the persistent memory layer. The IDE / agent / caller is expected to invoke this after the user acts on the optimization.
+
+```json
+{
+  "optimization_id": "opt_xxx",
+  "session_id": "sess_yyy",
+  "verdict": "accepted",
+  "diff": "optional: the user's edited version or a patch"
+}
+```
 
 ### `list_categories`
 
@@ -276,6 +365,11 @@ ClarifyPrompt uses an LLM to optimize prompts. It works with **any OpenAI-compat
 | `LLM_API_URL` | Yes | API endpoint URL |
 | `LLM_API_KEY` | Depends | API key (not needed for local Ollama) |
 | `LLM_MODEL` | Yes | Model name/ID |
+| `CLARIFYPROMPT_HOME` | No | **Canonical (1.2.0+)** root for everything ClarifyPrompt writes — custom platforms, instruction `.md` files, traces, and (1.3+) memory + packs. Default: `$XDG_DATA_HOME/clarifyprompt` or `~/.clarifyprompt`. |
+| `CLARIFYPROMPT_TRACE` | No | `off` \| `local` \| `otel`. Default: `local`. Traces are strictly local JSONL; nothing is uploaded. |
+| `CLARIFYPROMPT_SUPPRESS_LEGACY_WARN` | No | Set to `1` to silence the one-line deprecation hint when `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` are used. |
+| `CLARIFYPROMPT_CONFIG_DIR` | No | **Legacy** alias for `CLARIFYPROMPT_HOME`. Still works; will be removed in 2.x. |
+| `CLARIFYPROMPT_DATA_DIR` | No | **Legacy** alias for `CLARIFYPROMPT_HOME`. Still works; will be removed in 2.x. |
 
 ### Provider Examples
 
@@ -396,24 +490,94 @@ After:  "Compose an instrumental chill lo-fi beat for studying.
          [Tempo: medium] [Genre: lo-fi] [Length: 2 minutes]"
 ```
 
+## Context Engine (1.2.0)
+
+Every optimization runs through five integrated passes that flow one bundle of context end-to-end:
+
+1. **Analysis** — a single `analyzePrompt()` LLM call produces `category`, `intent`, and `recommendedMode` together so they can't disagree. Intent beats surface keywords when they conflict (e.g. `"validate emails"` → `code` not `document`).
+2. **Mode reconciliation** — explicit user `mode` wins; otherwise the analyzer's intent-derived recommendation applies; `modeSource` in the response tells you which.
+3. **Prompt shaping** — target-model capability signal drives `systemPromptBudget` (compact for small local models, rich for 100K+ ctx models), `maxTokens`, `temperature` (intent-aware), and whether examples are included.
+4. **Intent overlay** — a short overlay per intent (`production-code`: demand error handling + tests; `data-extract`: demand strict schema; `brand-voice`: lead with tone; etc.) folded into the strategy's system prompt.
+5. **Grounding Context** — a single priority-ordered block that merges user pinned instructions → project rules → active file → session few-shot examples → web search → workspace metadata → target-model hints → custom platform instructions → built-in syntax hints.
+
+### What's collected (ContextBundle)
+
+- **Project** — first matching file from `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`, `.clarify/rules.md`. `package.json` plus sibling manifests (`pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`, `composer.json`, …) drive framework + language detection.
+- **File** — optional `file_path` / `file_language` / `file_excerpt` inputs.
+- **Session** — ring buffer (20 ops/session) of recent optimizations and outcomes. Accepted outputs get retrieved as few-shot examples for similar future prompts.
+- **Target model** — the LLM doing the rewrite, matched against a capability table.
+- **User** — locale, preferred mode, pinned instructions (highest-priority grounding).
+
+### Inspecting what the engine sees
+
+Use the `inspect_context` tool to preview the full bundle without running an optimization. Same shape as `optimize_prompt` returns when `include_bundle: true`.
+
+### Extending context
+
+Drop an `AGENTS.md` / `clarify.md` / `CLAUDE.md` at your project root. Next optimization picks it up automatically. To feed accepted outputs back into future rewrites, call `save_outcome` after the user acts on the result.
+
+## Tracing
+
+```
+$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl
+```
+
+Every optimization writes one JSONL line capturing `{id, ts, sessionId, category, platform, mode, input, bundleSummary, systemPrompt, output, model, strategy, latencyMs, shape, groundingSources, error}`. Use `list_traces` for summaries and `get_trace` for full records.
+
+**Privacy posture:**
+
+- Traces are **strictly local**. No outbound network calls to any ClarifyPrompt-owned infrastructure.
+- Only calls out to the **LLM endpoint you configured** (`LLM_API_URL`) and optional **search provider** (`SEARCH_API_KEY`).
+- Disable tracing entirely with `CLARIFYPROMPT_TRACE=off`.
+- There is **no telemetry** in this release. When a telemetry option ships it will be **opt-in**, anonymous, and documented before the build includes it.
+
+## Known limitations & roadmap
+
+### Session memory is in-memory only (today)
+The `save_outcome` + few-shot retrieval loop writes into a per-process ring buffer. Restarting the MCP server clears session state; two servers don't share memory. The **MCP tool surface is deliberately stable** — the interface won't change in 1.3. The upgrade is purely a backend swap to **SQLite + sqlite-vec** for disk persistence and richer similarity. Ship target: **1.3**.
+
+### Intent quality scales with the model running the analyzer
+The analyzer runs on the same `LLM_MODEL` that does the rewrite. In the integration battery:
+
+- Qwen 2.5 7B and 14B → correct on every well-formed prompt tested.
+- Llama 3.2 3B → occasionally over-commits on ambiguous prompts (e.g. tagged `"make it better"` as `brand-voice/high` when `unknown/low` is the right answer). Larger models on the same prompt correctly returned `unknown/low`.
+
+**Guidance:** prefer a 7B+ local model (or any frontier hosted model) as `LLM_MODEL`. Latency-sensitive callers can set `skip_intent_resolution: true` to skip the analyzer; the engine falls back to user-hint category and default mode, losing intent-driven mode + overlay but keeping grounding + shape. A systematic **eval harness** with a public fixture set lands in **1.3 (Day 3)** so you can score the analyzer against your own fixtures and detect regressions across model or classifier changes.
+
+### Capability table is not exhaustive
+Entries today: Claude, GPT-4/o-series, Gemini, Grok, DeepSeek (chat + reasoning), Qwen, Llama, Mistral/Codestral, Mixtral, Gemma, Phi, Cohere Command, Aya, Kimi, GLM, Minimax, GPT-OSS, Yi, Nemotron. Unknown models fall back to `capabilities: {}` and `standard` prompt-shape — still functional, just without model-aware sizing. Adding entries is a data-only edit to [src/engine/context/targetModelSignals.ts](src/engine/context/targetModelSignals.ts).
+
 ## Architecture
 
 ```
 clarifyprompt-mcp/
   src/
-    index.ts                           MCP server entry point (7 tools, 1 resource)
+    index.ts                           MCP server entry point (11 tools, 1 resource)
     engine/
       config/
         categories.ts                  7 categories, 58 platforms, 7 modes
+        paths.ts                       Unified $CLARIFYPROMPT_HOME resolver (1.2.0)
         persistence.ts                 ConfigStore — JSON config + .md file loading
-        registry.ts                    PlatformRegistry — merges built-in + custom platforms
+        registry.ts                    PlatformRegistry — merges built-in + custom
+      context/                         Context Engine (1.2.0)
+        types.ts                       ContextBundle + signal types + AnalysisSignal
+        projectSignals.ts              CLAUDE.md / AGENTS.md / .cursorrules / manifests scan
+        fileSignals.ts                 Active-file path + language + excerpt
+        sessionSignals.ts              In-memory per-session ring buffer + outcome retrieval
+        targetModelSignals.ts          Model → capabilities mapping
+        promptAnalyzer.ts              Unified analyzer: category + intent + recommendedMode
+        bundle.ts                      Bundle orchestrator
+      trace/                           Local tracing (1.2.0)
+        types.ts                       TraceEntry schema (shape, groundingSources, error)
+        writer.ts                      JSONL + OTel-stub writer, reader, lookup
       llm/client.ts                    Multi-provider LLM client (OpenAI + Anthropic)
-      search/client.ts                 Web search (6 providers)
+      search/client.ts                 Web search (6 providers; results merge into Grounding Context)
       optimization/
-        engine.ts                      Core orchestrator + auto-detection
-        types.ts                       TypeScript interfaces
+        engine.ts                      Core orchestrator — analyzer, shape, grounding, retrieval, trace
+        groundingContext.ts            Priority-ordered context assembly + mode/shape helpers
+        types.ts                       OptimizationContext + result shape
         strategies/
-          base.ts                      Abstract base strategy
+          base.ts                      Bundle-aware base strategy (intent overlay + shape-aware sizing)
           chat.ts                      9 platforms
           image.ts                     10 platforms
           video.ts                     11 platforms

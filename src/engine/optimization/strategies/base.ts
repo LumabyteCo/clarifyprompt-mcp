@@ -1,6 +1,13 @@
 import type { Category, Mode } from '../../config/categories.js';
 import type { OptimizationContext, OptimizationStrategy } from '../types.js';
+import type { Intent } from '../../context/types.js';
 import { getLLMClient } from '../../llm/client.js';
+import {
+  buildGroundingContext,
+  getPromptShape,
+  type AcceptedExample,
+  type PromptShape,
+} from '../groundingContext.js';
 
 export abstract class BaseStrategy implements OptimizationStrategy {
   abstract readonly name: string;
@@ -72,6 +79,70 @@ Output Requirements:
     return modeInstructions[mode];
   }
 
+  /**
+   * Pass A: intent-specific overlay folded into the system prompt so strategies
+   * actually branch on WHAT the user is trying to do, not just WHICH platform.
+   */
+  protected getIntentOverlay(intent: Intent | undefined): string {
+    if (!intent || intent === 'unknown') return '';
+    const overlays: Record<Intent, string> = {
+      'production-code': `
+Intent: production-code — the result will ship.
+- Be precise about language/version, APIs, error handling, edge cases, and tests.
+- Prefer named types, explicit interfaces, and no magic constants.
+- Call out obvious failure modes; do not paper over them.`,
+      'quick-draft': `
+Intent: quick-draft — speed beats polish.
+- Skip background, constraints, and examples unless the user asked for them.
+- Assume reasonable defaults; do not pad.`,
+      'stakeholder-comm': `
+Intent: stakeholder-comm — audience is a human reader in a business context.
+- Name the audience, the ask, the deadline, and the desired tone.
+- Avoid insider jargon unless the audience already shares it.`,
+      'data-extract': `
+Intent: data-extract — output will be machine-parsed.
+- Demand a strict output schema (JSON keys, table columns, or a regex shape).
+- Forbid prose wrappers, extra commentary, or markdown fences around the payload.`,
+      'exploration': `
+Intent: exploration — user is thinking out loud.
+- Expand the problem space; list angles before converging.
+- Include trade-offs and "what you'd need to know to decide".`,
+      'brand-voice': `
+Intent: brand-voice — a tone/voice must be respected exactly.
+- Lead the prompt with the tone, voice, and audience constraints.
+- Put quality bars (word count, reading level, banned terms) near the top.`,
+      'creative-media': `
+Intent: creative-media — a platform-specific creative output (image/video/voice/music).
+- Use platform-native syntax aggressively and correctly.
+- Lean into sensory/visual/aural detail; avoid meta-description of the task.`,
+      'technical-spec': `
+Intent: technical-spec — output is a durable engineering document.
+- Demand sections: Goals, Non-goals, Constraints, Design, Trade-offs, Rollout.
+- No ambiguous "we could consider…"; every statement should be a decision or an open question.`,
+      'analysis': `
+Intent: analysis — comparing, evaluating, or summarizing a corpus.
+- State the evaluation criteria up front.
+- Require evidence citations from the source material, not vibes.`,
+      'unknown': '',
+    };
+    return overlays[intent];
+  }
+
+  /**
+   * Pass B: shape the system prompt to the downstream LLM's capabilities.
+   * Compact budgets drop the intent overlay and the mode's long description
+   * because small models choke on multi-KB system prompts.
+   */
+  protected applyShape(systemPrompt: string, shape: PromptShape): string {
+    if (shape.systemPromptBudget === 'compact') {
+      // Keep only the first two sections (base + category principles);
+      // drop platform guidance and mode rules. The actual task gets across.
+      const parts = systemPrompt.split('\n\n');
+      return parts.slice(0, 3).join('\n\n');
+    }
+    return systemPrompt;
+  }
+
   protected getBaseSystemPrompt(): string {
     return `You are ClarifyPrompt, an AI prompt optimization expert. Your task is to transform weak, vague, or incomplete prompts into clear, detailed, and effective prompts that will produce excellent results from AI systems.
 
@@ -89,32 +160,68 @@ Important Rules:
 - If the input is already well-optimized, enhance it minimally`;
   }
 
-  async optimize(prompt: string, context: OptimizationContext, platformHints?: string[], platformInstructions?: string): Promise<string> {
-    const systemPrompt = this.buildSystemPrompt(context, platformInstructions);
+  public renderLastSystemPrompt(context: OptimizationContext, platformInstructions?: string): string {
+    const raw = this.buildSystemPrompt(context, platformInstructions);
+    const intent = context.bundle?.analysis?.intent;
+    const shape = getPromptShape(context.bundle, intent);
+    const shaped = this.applyShape(raw, shape);
+    const overlay = this.getIntentOverlay(intent);
+    // Intent overlay lands AFTER shape-based trimming so small-model
+    // compact-budget calls still carry the intent-specific directive.
+    return overlay ? shaped + '\n' + overlay : shaped;
+  }
 
-    const hintsBlock = platformHints?.length
-      ? `\nPlatform-Specific Requirements:\n- ${platformHints.join('\n- ')}`
-      : '';
+  async optimize(
+    prompt: string,
+    context: OptimizationContext,
+    platformHints?: string[],
+    platformInstructions?: string,
+  ): Promise<string> {
+    const intent = context.bundle?.analysis?.intent;
+    const shape = getPromptShape(context.bundle, intent);
 
-    const instructionsBlock = platformInstructions
-      ? `\nCustom Platform Instructions:\n${platformInstructions}`
-      : '';
+    // System prompt: base + category principles + platform guidance + custom + mode.
+    // Shape-adjusted first (so compact models don't drown), THEN the intent
+    // overlay is appended — the overlay is the most directive signal and must
+    // never be trimmed, regardless of shape budget.
+    const rawSystem = this.buildSystemPrompt(context, platformInstructions);
+    const shaped = this.applyShape(rawSystem, shape);
+    const overlay = this.getIntentOverlay(intent);
+    const systemPrompt = overlay ? `${shaped}\n${overlay}` : shaped;
+
+    // Unified Grounding Context block. Replaces the parallel web-search /
+    // workspace-signal silos from the 1.2.0 draft.
+    const acceptedExamples: AcceptedExample[] =
+      context.acceptedExamples?.map(ex => ({
+        originalPrompt: ex.originalPrompt,
+        optimizedPrompt: ex.optimizedPrompt,
+        category: ex.category,
+        platform: ex.platform,
+        intent: ex.intent,
+        ts: ex.ts,
+      })) ?? [];
+
+    const grounding = buildGroundingContext({
+      bundle: context.bundle,
+      webSearchContext: context.enrichWithContext ? context.contextSources?.[0] : undefined,
+      webSearchSources: context.webSearchSources,
+      platformInstructions,
+      platformHints,
+      acceptedExamples,
+    });
 
     const userPrompt = `Original Prompt:
 """
 ${prompt}
 """
 
-Optimize this prompt for the ${context.category} category.${context.platform ? ` Target platform: ${context.platform}.` : ''}${hintsBlock}${instructionsBlock}
-${context.enrichWithContext && context.contextSources?.length ? `
-Additional Context (from web search):
-${context.contextSources.join('\n')}
-` : ''}
-Output only the optimized prompt:`;
+Optimize this prompt for the ${context.category} category.${context.platform ? ` Target platform: ${context.platform}.` : ''}
+${grounding.block}
+Ground the optimization in the Grounding Context above when relevant. Respect priority order (higher-listed sections outrank lower). Output only the optimized prompt:`;
 
     const result = await this.llmClient.simpleGenerate(systemPrompt, userPrompt, {
-      temperature: 0.7,
-      maxTokens: 2048,
+      temperature: shape.temperature,
+      maxTokens: shape.maxTokens,
     });
 
     return result.content.trim();

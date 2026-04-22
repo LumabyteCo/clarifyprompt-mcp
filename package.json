@@ -1,8 +1,8 @@
 {
   "name": "clarifyprompt-mcp",
-  "version": "1.1.3",
+  "version": "1.2.0",
   "mcpName": "io.github.LumabyteCo/clarifyprompt",
-  "description": "MCP server for AI prompt optimization — 58+ platforms across 7 categories with custom platform registration and instruction files",
+  "description": "Context-aware MCP prompt compiler: 58+ AI platforms across 7 categories, workspace-aware signal gathering (CLAUDE.md / AGENTS.md / .cursorrules), intent resolution, target-model capability hints, local tracing, and custom platforms",
   "type": "module",
   "bin": {
     "clarifyprompt-mcp": "./dist/index.js"
@@ -33,6 +33,8 @@
     "model-context-protocol",
     "prompt-engineering",
     "prompt-optimization",
+    "context-engineering",
+    "intent-detection",
     "ai",
     "midjourney",
     "dall-e",

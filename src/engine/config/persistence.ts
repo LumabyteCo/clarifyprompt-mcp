@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import * as os from 'node:os';
 import type { Category } from './categories.js';
+import { getPaths } from './paths.js';
 
 export interface CustomPlatformEntry {
   id: string;
@@ -42,10 +42,10 @@ export class ConfigStore {
   private loaded = false;
 
   constructor() {
-    this.configDir = process.env.CLARIFYPROMPT_CONFIG_DIR
-      || path.join(os.homedir(), '.clarifyprompt');
-    this.configPath = path.join(this.configDir, 'config.json');
-    this.instructionsDir = path.join(this.configDir, 'instructions');
+    const paths = getPaths();
+    this.configDir = paths.home;
+    this.configPath = paths.configFile;
+    this.instructionsDir = paths.instructionsDir;
     this.config = emptyConfig();
   }
 
