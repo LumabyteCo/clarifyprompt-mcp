@@ -379,6 +379,21 @@ LLM_API_URL=http://localhost:11434/v1
 LLM_MODEL=qwen2.5:7b
 ```
 
+**Ollama — cloud models via local passthrough (recommended):**
+
+If your local Ollama is signed in to Ollama Cloud, any `:cloud` model routes through it transparently — same URL, no separate API key. The capability table auto-detects **reasoning / thinking variants** (`gpt-oss`, `kimi-k2-thinking`, `qwen3-thinking`, `deepseek-r1`, etc.) and bumps `maxTokens` so they finish thinking and actually produce content.
+```
+LLM_API_URL=http://localhost:11434/v1
+LLM_MODEL=gpt-oss:20b-cloud        # or kimi-k2.6:cloud, qwen3-next:80b-cloud, glm-4.6:cloud, etc.
+```
+
+**Ollama — direct cloud endpoint (no local install):**
+```
+LLM_API_URL=https://ollama.com/v1
+LLM_API_KEY=your-ollama-cloud-key
+LLM_MODEL=qwen2.5:7b
+```
+
 **OpenAI:**
 ```
 LLM_API_URL=https://api.openai.com/v1
@@ -546,6 +561,9 @@ The analyzer runs on the same `LLM_MODEL` that does the rewrite. In the integrat
 
 ### Capability table is not exhaustive
 Entries today: Claude, GPT-4/o-series, Gemini, Grok, DeepSeek (chat + reasoning), Qwen, Llama, Mistral/Codestral, Mixtral, Gemma, Phi, Cohere Command, Aya, Kimi, GLM, Minimax, GPT-OSS, Yi, Nemotron. Unknown models fall back to `capabilities: {}` and `standard` prompt-shape — still functional, just without model-aware sizing. Adding entries is a data-only edit to [src/engine/context/targetModelSignals.ts](src/engine/context/targetModelSignals.ts).
+
+### Reasoning / chain-of-thought models
+Supported as a first-class case. The engine auto-detects reasoners at family level (`o1/o3/o4`, `deepseek-reasoner`, `gpt-oss`) and at variant level (anything whose ID matches `/\b(thinking|reasoner|reasoning)\b/` or `/\br[12]\b/`: `kimi-k2-thinking:cloud`, `qwen3-thinking:72b`, `qwen-r1-distill`, etc.). For these, `maxTokens` is automatically bumped to ≥ 8192 so the model has room to think AND produce content. The `reasoning` field is never surfaced as the optimized prompt — only `content` is.
 
 ## Architecture
 

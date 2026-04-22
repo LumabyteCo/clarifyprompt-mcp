@@ -8,6 +8,14 @@ export interface LLMConfig {
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  /**
+   * Some OpenAI-compatible endpoints (notably Ollama Cloud for reasoning
+   * models like gpt-oss, kimi-thinking, deepseek-r, and the OpenAI o-series
+   * itself) return the chain-of-thought separately from the final content.
+   * ClarifyPrompt never returns this as the optimized prompt — it's thinking,
+   * not answer — but it's useful for diagnostics when `content` is empty.
+   */
+  reasoning?: string;
 }
 
 export interface ChatCompletionRequest {
@@ -251,11 +259,32 @@ export class LLMClient {
       max_tokens: options?.maxTokens,
     });
 
+    const choice = response.choices[0];
+    const message = choice?.message;
+    const content = message?.content || '';
+    const reasoning = message?.reasoning || '';
+    const finishReason = choice?.finish_reason;
+
+    // Reasoning-model safety net: empty content + present reasoning + truncated
+    // output almost always means the budget was too small. Log once per client
+    // so the user can see it and bump maxTokens (or upgrade the capability
+    // table entry to flag the model as reasoning).
+    if (!content && reasoning && finishReason === 'length' && !this.warnedReasoningTruncation) {
+      this.warnedReasoningTruncation = true;
+      process.stderr.write(
+        `[clarifyprompt] Model '${response.model}' returned reasoning but hit the token limit before producing content. ` +
+        `This usually means the model is a chain-of-thought reasoner running on a budget that's too small. ` +
+        `Try raising max_tokens, or flag the model as 'reasoningChainOfThought: true' in src/engine/context/targetModelSignals.ts.\n`,
+      );
+    }
+
     return {
-      content: response.choices[0]?.message?.content || '',
+      content,
       tokensUsed: response.usage?.total_tokens || 0,
     };
   }
+
+  private warnedReasoningTruncation = false;
 }
 
 export class LLMError extends Error {

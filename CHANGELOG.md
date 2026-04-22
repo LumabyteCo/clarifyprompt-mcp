@@ -112,6 +112,18 @@ All optional; backward-compatible:
 - `ContextBundle` is stable within `1.x` minor.
 - `detection` and `intent` fields on the result are **deprecated aliases** kept for 1.x compatibility.
 
+### Added — Reasoning-model support (Ollama Cloud + OpenAI o-series + DeepSeek-R)
+
+Reasoning / chain-of-thought models (OpenAI `o1/o3/o4`, DeepSeek-R, GPT-OSS, and any variant whose ID contains `thinking` / `reasoner` / `reasoning` / `r1`) emit a separate `reasoning` field alongside `content` on OpenAI-compatible responses, and burn tokens on an internal chain-of-thought **before** producing any content. The prior 2048-token default would often cut them off mid-thought, leaving `content` empty.
+
+1.2.0 adds:
+- **`reasoningChainOfThought` capability flag** on the target-model signal. Set family-wide for OpenAI reasoning, DeepSeek Reasoning, and GPT-OSS; also set per-variant on any model ID matching `/\b(thinking|reasoner|reasoning)\b/` or `/\br[12]\b/`. Covers `kimi-k2-thinking:cloud`, `qwen3-thinking`, etc.
+- **`getPromptShape` auto-bumps `maxTokens`** to ≥ 8192 (and up to `4 × base`) whenever the target model has the flag, so reasoning finishes and content lands.
+- **`ChatMessage.reasoning` type** added so the response shape is typed correctly. ClarifyPrompt never returns `reasoning` as the optimized prompt — it's chain-of-thought, not the answer.
+- **Safety-net warning**: if `content` is empty but `reasoning` is present AND `finish_reason === 'length'`, the LLM client logs a one-shot stderr hint telling the user to raise the budget or flag the model.
+
+Live-verified against Ollama Cloud `gpt-oss:20b-cloud` (1674-char optimized prompt at 3.7s), `qwen3-next:80b-cloud` (non-reasoning cloud still clean), and the structured-error fallback kicking in correctly when Ollama Cloud returned a 500 for `kimi-k2-thinking:cloud`.
+
 ### Known limitations (intentional, tracked)
 
 **Session memory is in-memory only.** The `save_outcome` tool + `findAcceptedExamples` retrieval loop write into a per-process ring buffer, which means:

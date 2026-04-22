@@ -10,6 +10,7 @@ interface CapabilityEntry {
   supportsSystemPrompt?: boolean;
   supportsVision?: boolean;
   localDeployment?: boolean;
+  reasoningChainOfThought?: boolean;
   strengths: string[];
   weaknesses: string[];
 }
@@ -72,8 +73,9 @@ const CAPABILITY_TABLE: CapabilityEntry[] = [
     supportsJsonMode: true,
     supportsToolUse: false,
     supportsSystemPrompt: false,
+    reasoningChainOfThought: true,
     strengths: ['deep reasoning', 'math', 'coding'],
-    weaknesses: ['no system prompt', 'higher latency'],
+    weaknesses: ['no system prompt', 'higher latency', 'burns tokens thinking'],
   },
   {
     match: /^gemini/i,
@@ -109,8 +111,9 @@ const CAPABILITY_TABLE: CapabilityEntry[] = [
     supportsToolUse: false,
     supportsSystemPrompt: false,
     localDeployment: true,
+    reasoningChainOfThought: true,
     strengths: ['deep chain-of-thought reasoning', 'math', 'open weights'],
-    weaknesses: ['no system prompt', 'higher latency', 'verbose by default'],
+    weaknesses: ['no system prompt', 'higher latency', 'burns tokens thinking'],
   },
   {
     match: /^deepseek/i,
@@ -266,8 +269,9 @@ const CAPABILITY_TABLE: CapabilityEntry[] = [
     supportsToolUse: true,
     supportsSystemPrompt: true,
     localDeployment: true,
+    reasoningChainOfThought: true,
     strengths: ['open weights from OpenAI', 'strong general reasoning'],
-    weaknesses: ['newer; ecosystem still forming'],
+    weaknesses: ['newer ecosystem', 'burns tokens thinking before content'],
   },
   {
     match: /^yi/i,
@@ -324,10 +328,24 @@ export function collectTargetModelSignal(
       supportsSystemPrompt: entry.supportsSystemPrompt,
       supportsVision: entry.supportsVision,
       localDeployment: entry.localDeployment,
+      // Family-level flag OR per-variant ID hint. Covers cases like
+      // `kimi-k2-thinking:cloud` or `qwen3-thinking` where the family
+      // itself is mixed but the variant is specifically a reasoner.
+      reasoningChainOfThought: !!entry.reasoningChainOfThought || isReasoningVariant(modelName),
     },
     strengths: entry.strengths,
     weaknesses: entry.weaknesses,
   };
+}
+
+/**
+ * Detect reasoning variants by ID even when the family isn't reasoning-only.
+ * Matches: "thinking", "reasoner", "reasoning", "r1"/"r2" tags, ":r<digit>".
+ * Does NOT match "claude" (which could contain "a-i" substring) or unrelated.
+ */
+function isReasoningVariant(id: string): boolean {
+  return /\b(thinking|reasoner|reasoning)\b/i.test(id)
+      || /(?:^|[^a-z])(r[12])(?:[^a-z]|$)/i.test(id);
 }
 
 /**

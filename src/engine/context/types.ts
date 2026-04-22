@@ -84,6 +84,12 @@ export interface TargetModelSignal {
     supportsSystemPrompt?: boolean;
     supportsVision?: boolean;
     localDeployment?: boolean;
+    /**
+     * Reasoning / chain-of-thought models emit a separate `reasoning` field
+     * on the response and burn tokens thinking BEFORE producing `content`.
+     * ClarifyPrompt bumps maxTokens for these so content actually fits.
+     */
+    reasoningChainOfThought?: boolean;
   };
   strengths: string[];
   weaknesses: string[];

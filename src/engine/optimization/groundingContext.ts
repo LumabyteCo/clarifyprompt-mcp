@@ -210,6 +210,14 @@ export function getPromptShape(bundle: ContextBundle | undefined, intent: Intent
   if (systemPromptBudget === 'compact') maxTokens = 1024;
   if (systemPromptBudget === 'rich') maxTokens = 3072;
 
+  // Reasoning / chain-of-thought models (o-series, DeepSeek-R, GPT-OSS,
+  // thinking variants) spend tokens on an internal reasoning channel BEFORE
+  // producing content. If maxTokens cuts off mid-thought, `content` comes
+  // back empty. Give them 4x headroom so the content actually lands.
+  if (caps?.reasoningChainOfThought) {
+    maxTokens = Math.max(maxTokens * 4, 8192);
+  }
+
   // Temperature: intent-aware.
   let temperature = 0.7;
   if (intent === 'data-extract' || intent === 'technical-spec' || intent === 'analysis') temperature = 0.2;
