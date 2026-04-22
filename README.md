@@ -36,6 +36,7 @@ Same prompt, different platform, completely different output. ClarifyPrompt know
 - **Local JSONL tracing** — every optimization writes a structured trace line (now with `shape`, `groundingSources`, `error` fields) to `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl`. **Nothing is uploaded.** Toggle via `CLARIFYPROMPT_TRACE=off`.
 - **Unified `$CLARIFYPROMPT_HOME`** — one env var for everything ClarifyPrompt writes. Legacy `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` still work (deprecation hint, silenceable).
 - **58+ platforms, 7 categories, custom platforms** — the original core is unchanged and fully backward-compatible.
+- **Any LLM, any provider.** One code path works with **any OpenAI-compatible API** — Ollama (local + cloud), LM Studio, vLLM, OpenAI, Google Gemini, xAI Grok, Groq, Mistral, DeepSeek, Cohere, Perplexity, Together, Fireworks, OpenRouter — plus **Anthropic Claude** directly. Reasoning models (`o1/o3/o4`, `deepseek-reasoner`, `gpt-oss`, `*-thinking`) are auto-detected and given a larger token budget so they actually produce content. [See 15+ pre-configured provider examples below](#provider-examples).
 - **Apache-2.0, forever.** Open-source core, no relicensing.
 
 ## Quick Start
@@ -370,6 +371,8 @@ ClarifyPrompt uses an LLM to optimize prompts. It works with **any OpenAI-compat
 | `CLARIFYPROMPT_SUPPRESS_LEGACY_WARN` | No | Set to `1` to silence the one-line deprecation hint when `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` are used. |
 | `CLARIFYPROMPT_CONFIG_DIR` | No | **Legacy** alias for `CLARIFYPROMPT_HOME`. Still works; will be removed in 2.x. |
 | `CLARIFYPROMPT_DATA_DIR` | No | **Legacy** alias for `CLARIFYPROMPT_HOME`. Still works; will be removed in 2.x. |
+
+<a id="provider-examples"></a>
 
 ### Provider Examples
 
