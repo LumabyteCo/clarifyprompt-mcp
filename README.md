@@ -92,6 +92,59 @@ Add to your `.cursor/mcp.json`:
 }
 ```
 
+### With AI Butler
+
+[AI Butler](https://github.com/LumabyteCo/aibutler) is a self-hosted
+personal AI agent runtime — single Go binary, multi-channel chat, MCP
+ecosystem hub. Drop ClarifyPrompt into its `mcp.servers` config and
+the agent picks up all 11 tools as native capabilities, callable from
+any channel (web chat, terminal, Telegram, Slack, etc.).
+
+Edit `~/.aibutler/config.yaml`:
+
+```yaml
+configurations:
+  mcp:
+    servers:
+      - name: clarifyprompt
+        command: clarifyprompt-mcp
+        env:
+          LLM_API_URL: "http://localhost:11434/v1"
+          LLM_MODEL: "qwen3-vl:8b"
+```
+
+Restart AI Butler. The boot log confirms all 11 tools are wired in:
+
+![AI Butler boot log: mcp: connected to clarifyprompt (11 tools), 1/1 servers connected, then "Ready. Press Ctrl+C to stop." Verified live integration.](docs/screenshots/aibutler/01-boot-log.png)
+
+The agent enumerates the full surface on request — every tool prefixed
+with `clarifyprompt.`:
+
+![AI Butler webchat showing the agent listing all 11 clarifyprompt tools (optimize_prompt, inspect_context, list_categories, list_platforms, list_modes, register_platform, update_platform, unregister_platform, list_traces, get_trace, save_outcome) with one-line descriptions](docs/screenshots/aibutler/02-tool-listing.png)
+
+#### Drive the Context Engine end-to-end
+
+You can preview what the engine *would* gather (without running the
+optimization) using `inspect_context`:
+
+![Context Engine preview — analyzer output (Category=code, Intent=production-code, Recommended Mode=detailed, Confidence=Medium), session history, and the priority-ordered grounding stack the engine would merge into the system prompt. Closing takeaway about a language mismatch the engine detected between workspace (JS) and prompt (TypeScript).](docs/screenshots/aibutler/03-inspect-context.png)
+
+Then run the actual optimizer for any of the 58+ supported platforms:
+
+![optimize_prompt response — Midjourney-shaped optimized prompt for "a dragon flying over a castle at sunset" with --ar 16:9 and --v 6 parameters, plus the analysis section showing Resolved Intent="creative-media", Mode Source, and the grounding sources used](docs/screenshots/aibutler/04-optimize-image.png)
+
+Every optimization gets a single JSONL line in
+`~/.clarifyprompt/traces/YYYY-MM-DD.jsonl` — strictly local, never
+uploaded. The `list_traces` tool turns that into a queryable summary
+with replay support via `get_trace`:
+
+![list_traces table — trace ID, intent, input preview, platform, latency for recent optimizations. Below the table: a 3-point explanation of what tracing gives — privacy (local-only), observability (every optimization recorded), replay (use trace ID + get_trace to re-fetch the full system prompt)](docs/screenshots/aibutler/05-list-traces.png)
+
+The full integration walkthrough — including all 11 tools driven from
+chat, configuration options, and natural-language usage examples —
+is in the AI Butler docs:
+**[Integrate an MCP Server](https://docs.aibutler.dev/ecosystem/integrate-mcp/)**.
+
 ## Supported Platforms (58+ built-in, unlimited custom)
 
 | Category | Platforms | Default |
