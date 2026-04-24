@@ -47,16 +47,43 @@ jobs:
       - name: Verify dist actually runs
         # Start the server, send an MCP initialize, confirm the server responds, then stop.
         # Catches: broken imports, missing files, crash-on-boot.
+        # Portable across Linux + macOS (macOS lacks GNU `timeout`).
         shell: bash
         run: |
-          set -e
-          (
-            printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}\n'
-            sleep 2
-          ) | CLARIFYPROMPT_HOME=/tmp/clarify-ci CLARIFYPROMPT_TRACE=off \
-              LLM_API_URL=http://127.0.0.1:1/v1 LLM_MODEL=dummy \
-              timeout 10 node dist/index.js 2>&1 | tee /tmp/init.out || true
-          grep -q '"version":"' /tmp/init.out
+          node --input-type=module -e "
+            import { spawn } from 'node:child_process';
+
+            const env = {
+              ...process.env,
+              LLM_API_URL: 'http://127.0.0.1:1/v1',
+              LLM_MODEL: 'dummy',
+              CLARIFYPROMPT_HOME: '/tmp/clarify-ci',
+              CLARIFYPROMPT_TRACE: 'off',
+            };
+            const proc = spawn(process.execPath, ['dist/index.js'], { env, stdio: ['pipe', 'pipe', 'pipe'] });
+            let out = '';
+            proc.stdout.on('data', d => out += d);
+            proc.stderr.on('data', d => process.stderr.write(d));
+
+            const msg = JSON.stringify({
+              jsonrpc: '2.0', id: 1, method: 'initialize',
+              params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'ci', version: '0' } },
+            });
+            proc.stdin.write(msg + '\n');
+
+            await new Promise(r => setTimeout(r, 3000));
+            proc.kill();
+            await new Promise(r => proc.on('exit', r));
+
+            if (!/\"version\":\"/.test(out)) {
+              console.error('no version field in initialize response:');
+              console.error(out.slice(0, 800) || '(empty)');
+              process.exit(1);
+            }
+            const line = out.split('\n').find(l => l.startsWith('{\"result\"'));
+            console.log('server responds to initialize ✓');
+            if (line) console.log(line);
+          "
 
   # ---------------------------------------------------------------------------
   # Secret-scanning sweep. Catches accidental commits of real keys.
