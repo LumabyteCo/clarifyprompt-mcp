@@ -5,24 +5,48 @@ description: Repo-specific pre-ship audits for clarifyprompt-mcp. Loaded automat
 
 # ship-check — clarifyprompt-mcp overrides
 
-Loaded by the user-scoped `ship-check` skill at `~/.claude/skills/ship-check/SKILL.md` when running audits in this repo. These checks are specific to clarifyprompt-mcp's conventions. Each one is tagged with a **generalization hint** — some are purely clarifyprompt-specific, others are patterns that would apply to any MCP server or any CLI-publishable npm package.
+Loaded by the user-scoped `ship-check` skill at `~/.claude/skills/ship-check/SKILL.md` when running audits in this repo. Uses the **cascade syntax** (CSS-like specificity) the parent skill defines:
 
-Run these **in addition to** the general checks. Report them in a separate `── project-specific ──` section of the final summary.
+- `OVERRIDE: <general-check>` — replace the general check entirely
+- `DISABLE: <general-check>` — skip the general check, requires a rationale
+- `AUGMENT: <general-check>` — keep general + add more
+- `ADD: <new-check>` — a check with no general equivalent
 
-## Checks
+Each directive is also tagged with a **generalization hint** — whether the check is purely repo-specific forever, or a candidate to promote back to the user-scoped skill once it proves useful elsewhere.
 
-### CP-1. Version consistency — extended files
+---
 
-Beyond the general version sources, this repo also has:
+## AUGMENT: Version consistency — extra sources
 
-- `server.json` — **two** version fields: `$.version` (top-level) AND `$.packages[0].version` (npm subsection). Both must match `package.json`.
-- `src/index.ts` — the `McpServer({ name, version })` literal must match.
+Beyond the general version sources, this repo has:
 
-**Generalization hint:** `server.json` is the MCP Registry manifest. Any MCP-server project will have this file with the same double-version quirk. **Promote to user-scope** once a second MCP project is audited.
+- `server.json` → two version fields: `$.version` (top-level) AND `$.packages[0].version` (npm subsection). Both must match `package.json#version`.
+- `src/index.ts` → the `McpServer({ name, version })` literal must match.
 
-### CP-2. `server.json` env-var declarations cross-check
+Run the general version-consistency check as-is, then additionally verify those two files.
 
-Every env var documented in `.env.example` (non-comment, non-legacy lines) must have a corresponding entry in `server.json.packages[0].environmentVariables[*].name`. Currently expected:
+**Generalization hint:** `server.json` is the MCP Registry manifest — any MCP-server project will have the same double-version quirk. **Promotion candidate** after a second MCP project adopts ship-check.
+
+---
+
+## AUGMENT: Secrets sweep — repo-specific guards
+
+Keep all general secret patterns AND also hard-fail if any of these appear in tracked files:
+
+- Any 40+ character hex string following `_authToken=` (a leaked `~/.npmrc` value).
+- The literal token prefix we rotated during 1.2.0 prep: `npm_EYF3iBwo` (defense against someone accidentally re-adding it from transcript history).
+
+The second pattern is an artifact of this project's history and expires once the token is safely out of our backscroll. Review quarterly; remove when no longer needed.
+
+**Generalization hint:** "add project-specific secret patterns" is itself a general pattern — but the specific patterns here are clarifyprompt-only.
+
+---
+
+## ADD: CP-2 — server.json env-var declarations match `.env.example`
+
+Every env var documented in `.env.example` (non-comment, non-legacy rows) must have a corresponding entry in `server.json.packages[0].environmentVariables[*].name`.
+
+Current expected set:
 
 ```
 LLM_API_URL, LLM_API_KEY, LLM_MODEL,
@@ -30,92 +54,102 @@ CLARIFYPROMPT_HOME, CLARIFYPROMPT_DATA_DIR, CLARIFYPROMPT_TRACE,
 EMBED_API_URL, EMBED_API_KEY, EMBED_MODEL, EMBED_DIMENSION
 ```
 
-Flag any env var in `.env.example` that isn't declared in `server.json`. The 1.3.0 → 1.3.1 cleanup we just did was caused by this gap; don't let it recur.
+**Hard fail** on any variable present in `.env.example` but missing from `server.json`. The 1.3.0 → 1.3.1 patch was caused by this gap.
 
-**Generalization hint:** applies to any MCP server project shipping a `server.json` manifest. **Promote** once any other MCP project uses ship-check.
+**Generalization hint:** applies to any MCP-server project shipping a `server.json` manifest. **Strong promotion candidate.**
 
-### CP-3. README env-var reference table completeness
+---
 
-The README has an "Environment Variables" section with a markdown table. Every var in `.env.example` must appear as a row in that table. The reverse also holds — if a variable is in the table but not in `.env.example`, it's either obsolete or `.env.example` is out of date.
+## ADD: CP-3 — README env-var reference table completeness
 
-Regex for the table: find the heading `### Environment Variables` (or `## Environment Variables`) and parse the markdown pipe-table that follows.
+The README's `### Environment Variables` (or `## Environment Variables`) section includes a markdown pipe-table. Every variable in `.env.example` must appear as a row; reverse also holds.
 
-**Generalization hint:** applies to any project that documents env vars in a README table. **Not quite promotable yet** — README structure varies too much across projects. Revisit once 3+ projects have this pattern.
+**Soft fail** (warning, not blocker) on drift in either direction.
 
-### CP-4. `packs/` ships in the npm tarball
+**Generalization hint:** README structure varies too much to promote yet. Revisit once 3+ projects adopt this pattern.
 
-The `packs/` directory must be:
-- Listed in `package.json#files` so npm includes it
-- Contain at least the three starter packs (`nextjs-14-best-practices.md`, `anthropic-brand-voice.md`, `sox-compliance.md`)
+---
 
-Run `npm pack --dry-run` and confirm `packs/*.md` appears in the output.
+## ADD: CP-4 — `packs/` ships in the npm tarball
 
-**Generalization hint:** purely clarifyprompt-specific. Stays project-scoped.
-
-### CP-5. Knowledge-pack format validity
-
-For every file under `packs/*.md` (and any other pack dirs referenced in the README):
-
-- File starts with `---` (YAML frontmatter delimiter) or is documented as frontmatter-less
-- Frontmatter parses as YAML-lite (same parser semantics as `src/engine/memory/packs.ts:parsePackSource`)
-- Required frontmatter fields present: `name`, `version`, `description`, `scope`, `author`, `license`
-- Body has at least one H2 heading (packs chunk by heading; bodies without H2s become one massive chunk which is bad retrieval)
+- `packs/` must be listed in `package.json#files`.
+- Must contain at least the three starter packs: `nextjs-14-best-practices.md`, `anthropic-brand-voice.md`, `sox-compliance.md`.
+- `npm pack --dry-run` must include `packs/*.md` in its output.
 
 **Generalization hint:** purely clarifyprompt-specific. Stays project-scoped.
 
-### CP-6. Companion registry sync check (soft warning, not a fail)
+---
 
-When preparing a release, the companion [LumabyteCo/clarifyprompt-packs](https://github.com/LumabyteCo/clarifyprompt-packs) repo should have the same 3 starter packs (or the user has consciously diverged them). This is a **warning only** — the two repos can legitimately drift (packs in the registry may be newer, or repo packs may be older "baseline"). Just flag the diff for human attention.
+## ADD: CP-5 — knowledge-pack format validity
 
-Run `gh api repos/LumabyteCo/clarifyprompt-packs/contents/packs` and compare filenames + sizes against `./packs/`.
+For every `packs/*.md` file:
 
-**Generalization hint:** applies to any project that ships a "starter" kit which also lives in a companion registry (think language stdlib vs community packages). **Potential promote** but needs the general skill to learn the "companion registry URL" convention per-project.
+- Starts with `---` YAML frontmatter delimiter.
+- Parses under the same YAML-lite rules as `src/engine/memory/packs.ts:parsePackSource`.
+- Required frontmatter: `name`, `version`, `description`, `scope`, `author`, `license`.
+- Body contains at least one H2 heading (packs chunk by heading; no H2s = one giant unchunked chunk = bad retrieval).
 
-### CP-7. Apache-2.0 license guard
+**Generalization hint:** purely clarifyprompt-specific. Stays project-scoped.
 
-This is non-negotiable: the project is Apache-2.0 forever (per the public commitment in CONTRIBUTING.md and SECURITY.md).
+---
 
-- `LICENSE` file must exist and start with "Apache License"
-- `package.json#license` must be `"Apache-2.0"`
-- Don't let a PR slip through that changes either.
+## ADD: CP-6 — companion registry sync (soft warning)
 
-**Generalization hint:** any license commitment applies to any OSS project. **Promote** as a parameterized check (project declares its committed license; skill enforces it).
+When preparing a release, compare `./packs/` against [LumabyteCo/clarifyprompt-packs](https://github.com/LumabyteCo/clarifyprompt-packs) via `gh api repos/LumabyteCo/clarifyprompt-packs/contents/packs`. Flag any filename or size drift as a warning — the repos can legitimately diverge but it's worth a human look.
 
-### CP-8. Integration test harness availability (informational)
+**Generalization hint:** any project with a "starter kit in main repo + curated companion registry" pattern benefits. Needs the general skill to learn a "companion registry URL" config field before it can promote.
 
-When preparing a major release (anything that bumps the minor version), check that the integration test batteries exist and can at least start:
+---
+
+## ADD: CP-7 — Apache-2.0 license guard
+
+Non-negotiable per our public commitment in `CONTRIBUTING.md` and `SECURITY.md`:
+
+- `LICENSE` file exists and starts with `"Apache License"`.
+- `package.json#license === "Apache-2.0"`.
+- Hard fail on any drift.
+
+**Generalization hint:** any OSS project with a declared license benefits. **Promotion candidate** as a parameterized check (project declares its committed license; general skill enforces it).
+
+---
+
+## ADD: CP-8 — integration test batteries present (informational)
+
+For minor-version prep (e.g. `1.3.0 → 1.4.0`), confirm the test batteries exist and can at least parse:
 
 - `/tmp/clarify-integration-test.mjs` (1.2 Definition-of-Done cases)
 - `/tmp/clarify-day2-test.mjs` (1.3 memory + packs + curation)
-- `/tmp/clarify-reasoning-test.mjs` (reasoning-model support)
+- `/tmp/clarify-reasoning-test.mjs` (reasoning + cloud-model coverage)
 
-These are in `/tmp/` today — not ideal for version control. **TODO:** move to `tests/` under version control before 1.4, and then this check becomes "do they pass?" rather than "do they exist?".
+**TODO for 1.4:** move these from `/tmp/` into `tests/` under version control. Once moved, this check escalates from "do they exist?" to "do they pass?".
 
-**Generalization hint:** integration-test-harness existence is general. Stays project-scoped until we move them into the repo.
+**Generalization hint:** test-harness existence is a general pattern; the file paths are project-specific. Stays project-scoped until the tests are repo-versioned.
 
-### CP-9. `dist/` is gitignored AND not committed
+---
 
-- `dist/` in `.gitignore` — hard fail if not
-- `git ls-files dist/` should return nothing
+## ADD: CP-9 — `dist/` is gitignored AND not committed
 
-**Generalization hint:** applies to any compiled TypeScript project. **Promote** to user-scope.
+- `dist/` must appear in `.gitignore`.
+- `git ls-files dist/` must return empty.
 
-### CP-10. Git tag format matches convention
+**Generalization hint:** applies to any compiled-language project (TypeScript, Rust, C++, Go-with-generated-artifacts). **Strong promotion candidate.**
 
-For this repo, release tags use `v<major>.<minor>.<patch>` (e.g., `v1.3.1`). No `v1.3.1-beta`, no `release-1.3.1`, no unprefixed `1.3.1`.
+---
 
-**Generalization hint:** tag convention is per-project. Leave here; the user-scoped skill can gain a configurable pattern later.
+## ADD: CP-10 — git tag format
 
-## Notes for the next promotion pass
+Tags for this repo follow `v<major>.<minor>.<patch>` strictly (e.g. `v1.3.1`). No `v1.3.1-beta`, no `release-1.3.1`, no unprefixed `1.3.1`.
 
-When the user next runs a skills consolidation pass, these are the strongest **promotion candidates** — patterns proven useful here that would help in most projects:
+**Generalization hint:** tag convention is per-project. Stays scoped. General skill could gain a configurable pattern later if promoted.
 
-1. **CP-1 + CP-2 (MCP server.json awareness)** — every MCP server benefits.
-2. **CP-7 (license commitment guard)** — every OSS project benefits.
-3. **CP-9 (dist/ hygiene)** — every compiled-language project benefits.
+---
 
-The rest stay project-scoped unless proven useful in ≥ 2 other repos.
+## Promotion candidates — ranked
 
-## Notes for re-running specific checks
+When the user next runs a skills consolidation pass, these are the strongest promotion candidates (proven useful here, should help most projects):
 
-Don't duplicate the general checks here. If a general check needs tuning for this repo (e.g., an additional secret pattern), override it in this file with a comment explaining why — don't just add a parallel variant.
+1. **`ADD: CP-2` (server.json env-var cross-check)** — every MCP server benefits.
+2. **`ADD: CP-7` (license commitment guard)** — every OSS project benefits.
+3. **`ADD: CP-9` (dist/ hygiene)** — every compiled-language project benefits.
+
+The AUGMENT-level items (version consistency extras, secret pattern adds) are examples of how to use those operators rather than themselves promotable — they are already baked into the general skill's extension points.
