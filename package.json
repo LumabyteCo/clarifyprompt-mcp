@@ -64,6 +64,9 @@
     "url": "https://github.com/LumabyteCo/clarifyprompt-mcp/issues"
   },
   "author": "Lumabyte Co. (https://github.com/LumabyteCo)",
+  "contributors": [
+    "Ahmed Radwan <ar@lumabyte.co> (https://github.com/a-radwan-20)"
+  ],
   "license": "Apache-2.0",
   "engines": {
     "node": ">=18"
