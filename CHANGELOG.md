@@ -4,7 +4,15 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] — unreleased (integration-complete)
+## [1.2.1] — 2026-04-22
+
+Packaging polish. No behavior change.
+
+- **`CHANGELOG.md` now ships in the npm tarball.** Added to the `files` array in `package.json`. Users installing via npm can now read the full release history directly from `node_modules/clarifyprompt-mcp/CHANGELOG.md`, and the npm package page renders it.
+- **`npm pkg fix`**: dropped the leading `./` from the `bin` path so the npm CLI stops emitting the auto-correct warning on publish. Purely cosmetic.
+- Package size unchanged (~65 kB).
+
+## [1.2.0] — 2026-04-22
 
 ClarifyPrompt graduates from a stateless string-rewriter into a **context-aware prompt compiler**. The five integration passes below ensure every new signal flows into the decisions that shape the output — no more "parallel repo inside a repo".
 

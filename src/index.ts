@@ -13,7 +13,7 @@ import { getTraceWriter } from "./engine/trace/writer.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.2.0",
+  version: "1.2.1",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
