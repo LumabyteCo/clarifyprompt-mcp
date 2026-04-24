@@ -8,6 +8,13 @@ import {
   type AcceptedExample,
   type PromptShape,
 } from '../groundingContext.js';
+import {
+  buildCandidates,
+  computeBudget,
+  curate,
+  approxTokens,
+  type CurationResult,
+} from '../curator.js';
 
 export abstract class BaseStrategy implements OptimizationStrategy {
   abstract readonly name: string;
@@ -189,8 +196,10 @@ Important Rules:
     const overlay = this.getIntentOverlay(intent);
     const systemPrompt = overlay ? `${shaped}\n${overlay}` : shaped;
 
-    // Unified Grounding Context block. Replaces the parallel web-search /
-    // workspace-signal silos from the 1.2.0 draft.
+    // --- Context Curator (Pass 2) ---
+    // Turn flat grounding into an explicit token-budget problem. The curator
+    // scores each candidate and fits the best subset into the target model's
+    // remaining window.
     const acceptedExamples: AcceptedExample[] =
       context.acceptedExamples?.map(ex => ({
         originalPrompt: ex.originalPrompt,
@@ -201,14 +210,33 @@ Important Rules:
         ts: ex.ts,
       })) ?? [];
 
-    const grounding = buildGroundingContext({
-      bundle: context.bundle,
-      webSearchContext: context.enrichWithContext ? context.contextSources?.[0] : undefined,
-      webSearchSources: context.webSearchSources,
-      platformInstructions,
-      platformHints,
+    const curationResult = this.runCurator({
+      context,
+      systemPrompt,
+      originalPrompt: prompt,
       acceptedExamples,
+      platformHints,
+      platformInstructions,
+      shape,
     });
+
+    // Stash for trace consumption + renderLastSystemPrompt consistency.
+    this.lastCuration = curationResult;
+
+    // Fallback to legacy block builder when curator returns empty (e.g., no
+    // target-model capability info and no candidates). This keeps tests that
+    // don't wire up a bundle still green.
+    let groundingBlock = curationResult.block;
+    if (!groundingBlock) {
+      groundingBlock = buildGroundingContext({
+        bundle: context.bundle,
+        webSearchContext: context.enrichWithContext ? context.contextSources?.[0] : undefined,
+        webSearchSources: context.webSearchSources,
+        platformInstructions,
+        platformHints,
+        acceptedExamples,
+      }).block;
+    }
 
     const userPrompt = `Original Prompt:
 """
@@ -216,7 +244,7 @@ ${prompt}
 """
 
 Optimize this prompt for the ${context.category} category.${context.platform ? ` Target platform: ${context.platform}.` : ''}
-${grounding.block}
+${groundingBlock}
 Ground the optimization in the Grounding Context above when relevant. Respect priority order (higher-listed sections outrank lower). Output only the optimized prompt:`;
 
     const result = await this.llmClient.simpleGenerate(systemPrompt, userPrompt, {
@@ -225,5 +253,45 @@ Ground the optimization in the Grounding Context above when relevant. Respect pr
     });
 
     return result.content.trim();
+  }
+
+  /** Exposed for the engine to pull into the trace + response. */
+  public lastCuration?: CurationResult;
+
+  protected runCurator(args: {
+    context: OptimizationContext;
+    systemPrompt: string;
+    originalPrompt: string;
+    acceptedExamples: AcceptedExample[];
+    platformHints?: string[];
+    platformInstructions?: string;
+    shape: PromptShape;
+  }): CurationResult {
+    const { context, systemPrompt, originalPrompt, acceptedExamples, platformHints, platformInstructions, shape } = args;
+
+    const contextWindow = context.bundle?.targetModel?.capabilities.contextWindow ?? 32_000;
+    const budget = computeBudget({
+      contextWindow,
+      systemPromptTokens: approxTokens(systemPrompt),
+      outputTokens: shape.maxTokens,
+      originalPromptTokens: approxTokens(originalPrompt),
+    });
+
+    const candidates = buildCandidates({
+      bundle: context.bundle,
+      webSearchContext: context.enrichWithContext ? context.contextSources?.[0] : undefined,
+      webSearchSources: context.webSearchSources,
+      platformInstructions,
+      platformHints,
+      acceptedExamples: acceptedExamples.map(ex => ({
+        originalPrompt: ex.originalPrompt,
+        optimizedPrompt: ex.optimizedPrompt,
+        ts: ex.ts,
+      })),
+      memoryMatches: context.memoryMatches,
+      intent: context.bundle?.analysis?.intent,
+    });
+
+    return curate(candidates, budget);
   }
 }

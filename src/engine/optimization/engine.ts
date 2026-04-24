@@ -11,6 +11,8 @@ import { getSessionStore, generateSessionId } from '../context/sessionSignals.js
 import { getTraceWriter } from '../trace/writer.js';
 import { summarizeBundleForTrace } from '../trace/types.js';
 import { reconcileMode, getPromptShape, buildGroundingContext } from './groundingContext.js';
+import { getMemoryStore } from '../memory/store.js';
+import type { MemoryMatch } from '../memory/types.js';
 
 const VALID_CATEGORIES: Category[] = CATEGORIES.map(c => c.id);
 
@@ -95,9 +97,15 @@ export class OptimizationEngine {
       }
     }
 
-    // Pass D retrieval: similar accepted outputs from this session, used as
-    // few-shot examples. Until Day 2 adds persistent memory, this is
-    // in-memory-only — but the shape is stable.
+    // --- Pass 3: semantic retrieval from persistent memory ---
+    // Pull relevant facts + past optimizations + pack chunks via vector
+    // similarity. The curator will score these against the token budget.
+    const memoryMatches = await this.retrieveFromMemory({
+      prompt: request.prompt,
+      scope: `project:${bundle.project.packageName || 'default'}`,
+    });
+
+    // Session in-memory ring buffer (still used for same-session fast path).
     const acceptedExamplesFromStore = getSessionStore().findAcceptedExamples(sessionId, {
       prompt: request.prompt,
       category,
@@ -123,6 +131,7 @@ export class OptimizationEngine {
       webSearchSources: enriched.enriched ? enriched.sources : undefined,
       bundle,
       acceptedExamples,
+      memoryMatches,
     };
 
     // Everything upstream has a graceful fallback; the LLM call itself can
@@ -145,7 +154,7 @@ export class OptimizationEngine {
     const processingTimeMs = Date.now() - startTime;
     const shape = getPromptShape(bundle, analysis?.intent);
 
-    // Record into session ring buffer (always — helps debugging even on error).
+    // Record into session ring buffer (fast path for same-session retrieval).
     getSessionStore().recordOptimization(sessionId, {
       id,
       ts: Date.now(),
@@ -154,6 +163,16 @@ export class OptimizationEngine {
       category,
       platform,
       intent: analysis?.intent,
+    });
+
+    // Persist to long-term memory for cross-session retrieval. Guard so
+    // memory failures (missing sqlite-vec, embed endpoint down) never crash
+    // the optimize call.
+    this.persistToMemoryAsync({
+      id, sessionId, ts: Date.now(),
+      originalPrompt: request.prompt, optimizedPrompt,
+      category, platform, mode,
+      intent: analysis?.intent, model: modelName,
     });
 
     // Trace emit
@@ -167,6 +186,20 @@ export class OptimizationEngine {
         webSearchSources: enriched.sources, platformInstructions: platformConfig?.resolvedInstructions,
         platformHints: platformConfig?.syntaxHints, acceptedExamples,
       });
+      // Pull curation log if the strategy recorded one (Pass 6).
+      const curation = strategy instanceof BaseStrategy && strategy.lastCuration
+        ? {
+            budget: strategy.lastCuration.budget,
+            used: strategy.lastCuration.used,
+            selected: strategy.lastCuration.selected.map(s => ({
+              source: s.source, label: s.label, tokens: s.tokens, utility: s.utility, pinned: s.pinned,
+            })),
+            rejected: strategy.lastCuration.rejected.map(r => ({
+              source: r.source, tokens: r.tokens, utility: r.utility, reason: r.reason,
+            })),
+          }
+        : undefined;
+
       await tracer.append({
         schemaVersion: 1,
         id,
@@ -185,8 +218,9 @@ export class OptimizationEngine {
         model: modelName,
         strategy: strategy.name,
         latencyMs: processingTimeMs,
-        groundingSources: grounding.sources,
+        groundingSources: curation?.selected.map(s => s.source) ?? grounding.sources,
         shape: { budget: shape.systemPromptBudget, maxTokens: shape.maxTokens, temperature: shape.temperature },
+        curation,
         error: strategyError ? { message: (strategyError as Error).message } : undefined,
       });
     }
@@ -218,11 +252,15 @@ export class OptimizationEngine {
       } : undefined,
       intent: analysis ? { detected: analysis.intent, confidence: analysis.confidence } : undefined,
       grounding: {
-        sources: buildGroundingContext({
-          bundle, webSearchContext: enriched.enriched ? enriched.context : undefined,
-          webSearchSources: enriched.sources, platformInstructions: platformConfig?.resolvedInstructions,
-          platformHints: platformConfig?.syntaxHints, acceptedExamples,
-        }).sources,
+        // Prefer the curator's actual selected sources; fall back to the
+        // legacy buildGroundingContext only when the curator didn't run.
+        sources: strategy instanceof BaseStrategy && strategy.lastCuration
+          ? strategy.lastCuration.sourceIds
+          : buildGroundingContext({
+              bundle, webSearchContext: enriched.enriched ? enriched.context : undefined,
+              webSearchSources: enriched.sources, platformInstructions: platformConfig?.resolvedInstructions,
+              platformHints: platformConfig?.syntaxHints, acceptedExamples,
+            }).sources,
         acceptedExamplesUsed: acceptedExamples.length,
       },
       shape: {
@@ -259,6 +297,69 @@ export class OptimizationEngine {
 
   private generateId(): string {
     return `opt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  /**
+   * Dual semantic retrieval: vector search over facts + past optimizations
+   * + pack chunks. Swallows errors so a memory outage never breaks optimize.
+   */
+  private async retrieveFromMemory(args: { prompt: string; scope: string }): Promise<MemoryMatch[]> {
+    try {
+      const store = getMemoryStore();
+      if (!store.isHealthy() || !store.hasVectors()) return [];
+
+      const [facts, packChunks] = await Promise.all([
+        store.searchByVector('fact', args.prompt, 3),
+        store.searchByVector('pack_chunk', args.prompt, 3),
+      ]);
+      // Merge + dedupe by sourceId+kind, ordered by similarity.
+      const all = [...facts, ...packChunks].sort((a, b) => b.similarity - a.similarity);
+      const seen = new Set<string>();
+      const out: MemoryMatch[] = [];
+      for (const m of all) {
+        const key = `${m.kind}:${m.sourceId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(m);
+        if (out.length >= 5) break;
+      }
+      return out;
+    } catch (err) {
+      console.error('[Engine] memory retrieval failed (continuing without):', (err as Error).message);
+      return [];
+    }
+  }
+
+  /**
+   * Fire-and-forget persistence into the long-term memory layer. Swallows
+   * errors; every optimization is best-effort.
+   */
+  private persistToMemoryAsync(opt: {
+    id: string; sessionId: string; ts: number;
+    originalPrompt: string; optimizedPrompt: string;
+    category: Category; platform?: string; mode: Mode;
+    intent?: string; model: string;
+  }): void {
+    (async () => {
+      try {
+        const store = getMemoryStore();
+        if (!store.isHealthy()) return;
+        store.recordOptimization({
+          id: opt.id, sessionId: opt.sessionId, ts: opt.ts,
+          originalPrompt: opt.originalPrompt, optimizedPrompt: opt.optimizedPrompt,
+          category: opt.category, platform: opt.platform, mode: opt.mode,
+          intent: opt.intent, model: opt.model,
+        });
+        // We embed the original prompt so future "find similar past prompts"
+        // queries hit well. The optimized output embedding is less useful as
+        // a retrieval key.
+        if (store.hasVectors()) {
+          await store.embedAndStore('optimization', opt.id, opt.originalPrompt);
+        }
+      } catch (err) {
+        console.error('[Engine] memory persist failed:', (err as Error).message);
+      }
+    })();
   }
 }
 

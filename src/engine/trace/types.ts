@@ -40,6 +40,13 @@ export interface TraceEntry {
     maxTokens: number;
     temperature: number;
   };
+  /** Pass 6 — curator decisions, for explain_last_curation + trace review. */
+  curation?: {
+    budget: { total: number; reservedForPrompt: number; availableForGrounding: number };
+    used: number;
+    selected: Array<{ source: string; label: string; tokens: number; utility: number; pinned: boolean }>;
+    rejected: Array<{ source: string; tokens: number; utility: number; reason: string }>;
+  };
   error?: { message: string };
 }
 

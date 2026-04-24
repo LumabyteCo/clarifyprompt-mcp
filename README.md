@@ -9,7 +9,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.2.0:** Context Engine — automatic workspace signal gathering, intent resolution, target-model capability hints, and local JSONL tracing. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.3.0:** The Context Curator. Every call is now an explicit token-budget problem — persistent memory, knowledge packs, reflection — with full inspectability via `explain_last_curation`. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,7 +26,17 @@ ClarifyPrompt returns (for DALL-E):
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
 
-## What's in the box (1.2.0)
+## What's new in 1.3.0
+
+**Stop tuning prompts. Start curating context.** 1.3 introduces the **Context Curator** — every outgoing LLM call is an explicit token-budget problem. The curator scores every candidate grounding source (user-pinned rules, project `CLAUDE.md`, active file, past accepted outputs, semantic memory matches, pack chunks, web search, platform hints) and fits the highest-utility subset into the model's remaining window.
+
+- **Persistent memory** — SQLite + sqlite-vec under `$CLARIFYPROMPT_HOME/memory/memory.db`. Bi-temporal facts, entities, outcomes, pack chunks. Graceful degradation when the vector extension can't load.
+- **Reflective learning** — `save_outcome` with verdict=`accepted` extracts atomic facts via an LLM pass and stores them with embeddings, so future similar prompts retrieve what worked. Rejection invalidates recent reflection facts.
+- **Knowledge packs** — community-contributable markdown+YAML documents loaded by URL, local path, or inline. The curator treats pack chunks as first-class grounding sources. [Starter registry](https://github.com/LumabyteCo/clarifyprompt-packs) with 3 packs (nextjs-14 / anthropic-brand-voice / sox-compliance); add your own with a PR.
+- **Curation observability** — `explain_last_curation` renders a per-call breakdown: which candidates were kept, which were cut, why, and how many tokens each used.
+- **4 new MCP tools** (15 total): `load_knowledge_pack`, `list_packs`, `unload_pack`, `memory_search`, `explain_last_curation`.
+
+## What's in the box (cumulative through 1.3.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

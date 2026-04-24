@@ -10,10 +10,13 @@ import { getPlatformRegistry } from "./engine/config/registry.js";
 import { buildContextBundle } from "./engine/context/bundle.js";
 import { getSessionStore } from "./engine/context/sessionSignals.js";
 import { getTraceWriter } from "./engine/trace/writer.js";
+import { getMemoryStore } from "./engine/memory/store.js";
+import { reflectOnOutcome } from "./engine/memory/reflection.js";
+import { loadKnowledgePack } from "./engine/memory/packs.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.2.1",
+  version: "1.3.0",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
@@ -351,29 +354,231 @@ server.tool(
 
 server.tool(
   "save_outcome",
-  "Tell ClarifyPrompt whether an optimization's output was accepted, edited, or rejected. Used to feed the session retrieval loop so accepted prior outputs are injected as few-shot examples into future similar prompts. In 1.3+ this will also feed the persistent memory layer.",
+  "Tell ClarifyPrompt whether an optimization's output was accepted, edited, or rejected. Feeds two loops: (1) the session ring buffer so accepted prior outputs are injected as few-shot examples into future similar prompts, and (2) the persistent memory layer via reflection — on accept/edit, ClarifyPrompt extracts atomic facts from the interaction and stores them; on reject, recent reflection facts from this session are invalidated. Reflection uses the same LLM you've configured; expect a 1–3s latency on local models.",
   {
     optimization_id: z.string().describe("The `id` returned from optimize_prompt"),
     session_id: z.string().describe("The `sessionId` returned from optimize_prompt. Required so the outcome lands in the right session bucket."),
     verdict: z.enum(['accepted', 'edited', 'rejected']).describe("accepted = user used the output as-is; edited = user kept it with edits; rejected = user threw it away"),
-    diff: z.string().optional().describe("Optional: the user's edited version or a diff. Helps later retrieval quality."),
+    diff: z.string().optional().describe("Optional: the user's edited version or a diff. Helps reflection extract better facts."),
+    skip_reflection: z.boolean().optional().default(false).describe("Skip the LLM-based fact extraction pass (faster, no facts learned)"),
   },
-  async ({ optimization_id, session_id, verdict, diff }) => {
+  async ({ optimization_id, session_id, verdict, diff, skip_reflection }) => {
+    // Fast path: session ring buffer
     getSessionStore().recordOutcome(session_id, {
       optimizationId: optimization_id,
       verdict,
       ts: Date.now(),
       diff,
     });
+
+    // Persistent path: outcome record in memory.db
+    let reflection: { factsExtracted: number; factsInvalidated: number; source: string; notes?: string } | undefined;
+    try {
+      const store = getMemoryStore();
+      if (store.isHealthy()) {
+        store.recordOutcome({
+          optimizationId: optimization_id,
+          sessionId: session_id,
+          verdict,
+          diff,
+        });
+        if (!skip_reflection) {
+          const r = await reflectOnOutcome({ optimizationId: optimization_id, sessionId: session_id, verdict, diff });
+          reflection = { factsExtracted: r.factsExtracted, factsInvalidated: r.factsInvalidated, source: r.source, notes: r.notes };
+        }
+      }
+    } catch (err) {
+      reflection = { factsExtracted: 0, factsInvalidated: 0, source: 'error', notes: (err as Error).message };
+    }
+
     return { content: [{ type: "text" as const, text: JSON.stringify({
       success: true,
+      verdict,
+      sessionId: session_id,
+      optimizationId: optimization_id,
+      reflection,
       message: `Recorded ${verdict} for ${optimization_id} in session ${session_id}. ${
         verdict === 'accepted'
-          ? 'This output will be used as a few-shot example for similar future prompts in this session.'
+          ? `Session ring buffer updated. ${reflection ? `Reflection extracted ${reflection.factsExtracted} fact(s) into persistent memory.` : ''}`
           : verdict === 'edited'
-            ? 'Recorded for learning; not used as a pure example.'
-            : 'Recorded so the engine avoids echoing this pattern.'
-      }`,
+            ? `Session ring buffer updated. ${reflection ? `Reflection extracted ${reflection.factsExtracted} fact(s) (at reduced confidence) into persistent memory.` : ''}`
+            : `Anti-pattern recorded. ${reflection ? `Invalidated ${reflection.factsInvalidated} recent reflection fact(s) from this session.` : ''}`
+      }`.trim(),
+    }, null, 2) }] };
+  }
+);
+
+server.tool(
+  "memory_search",
+  "Semantic search over the persistent memory store. Returns facts, pack chunks, and past optimizations ranked by vector similarity to the query. Useful for inspecting what ClarifyPrompt would retrieve for a given prompt, and for debugging curator decisions.",
+  {
+    query: z.string().describe("The search query — usually the user's intent or a paraphrase of a future prompt."),
+    kinds: z.array(z.enum(['fact', 'outcome', 'pack_chunk', 'optimization'])).optional().default(['fact', 'pack_chunk'])
+      .describe("Which memory kinds to search. Default: facts + pack chunks."),
+    limit: z.number().int().positive().max(25).optional().default(5),
+  },
+  async ({ query, kinds, limit }) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: 'memory store not healthy (sqlite-vec may have failed to load)',
+      }) }], isError: true };
+    }
+    if (!store.hasVectors()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: 'vector search unavailable (sqlite-vec not loaded)',
+      }) }], isError: true };
+    }
+    const results = [];
+    for (const k of (kinds ?? ['fact', 'pack_chunk'])) {
+      const hits = await store.searchByVector(k, query, limit ?? 5);
+      results.push(...hits);
+    }
+    results.sort((a, b) => b.similarity - a.similarity);
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      query, kinds: kinds ?? ['fact', 'pack_chunk'],
+      count: results.length,
+      results: results.slice(0, limit ?? 5),
+    }, null, 2) }] };
+  }
+);
+
+server.tool(
+  "explain_last_curation",
+  "Render a human-readable explanation of the Context Curator's decisions for the most recent (or a specified) optimization. Shows every candidate that was considered, whether it was selected or rejected, why, and how many tokens it used against the budget. Use this when an output felt off and you want to understand which grounding sources the engine chose.",
+  {
+    optimization_id: z.string().optional().describe("Optional trace ID. If omitted, explains the most recent trace."),
+    lookback_days: z.number().int().positive().max(60).optional().default(1),
+  },
+  async ({ optimization_id, lookback_days }) => {
+    const tracer = getTraceWriter();
+    if (tracer.getMode() === 'off') {
+      return { content: [{ type: "text" as const, text: JSON.stringify({ error: 'tracing disabled; cannot explain curation' }) }], isError: true };
+    }
+    let entry;
+    if (optimization_id) {
+      entry = await tracer.findById(optimization_id, lookback_days ?? 1);
+      if (!entry) {
+        return { content: [{ type: "text" as const, text: JSON.stringify({ error: `trace ${optimization_id} not found in last ${lookback_days} days` }) }], isError: true };
+      }
+    } else {
+      const days = await tracer.listDays();
+      if (!days.length) return { content: [{ type: "text" as const, text: JSON.stringify({ error: 'no traces yet' }) }], isError: true };
+      const recent = await tracer.readDay(days[0], 1);
+      entry = recent[recent.length - 1];
+      if (!entry) return { content: [{ type: "text" as const, text: JSON.stringify({ error: 'no traces yet' }) }], isError: true };
+    }
+    const c = entry.curation;
+    if (!c) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        optimizationId: entry.id,
+        message: 'This trace pre-dates the Context Curator (1.3.0+) or ran through a fallback path. No curation log available.',
+      }, null, 2) }] };
+    }
+    const lines: string[] = [];
+    lines.push(`# Curation log — ${entry.id}`);
+    lines.push(`Model: ${entry.model}  |  Strategy: ${entry.strategy}  |  Category/Mode: ${entry.category}/${entry.mode}`);
+    lines.push(`Budget: ${c.used} / ${c.budget.availableForGrounding} tokens used for grounding (reserved ${c.budget.reservedForPrompt} for prompt).`);
+    lines.push('');
+    lines.push(`## Selected (${c.selected.length} sections)`);
+    for (const s of c.selected) {
+      lines.push(`  ✔ ${s.source.padEnd(28)}  tokens=${String(s.tokens).padStart(5)}  utility=${s.utility.toFixed(2)}${s.pinned ? '  [PINNED]' : ''}  — ${s.label}`);
+    }
+    lines.push('');
+    if (c.rejected.length) {
+      lines.push(`## Rejected (${c.rejected.length})`);
+      for (const r of c.rejected) {
+        lines.push(`  ✖ ${r.source.padEnd(28)}  tokens=${String(r.tokens).padStart(5)}  utility=${r.utility.toFixed(2)}  — reason: ${r.reason}`);
+      }
+    } else {
+      lines.push(`## Rejected (0) — everything fit.`);
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      optimizationId: entry.id,
+      explanation: lines.join('\n'),
+      raw: c,
+    }, null, 2) }] };
+  }
+);
+
+// --- Knowledge Packs (1.3.0) ---
+
+server.tool(
+  "load_knowledge_pack",
+  "Load a knowledge pack — a markdown document with optional YAML frontmatter — into the persistent memory store. The pack is chunked by heading, each chunk embedded, and made available for semantic retrieval during subsequent optimize_prompt calls. Packs can come from a local file path, an HTTPS URL, or be passed inline as raw markdown. Community pack registry: https://github.com/LumabyteCo/clarifyprompt-packs",
+  {
+    source: z.string().describe("Local file path, HTTPS URL, or inline markdown body (auto-detected)."),
+    source_type: z.enum(['auto', 'local', 'url', 'inline', 'registry']).optional().default('auto')
+      .describe("Override source-type detection. `registry` marks a pack as community-sourced."),
+    scope: z.string().optional().describe("Scope to load under (e.g. 'user', 'project:myapp'). Defaults to pack frontmatter or 'user'."),
+    name: z.string().optional().describe("Override the pack name (else pulled from frontmatter)."),
+    version: z.string().optional().describe("Override the pack version (else pulled from frontmatter or '0.0.0')."),
+  },
+  async (args) => {
+    try {
+      const result = await loadKnowledgePack({
+        source: args.source,
+        sourceType: args.source_type,
+        scope: args.scope,
+        name: args.name,
+        version: args.version,
+      });
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        success: true,
+        pack: result.pack,
+        chunks: result.chunks,
+        embedded: result.embedded,
+        skipped: result.skipped,
+        message: `Loaded pack '${result.pack.name}@${result.pack.version}' with ${result.chunks} chunks (${result.embedded} embedded, ${result.skipped} not embedded). Chunks will surface in future optimize_prompt calls via semantic retrieval.`,
+      }, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: `Failed to load pack: ${(err as Error).message}`,
+      }) }], isError: true };
+    }
+  }
+);
+
+server.tool(
+  "list_packs",
+  "List knowledge packs currently loaded in the persistent memory store.",
+  {
+    scope: z.string().optional().describe("Filter by scope (e.g. 'user', 'project:myapp'). Omit to list all."),
+  },
+  async ({ scope }) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({ error: 'memory store not healthy' }) }], isError: true };
+    }
+    const packs = store.listPacks(scope);
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      scope: scope ?? null,
+      count: packs.length,
+      packs: packs.map(p => ({
+        id: p.id, name: p.name, version: p.version, scope: p.scope,
+        sourceType: p.sourceType, sourceRef: p.sourceRef,
+        loadedAt: new Date(p.loadedAt).toISOString(),
+        metadata: p.metadata,
+      })),
+    }, null, 2) }] };
+  }
+);
+
+server.tool(
+  "unload_pack",
+  "Remove a loaded knowledge pack (and all its chunks + embeddings) from the memory store.",
+  {
+    id: z.number().int().describe("Pack id (as returned by list_packs)."),
+  },
+  async ({ id }) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({ error: 'memory store not healthy' }) }], isError: true };
+    }
+    store.removePack(id);
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      success: true,
+      message: `Pack ${id} removed (cascade-deleted all its chunks + embeddings).`,
     }, null, 2) }] };
   }
 );

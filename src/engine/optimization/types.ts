@@ -20,6 +20,7 @@ export interface OptimizationContext {
   webSearchSources?: string[];
   bundle?: ContextBundle;
   acceptedExamples?: AcceptedExampleRef[];
+  memoryMatches?: import('../memory/types.js').MemoryMatch[];
 }
 
 export interface OptimizationResult {

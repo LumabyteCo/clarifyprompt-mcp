@@ -4,6 +4,109 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] — 2026-04-24
+
+ClarifyPrompt 1.3 stops tuning prompts and starts **curating context**. Every call becomes an explicit token-budget problem — memory, tools, MCP, history — and every decision the curator makes is inspectable, persistent, and improves with use.
+
+Framed against Anthropic's four context-engineering pillars:
+
+| Pillar | What 1.3 adds |
+|---|---|
+| **System instructions** | Unchanged from 1.2 (intent overlay + shape-aware sizing) |
+| **MCP & external data** | **Knowledge packs** — markdown + YAML frontmatter, loaded by URL / path / inline, chunked and embedded into the persistent memory store |
+| **Tools** | 4 new MCP tools: `load_knowledge_pack`, `list_packs`, `unload_pack`, `memory_search`, `explain_last_curation` (15 total, up from 11) |
+| **Message history** | **Persistent memory** via SQLite + sqlite-vec; **reflective learning** via `save_outcome` → LLM fact extraction → invalidation; **semantic retrieval** across sessions |
+
+### Added — Persistent memory substrate
+
+- **SQLite + sqlite-vec** as the storage layer (new deps: `better-sqlite3 ^12.9.0`, `sqlite-vec ^0.1.9`). Single `memory.db` at `$CLARIFYPROMPT_HOME/memory/`, WAL mode.
+- **Bi-temporal schema** (Graphiti-style): every fact has `valid_from` + `observed_at` + optional `invalidated_at`. New contradicting facts don't overwrite — they invalidate the prior edge.
+- Tables: `sessions`, `entities`, `facts`, `edges`, `outcomes`, `optimizations`, `packs`, `pack_chunks`, plus vec0 vector index `embeddings_768`.
+- **Versioned migrations** with `schema_migrations` tracking — safe to re-run.
+- **Graceful degradation:** if sqlite-vec fails to load, memory operations become no-ops instead of errors; the rest of the engine keeps working.
+
+### Added — Pluggable embedder
+
+- **`OpenAICompatibleEmbedder`** following the same contract as the LLM client. Any `/v1/embeddings`-shaped endpoint works.
+- Defaults to local Ollama + `nomic-embed-text:v1.5` (768-dim). `EMBED_API_URL` falls back to `LLM_API_URL` so Ollama users "just work".
+- Pre-configured examples in `.env.example` for OpenAI (`text-embedding-3-small`), Voyage (`voyage-3`), Cohere (`embed-english-v3.0`).
+
+### Added — The Context Curator
+
+The centerpiece of 1.3. Replaces flat priority-ordered context stacking with an explicit token-budget solver:
+
+- **`computeBudget`** — derives the grounding-budget envelope from the target model's context window, system-prompt tokens, output budget, and the original prompt size.
+- **`buildCandidates`** — constructs a scoreable candidate per grounding source: user-pinned, project rules, active file, session few-shots, web search, memory matches, workspace meta, target-model hints, custom platform instructions, platform syntax hints.
+- **`scoreCandidate`** — weighted combination of `baseUtility × 0.5 + intentMatch × 0.25 + authority × 0.15 + freshness × 0.10`. User-pinned sources are hard-pinned (utility = 1.0, always included).
+- **`curate`** — dedupes, pins required sources, then fills the remaining budget greedily by utility-per-token. Returns a full `CurationResult` with `selected`, `rejected` (with reasons), `budget`, and `used` — making every decision inspectable.
+- **Token counting**: 4-chars-per-token approximation; cheap and good enough for budgeting decisions that operate at the hundreds-of-tokens granularity.
+
+### Added — Semantic retrieval into the pipeline
+
+- Every `optimize_prompt` call now does a **dual vector search** (facts + pack chunks) over the persistent memory store and injects the top matches as curator candidates.
+- Each optimization is **persisted** to memory with its original-prompt embedding, so "have I seen a similar prompt before?" works across sessions and processes.
+- The old session ring buffer remains as a fast-path for same-session retrieval.
+
+### Added — Reflective memory
+
+- **`save_outcome` now extracts facts** via an LLM pass when the verdict is `accepted` or `edited`. Facts are 1–3 `(subject, predicate, object)` triples per outcome, stored with `source: "reflection:<optId>"`, embedded, and available for retrieval on subsequent calls.
+- **Rejection path** invalidates recent reflection-sourced facts from the same session (last hour window) as a conservative anti-pattern signal.
+- **`skip_reflection`** flag on `save_outcome` for latency-sensitive callers.
+
+### Added — Knowledge packs
+
+A community-contributable primitive for teaching ClarifyPrompt durable knowledge.
+
+- **Pack format**: markdown body + optional YAML frontmatter (`name`, `version`, `description`, `scope`, `author`, `license`, `tags`). Parsed by a minimal YAML-lite parser (no external deps).
+- **`load_knowledge_pack`** MCP tool — loads from local path, HTTPS URL, or inline markdown. Chunks the body by H1/H2 headings (fallback to paragraph splitting for sections > ~1500 chars), embeds each chunk, writes everything to memory.
+- **`list_packs`** and **`unload_pack`** tools for pack management.
+- **3 starter packs** shipped in `packs/`:
+  - `nextjs-14-best-practices` — server-first Next.js 14 App Router conventions
+  - `anthropic-brand-voice` — Anthropic's public tone, register, word choices
+  - `sox-compliance` — Sarbanes-Oxley 404 guardrails for AI-assisted financial work
+- **Companion registry** at [github.com/LumabyteCo/clarifyprompt-packs](https://github.com/LumabyteCo/clarifyprompt-packs) — Apache-2.0, community-curated.
+
+### Added — Curation observability
+
+- Trace entries now carry a `curation` block: `{budget, used, selected[], rejected[]}` with per-candidate tokens, utility score, and rejection reasons.
+- **`explain_last_curation`** MCP tool renders a human-readable explanation of the most recent (or specified) optimization's curator decisions. Use this when an output feels off and you want to know which grounding sources the engine chose and why.
+
+### Added — New MCP tools (16 total, up from 11)
+
+- `load_knowledge_pack` — load a pack into persistent memory
+- `list_packs` — list loaded packs
+- `unload_pack` — remove a pack and its chunks
+- `memory_search` — semantic search over facts + pack chunks
+- `explain_last_curation` — inspect the Context Curator's decisions
+
+### Added — Env vars
+
+| Variable | Required | Description |
+|---|---|---|
+| `EMBED_API_URL` | No | Embedding endpoint. Defaults to `LLM_API_URL` if unset. |
+| `EMBED_API_KEY` | No | Embedding API key. Defaults to `LLM_API_KEY` if unset. |
+| `EMBED_MODEL` | No | Embedding model ID. Default: `nomic-embed-text:v1.5`. |
+| `EMBED_DIMENSION` | No | Embedding dimension. Default: `768`. |
+
+### Changed
+
+- `optimize_prompt` response now includes `curation` metadata: how the token budget was allocated, what was kept, what was cut.
+- Trace JSONL schema gains the `curation` field. Existing 1.2 traces remain readable.
+- `save_outcome` response now includes a `reflection` sub-object: `{factsExtracted, factsInvalidated, source, notes}`.
+- Server version bumped to `1.3.0` across `package.json`, `server.json`, `src/index.ts`, `package-lock.json`.
+- npm tarball now includes `packs/` — the 3 starter packs ship with the install.
+
+### Notes for integrators
+
+- **All new features are opt-in.** Callers that only pass `{ prompt }` still get 1.2-level behavior. Memory / packs require an embedding endpoint; missing it degrades to `memoryMatches: []` instead of erroring.
+- **Reflection adds latency to `save_outcome`.** Expect 1–3 seconds on a local 7B model. Pass `skip_reflection: true` for sub-100ms outcome recording.
+- **`memory.db` is a single file.** Back it up, sync it between machines, ship it as part of a team's workspace if you want — it's yours.
+- **Knowledge packs are strictly local.** The registry at `github.com/LumabyteCo/clarifyprompt-packs` is just a curated markdown-file index; `load_knowledge_pack` fetches the file once and stores everything locally. No callbacks, no telemetry.
+
+### Positioning (the one-sentence 1.3 pitch)
+
+> ClarifyPrompt 1.3 stops tuning prompts and starts curating context. Every call becomes an explicit token-budget problem — memory, tools, MCP, history — and every decision the curator makes is inspectable, persistent, and improves with use.
+
 ## [1.2.1] — 2026-04-22
 
 Packaging polish. No behavior change.
