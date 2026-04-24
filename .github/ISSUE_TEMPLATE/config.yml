@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question / discussion
+    url: https://github.com/LumabyteCo/clarifyprompt-mcp/discussions
+    about: For open-ended questions, usage patterns, or to share how you're using ClarifyPrompt. Issues are for reproducible bugs and concrete proposals.
+  - name: Contribute a knowledge pack
+    url: https://github.com/LumabyteCo/clarifyprompt-packs
+    about: Draft-a-pack PRs go to the companion registry repo.
+  - name: Security vulnerability
+    url: https://github.com/LumabyteCo/clarifyprompt-mcp/security/advisories/new
+    about: Report privately via GitHub Security Advisories. Do NOT open a public issue for security bugs.

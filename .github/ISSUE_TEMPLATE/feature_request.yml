@@ -1,0 +1,55 @@
+name: Feature request
+description: A capability that doesn't exist yet — a new tool, a new signal in the bundle, a new curator knob, a model the capability table doesn't know about, etc.
+title: "feat: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the proposal. Good feature requests describe the *problem* first and the *solution* second — that way we can evaluate alternatives together.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that ClarifyPrompt today makes hard or impossible? Real-world scenario preferred.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to see? An MCP tool signature, an env var, a pack format extension — be specific.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Existing tools / workarounds, or ways you could solve this outside ClarifyPrompt. Helps us understand the opportunity size.
+
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Which context-engineering pillar does this sit in?
+      description: See [README → Context Curator](https://github.com/LumabyteCo/clarifyprompt-mcp#context-curator) for the four pillars.
+      options:
+        - System instructions (the standing rules the model operates under)
+        - MCP & external data (connectors / packs / workspace signals)
+        - Tools (functions the agent can call)
+        - Message history (memory, outcomes, reflection)
+        - Cross-cutting / infrastructure
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Would you like to contribute this?
+      options:
+        - label: I'd be open to opening a PR
+        - label: I'd like design-level feedback first
+        - label: I just want to flag the idea

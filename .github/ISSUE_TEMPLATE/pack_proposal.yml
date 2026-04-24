@@ -1,0 +1,55 @@
+name: Knowledge pack proposal
+description: Suggest a pack for the community registry (github.com/LumabyteCo/clarifyprompt-packs).
+title: "pack: "
+labels: ["pack", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Good knowledge packs teach something **specific, durable, and actionable** — brand voice, framework conventions, domain rules, compliance guardrails.
+        The pack registry lives at [LumabyteCo/clarifyprompt-packs](https://github.com/LumabyteCo/clarifyprompt-packs); the cleanest path is to open a PR *there*. File a proposal here if you want design feedback first.
+
+  - type: input
+    id: name
+    attributes:
+      label: Proposed pack name
+      placeholder: "terraform-aws-conventions"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: What does this pack teach?
+      description: One-paragraph summary — the specific rules / conventions / style this pack captures.
+    validations:
+      required: true
+
+  - type: textarea
+    id: when
+    attributes:
+      label: When should a user load this pack?
+      description: Give a concrete scenario. "When I'm optimizing prompts for Terraform + AWS code in a multi-account org."
+    validations:
+      required: true
+
+  - type: textarea
+    id: structure
+    attributes:
+      label: Draft pack outline
+      description: H2-level section headings you'd include. Packs chunk on H1/H2 — each heading becomes one retrievable chunk.
+      placeholder: |
+        ## Naming conventions
+        ## Module structure
+        ## State management
+        ## Secrets + provider auth
+        ## Multi-account patterns
+
+  - type: checkboxes
+    id: authoring
+    attributes:
+      label: Authoring status
+      options:
+        - label: I'm ready to draft the pack and open a PR at `LumabyteCo/clarifyprompt-packs`
+        - label: I want design feedback on the outline before drafting
+        - label: I think this pack should exist but can't author it myself — flagging the gap

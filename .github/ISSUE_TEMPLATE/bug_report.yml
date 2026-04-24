@@ -1,0 +1,104 @@
+name: Bug report
+description: Something's broken — a tool errors, a rewrite comes back empty, the memory layer crashes, etc.
+title: "bug: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. The more specific you can be, the faster it gets fixed.
+        **Before filing:** please search existing issues — someone may have hit this already.
+
+  - type: input
+    id: version
+    attributes:
+      label: ClarifyPrompt version
+      description: Run `npx clarifyprompt-mcp --version` or check your `claude_desktop_config.json`. If you're on a git clone, paste the commit SHA from `git rev-parse HEAD`.
+      placeholder: "1.3.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: host
+    attributes:
+      label: MCP host
+      options:
+        - Claude Desktop
+        - Claude Code
+        - Cursor
+        - Windsurf
+        - AI Butler
+        - Direct stdio (custom client)
+        - Docker container
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: llm_provider
+    attributes:
+      label: LLM provider (what's backing LLM_API_URL?)
+      options:
+        - Ollama (local)
+        - Ollama Cloud (:cloud suffix)
+        - OpenAI
+        - Anthropic
+        - Google Gemini
+        - Groq
+        - DeepSeek
+        - OpenRouter
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: LLM_MODEL
+      placeholder: "qwen2.5-coder:7b-instruct-q4_K_M"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact tool call or shell command, plus the environment. Include `$CLARIFYPROMPT_HOME` if you set one.
+      placeholder: |
+        1. Set `CLARIFYPROMPT_HOME=~/.clarifyprompt`
+        2. Call `optimize_prompt` with `{ "prompt": "...", "category": "code" }`
+        3. Observe that...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include any error message verbatim.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / trace entries
+      description: If tracing is on (`CLARIFYPROMPT_TRACE=local`), the relevant line from `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl` is often the fastest path to diagnosis. Redact anything sensitive first.
+      render: json
+
+  - type: checkboxes
+    id: pre_flight
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I searched existing issues and this isn't a duplicate
+          required: true
+        - label: I redacted API keys and PII from logs/config pastes
+          required: true

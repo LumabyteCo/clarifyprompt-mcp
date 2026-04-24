@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Minimize scope of the default GITHUB_TOKEN — the publish job adds `id-token: write` explicitly.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build + typecheck across supported Node versions + OSes.
+  # Catches: TS regressions, dep-tree breakages, platform-specific native-module issues.
+  # ---------------------------------------------------------------------------
+  build:
+    name: build (node ${{ matrix.node }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20, 22]
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install deps (with prebuilt native bindings)
+        run: npm ci
+
+      - name: Typecheck + build
+        run: npm run build
+
+      - name: Verify dist actually runs
+        # Start the server, send an MCP initialize, confirm the server responds, then stop.
+        # Catches: broken imports, missing files, crash-on-boot.
+        shell: bash
+        run: |
+          set -e
+          (
+            printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}\n'
+            sleep 2
+          ) | CLARIFYPROMPT_HOME=/tmp/clarify-ci CLARIFYPROMPT_TRACE=off \
+              LLM_API_URL=http://127.0.0.1:1/v1 LLM_MODEL=dummy \
+              timeout 10 node dist/index.js 2>&1 | tee /tmp/init.out || true
+          grep -q '"version":"' /tmp/init.out
+
+  # ---------------------------------------------------------------------------
+  # Secret-scanning sweep. Catches accidental commits of real keys.
+  # ---------------------------------------------------------------------------
+  secrets-audit:
+    name: secrets sweep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Grep for API-key patterns in tracked files
+        shell: bash
+        run: |
+          set -e
+          # OpenAI / Anthropic / xAI / Groq / Google / npm / GitHub PATs
+          PATTERN='sk-[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9]{20,}|xai-[A-Za-z0-9]{20,}|gsk_[A-Za-z0-9]{20,}|AIza[A-Za-z0-9_\-]{35}|npm_[A-Za-z0-9]{36}|ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{80,}'
+          if git grep -InE "$PATTERN" -- \
+            ':(exclude)package-lock.json' \
+            ':(exclude).github/workflows' \
+            ; then
+            echo "::error::Potential secret found in tracked files. Revoke it immediately and scrub from history."
+            exit 1
+          fi
+          echo "No secret patterns found in tracked files."
+
+      - name: .env must not be committed
+        shell: bash
+        run: |
+          if git ls-files --error-unmatch .env 2>/dev/null; then
+            echo "::error::.env is tracked. It must be gitignored."
+            exit 1
+          fi
+          echo ".env not tracked ✓"
+
+  # ---------------------------------------------------------------------------
+  # Docker build smoke test. Catches: Dockerfile regressions, native-module
+  # compile/fetch failures inside the image.
+  # ---------------------------------------------------------------------------
+  docker:
+    name: docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t clarifyprompt-mcp:ci .
+
+      - name: Smoke-test container startup
+        shell: bash
+        run: |
+          set -e
+          OUT=$(
+            (
+              printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}\n'
+              sleep 2
+            ) | docker run --rm -i \
+              -e LLM_API_URL=http://127.0.0.1:1/v1 \
+              -e LLM_MODEL=dummy \
+              -e CLARIFYPROMPT_HOME=/tmp/clarify \
+              -e CLARIFYPROMPT_TRACE=off \
+              clarifyprompt-mcp:ci 2>&1 || true
+          )
+          echo "$OUT" | grep -q '"version":"' || {
+            echo "::error::Container did not respond to initialize."
+            echo "--- container output ---"
+            echo "$OUT"
+            exit 1
+          }
+          echo "Container responds to initialize ✓"
+
+  # ---------------------------------------------------------------------------
+  # npm publish on tag pushes. Gated by presence of NPM_TOKEN secret so the
+  # workflow file is safe to merge without a token configured yet.
+  #
+  # To enable: add NPM_TOKEN secret in repo Settings → Secrets → Actions.
+  # Use a Granular Access Token scoped to `clarifyprompt-mcp` with
+  # "Allow this token to bypass 2FA when publishing" enabled.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: npm publish (tag only)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, secrets-audit, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # for provenance attestation
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify tag matches package.json version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME (= $TAG) does not match package.json version ($PKG). Bump the version in package.json first, then re-tag."
+            exit 1
+          fi
+          echo "Tag matches package.json ✓ ($PKG)"
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "NPM_TOKEN secret not configured — skipping publish."
+            echo "To enable automated publishing:"
+            echo "  1. Create a Granular Access Token at npmjs.com (scope: clarifyprompt-mcp, bypass-2FA enabled)"
+            echo "  2. Add it to repo Settings → Secrets → Actions as NPM_TOKEN"
+            echo "  3. Re-run this workflow"
+            exit 0
+          fi
+          npm publish --provenance --access public
