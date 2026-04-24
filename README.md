@@ -429,8 +429,12 @@ ClarifyPrompt uses an LLM to optimize prompts. It works with **any OpenAI-compat
 | `LLM_API_URL` | Yes | API endpoint URL |
 | `LLM_API_KEY` | Depends | API key (not needed for local Ollama) |
 | `LLM_MODEL` | Yes | Model name/ID |
-| `CLARIFYPROMPT_HOME` | No | **Canonical (1.2.0+)** root for everything ClarifyPrompt writes — custom platforms, instruction `.md` files, traces, and (1.3+) memory + packs. Default: `$XDG_DATA_HOME/clarifyprompt` or `~/.clarifyprompt`. |
+| `CLARIFYPROMPT_HOME` | No | **Canonical (1.2.0+)** root for everything ClarifyPrompt writes — custom platforms, instruction `.md` files, traces, memory DB, and knowledge packs. Default: `$XDG_DATA_HOME/clarifyprompt` or `~/.clarifyprompt`. |
 | `CLARIFYPROMPT_TRACE` | No | `off` \| `local` \| `otel`. Default: `local`. Traces are strictly local JSONL; nothing is uploaded. |
+| `EMBED_API_URL` | No | **(1.3.0+)** Embedding endpoint for memory + knowledge-pack retrieval. Any OpenAI-compatible `/v1/embeddings` endpoint. Defaults to `LLM_API_URL` when unset — Ollama users just work. |
+| `EMBED_API_KEY` | No | **(1.3.0+)** Embedding API key. Defaults to `LLM_API_KEY` when unset; not needed for local Ollama. |
+| `EMBED_MODEL` | No | **(1.3.0+)** Default: `nomic-embed-text:v1.5` (768-dim, pull with `ollama pull nomic-embed-text`). Swap to `text-embedding-3-small` for OpenAI, `voyage-3` for Voyage, `embed-english-v3.0` for Cohere. |
+| `EMBED_DIMENSION` | No | **(1.3.0+)** Embedding output dimension. Default: `768`. Must match your embedding model (`1536` for OpenAI `text-embedding-3-small`, `1024` for Voyage, etc.). |
 | `CLARIFYPROMPT_SUPPRESS_LEGACY_WARN` | No | Set to `1` to silence the one-line deprecation hint when `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` are used. |
 | `CLARIFYPROMPT_CONFIG_DIR` | No | **Legacy** alias for `CLARIFYPROMPT_HOME`. Still works; will be removed in 2.x. |
 | `CLARIFYPROMPT_DATA_DIR` | No | **Legacy** alias for `CLARIFYPROMPT_HOME`. Still works; will be removed in 2.x. |

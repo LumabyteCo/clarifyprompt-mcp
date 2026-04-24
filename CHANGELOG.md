@@ -4,6 +4,22 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] — 2026-04-24
+
+Post-1.3.0 audit fixes. No engine behavior change; three real gaps found and closed.
+
+### Fixed
+
+- **Dockerfile build broken for Day-2 features.** Removed `--ignore-scripts` from both `npm ci` invocations so `better-sqlite3`'s `prebuild-install` step runs and the native `.node` binary actually lands in the image. Without this, memory + pack features would crash at container startup. `packs/` is now also copied into the runtime stage.
+- **`server.json` was missing the 1.3.0 env-var declarations.** Added `EMBED_API_URL`, `EMBED_API_KEY`, `EMBED_MODEL`, `EMBED_DIMENSION`, plus the canonical `CLARIFYPROMPT_HOME` that should have been declared in 1.2.0. MCP Registry now prompts for the right variables on install.
+- **README env-var reference table didn't list `EMBED_*`.** They were documented in `.env.example` and `CHANGELOG` but not the main table. Fixed.
+
+### Notes
+
+- No behavior changes in the optimize / memory / reflection / pack paths — purely packaging + metadata.
+- Users already on 1.3.0 via `npx` won't experience any functional difference; users running in Docker containers *will* — 1.3.0's Dockerfile was broken, 1.3.1's works.
+- `glama.json` and GitHub Issues reviewed — nothing to update.
+
 ## [1.3.0] — 2026-04-24
 
 ClarifyPrompt 1.3 stops tuning prompts and starts **curating context**. Every call becomes an explicit token-budget problem — memory, tools, MCP, history — and every decision the curator makes is inspectable, persistent, and improves with use.
