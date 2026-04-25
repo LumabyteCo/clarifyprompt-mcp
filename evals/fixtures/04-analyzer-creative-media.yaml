@@ -1,0 +1,12 @@
+name: analyzer-creative-media
+description: 'Visual creative ask routes to image/creative-media; defaults to midjourney; output uses Midjourney syntax.'
+tags: [analyzer, creative, image]
+input:
+  prompt: 'a dragon flying over a medieval castle at sunset, cinematic'
+expected:
+  category: image
+  intent: creative-media
+  platform: midjourney
+  intent_confidence_min: medium
+  must_contain: ['--ar', '--v']
+  no_error: true

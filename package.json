@@ -20,7 +20,13 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:integration": "node tests/integration.mjs",
+    "test:day2": "node tests/day2-memory-and-curator.mjs",
+    "test:reasoning": "node tests/reasoning-models.mjs",
+    "test:wire": "node tests/mcp-wire.mjs",
+    "test:all": "npm run test:integration && npm run test:day2 && npm run test:reasoning && npm run test:wire",
+    "eval": "node evals/run.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -31,6 +37,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.3",
+    "js-yaml": "^4.1.1",
     "typescript": "^5.9.2"
   },
   "keywords": [

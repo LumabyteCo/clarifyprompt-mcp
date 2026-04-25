@@ -1,0 +1,12 @@
+name: analyzer-emails-as-code
+description: '"validate emails" routes to code, not document — regression for the bug fixed in 1.2.0'
+tags: [analyzer, regression, critical]
+input:
+  prompt: 'write a function to validate emails'
+expected:
+  category: code
+  intent: production-code
+  recommended_mode: technical
+  intent_confidence_min: medium
+  no_error: true
+  min_output_length: 80

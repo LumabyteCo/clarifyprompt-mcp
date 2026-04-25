@@ -1,0 +1,13 @@
+name: mode-arbitration-analyzer-derived
+description: 'When user omits mode, modeSource is "analyzer" and the recommended mode flows through to result.mode.'
+tags: [analyzer, mode, arbitration]
+input:
+  prompt: 'refactor the auth middleware to support refresh tokens and add tests'
+  category: code
+  # mode deliberately omitted
+expected:
+  category: code
+  intent: production-code
+  mode_source: analyzer
+  mode: technical  # production-code intent → technical recommended mode
+  no_error: true

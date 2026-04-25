@@ -1,0 +1,12 @@
+name: intent-overlay-data-extract
+description: 'data-extract intent injects an overlay demanding strict output schema. Read from the rendered system prompt in the trace.'
+tags: [intent, overlay]
+input:
+  prompt: 'extract all email addresses from this support thread into JSON'
+  category: code
+expected:
+  intent: data-extract
+  system_prompt_must_contain:
+    - 'data-extract'
+    - 'schema'  # the overlay demands a strict output schema
+  no_error: true

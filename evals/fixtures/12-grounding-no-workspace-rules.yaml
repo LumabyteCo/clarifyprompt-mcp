@@ -1,0 +1,14 @@
+name: grounding-no-workspace-rules
+description: 'Same prompt as fixture 11 but in a workspace with NO CLAUDE.md — output should NOT reference the brand-rule terms. Pair with fixture 11 to A/B-prove grounding works.'
+tags: [grounding, project-rules, control]
+requires_workspace:
+  '.gitkeep': ''  # empty workspace — no CLAUDE.md, no rules
+input:
+  prompt: 'write a hero headline for our new AI copilot'
+  category: document
+  platform: claude
+  mode: concise
+  skip_intent_resolution: true
+expected:
+  grounding_sources_must_exclude: ['project-rules']
+  no_error: true

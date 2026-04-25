@@ -1,0 +1,11 @@
+name: shape-small-local-model
+description: 'A 3B-class local model gets compact budget + low maxTokens — they choke on multi-KB system prompts.'
+tags: [shape, target-model]
+skip_unless_model_matches: '(llama3\.2:3b|phi-3:mini|gemma:2b)'
+input:
+  prompt: 'parse iso 8601 dates in typescript'
+  category: code
+expected:
+  shape_budget: compact
+  shape_max_tokens_max: 1024
+  no_error: true

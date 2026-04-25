@@ -1,0 +1,11 @@
+name: analyzer-stakeholder-comm
+description: 'Business communication wording should route to document/stakeholder-comm.'
+tags: [analyzer, stakeholder]
+input:
+  prompt: 'write a short note to finance explaining the Q2 variance and asking for a 2-week extension'
+expected:
+  category: document
+  intent: stakeholder-comm
+  intent_confidence_min: medium
+  recommended_mode: detailed
+  no_error: true

@@ -1,0 +1,21 @@
+name: grounding-claude-md-applied
+description: 'When a CLAUDE.md exists in the workspace, its rules surface in the optimized output. The killer demo from 1.2 — proves the Context Engine is not cosmetic.'
+tags: [grounding, project-rules]
+requires_workspace:
+  'package.json': |
+    { "name": "brand-landing", "dependencies": { "next": "^14", "react": "^18" } }
+  'CLAUDE.md': |
+    # Brand Landing rules
+    - Tone: confident, warm, concise
+    - Voice: second-person, active
+    - Always include a clear CTA
+input:
+  prompt: 'write a hero headline for our new AI copilot'
+  category: document
+  platform: claude
+  mode: concise
+  skip_intent_resolution: true
+expected:
+  must_contain: ['CTA']  # the rule must show up
+  grounding_sources_must_include: ['project-rules']
+  no_error: true

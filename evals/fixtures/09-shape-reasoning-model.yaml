@@ -1,0 +1,11 @@
+name: shape-reasoning-model
+description: 'Reasoning models (gpt-oss, deepseek-r, *-thinking) get bumped maxTokens (≥ 8192) so chain-of-thought finishes BEFORE producing content. Without this bump, content would be empty.'
+tags: [shape, target-model, reasoning]
+skip_unless_model_matches: '(gpt-oss|deepseek[-_]?r|.*thinking|o[1-4](-mini)?)'
+input:
+  prompt: 'parse rfc 3339 timestamps in typescript'
+  category: code
+  skip_intent_resolution: true
+expected:
+  shape_max_tokens_min: 8192
+  no_error: true

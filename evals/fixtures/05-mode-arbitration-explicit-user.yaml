@@ -1,0 +1,12 @@
+name: mode-arbitration-explicit-user
+description: 'When user passes mode explicitly, result.modeSource must be "user" and result.mode must equal the passed value (overrides analyzer recommendation).'
+tags: [analyzer, mode, arbitration]
+input:
+  prompt: 'refactor the auth middleware to support refresh tokens and tests'
+  category: code
+  mode: concise
+expected:
+  category: code
+  mode: concise
+  mode_source: user
+  no_error: true

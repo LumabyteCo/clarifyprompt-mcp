@@ -1,0 +1,10 @@
+name: analyzer-ambiguous-low-confidence
+description: 'Genuinely ambiguous prompt should NOT confidently pick a specific intent. Stronger models say "unknown/low" — overfit small models lose points.'
+tags: [analyzer, ambiguity]
+skip_if_model_matches: 'llama3\.2:3b'  # 3B is known to overfit; not its fault
+input:
+  prompt: 'make it better'
+expected:
+  intent: unknown
+  intent_confidence: low
+  no_error: true

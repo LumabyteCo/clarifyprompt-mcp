@@ -1,0 +1,492 @@
+#!/usr/bin/env node
+/**
+ * ClarifyPrompt eval harness v0.
+ *
+ * Runs every YAML fixture in evals/fixtures/ against the configured LLM,
+ * scores the result against declared expectations, and emits a tight
+ * console summary plus a self-contained HTML report.
+ *
+ * Usage:
+ *   npm run eval                                  # all fixtures, current LLM_MODEL
+ *   npm run eval -- --filter analyzer             # only fixtures with 'analyzer' in name or tags
+ *   npm run eval -- --no-html                     # skip the HTML report
+ *   npm run eval -- --report-path ./out.html
+ *   npm run eval -- --quiet                       # exit-code-only output for CI
+ *
+ * Skipping rules from fixtures: skip_unless_model_matches / skip_if_model_matches.
+ *
+ * Each fixture is one assertion bundle. Score = weighted-pass-rate of declared
+ * checks. Threshold for "pass" is 0.85 by default.
+ */
+
+import { fileURLToPath } from 'node:url';
+import * as fs from 'node:fs/promises';
+import * as fsSync from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import { spawn } from 'node:child_process';
+import yaml from 'js-yaml';
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SERVER = path.join(REPO_ROOT, 'dist', 'index.js');
+const FIXTURES_DIR = path.join(REPO_ROOT, 'evals', 'fixtures');
+const PASS_THRESHOLD = 0.85;
+
+// ───── argv parsing (no external dep) ─────
+const argv = process.argv.slice(2);
+const flag = (k, def) => {
+  const i = argv.indexOf(k);
+  if (i < 0) return def;
+  const v = argv[i + 1];
+  return v && !v.startsWith('--') ? v : true;
+};
+const FILTER       = flag('--filter', null);
+const NO_HTML      = !!flag('--no-html', false);
+const REPORT_PATH  = flag('--report-path', path.join(REPO_ROOT, 'evals', 'report.html'));
+const QUIET        = !!flag('--quiet', false);
+
+const MODEL = process.env.LLM_MODEL || 'qwen2.5-coder:7b-instruct-q4_K_M';
+
+// ───── colorized stdout helpers ─────
+const C = {
+  dim:   (s) => `\x1b[90m${s}\x1b[0m`,
+  red:   (s) => `\x1b[31m${s}\x1b[0m`,
+  green: (s) => `\x1b[32m${s}\x1b[0m`,
+  cyan:  (s) => `\x1b[36m${s}\x1b[0m`,
+  yellow:(s) => `\x1b[33m${s}\x1b[0m`,
+  bold:  (s) => `\x1b[1m${s}\x1b[0m`,
+};
+const log = QUIET ? () => {} : (...a) => console.log(...a);
+
+// ───── MCP stdio client ─────
+function startServer(env = {}) {
+  const proc = spawn(process.execPath, [SERVER], {
+    env: {
+      ...process.env,
+      LLM_API_URL: process.env.LLM_API_URL || 'http://localhost:11434/v1',
+      LLM_MODEL: MODEL,
+      EMBED_MODEL: process.env.EMBED_MODEL || 'nomic-embed-text:v1.5',
+      CLARIFYPROMPT_TRACE: 'local',
+      ...env,
+    },
+  });
+  let buf = '';
+  const pending = new Map();
+  let nextId = 1;
+  proc.stdout.on('data', (chunk) => {
+    buf += chunk;
+    let idx;
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (!line) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.id && pending.has(msg.id)) {
+          const { resolve, reject } = pending.get(msg.id);
+          pending.delete(msg.id);
+          msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
+        }
+      } catch { /* skip non-JSON */ }
+    }
+  });
+  const stderrBuf = [];
+  proc.stderr.on('data', (d) => stderrBuf.push(d.toString()));
+
+  function rpc(method, params) {
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      proc.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
+      setTimeout(() => {
+        if (pending.has(id)) { pending.delete(id); reject(new Error(`timeout: ${method}`)); }
+      }, 240_000);
+    });
+  }
+  async function callTool(name, args) {
+    const res = await rpc('tools/call', { name, arguments: args });
+    return JSON.parse(res.content[0].text);
+  }
+  return { proc, rpc, callTool, stderr: () => stderrBuf.join('') };
+}
+
+// ───── fixture loading ─────
+async function loadFixtures() {
+  const entries = await fs.readdir(FIXTURES_DIR);
+  const yamlFiles = entries.filter((e) => e.endsWith('.yaml') || e.endsWith('.yml')).sort();
+  const fixtures = [];
+  for (const fname of yamlFiles) {
+    const raw = await fs.readFile(path.join(FIXTURES_DIR, fname), 'utf-8');
+    const f = yaml.load(raw);
+    f._file = fname;
+    fixtures.push(f);
+  }
+  return fixtures;
+}
+
+function shouldSkip(fixture, model) {
+  if (fixture.skip_unless_model_matches) {
+    const re = new RegExp(fixture.skip_unless_model_matches);
+    if (!re.test(model)) return `skip_unless_model_matches=/${fixture.skip_unless_model_matches}/ vs LLM_MODEL=${model}`;
+  }
+  if (fixture.skip_if_model_matches) {
+    const re = new RegExp(fixture.skip_if_model_matches);
+    if (re.test(model)) return `skip_if_model_matches=/${fixture.skip_if_model_matches}/ vs LLM_MODEL=${model}`;
+  }
+  return null;
+}
+
+function passesFilter(fixture) {
+  if (!FILTER) return true;
+  const f = String(FILTER).toLowerCase();
+  if ((fixture.name || '').toLowerCase().includes(f)) return true;
+  if ((fixture.tags || []).some((t) => t.toLowerCase().includes(f))) return true;
+  return false;
+}
+
+// ───── workspace materialization ─────
+async function makeWorkspace(fixture) {
+  if (!fixture.requires_workspace) return null;
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'clarify-eval-ws-'));
+  for (const [rel, content] of Object.entries(fixture.requires_workspace)) {
+    const target = path.join(dir, rel);
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, content, 'utf-8');
+  }
+  return dir;
+}
+
+// ───── scoring ─────
+const CHECK_WEIGHTS = {
+  category: 2.0,
+  platform: 1.0,
+  intent: 1.5,
+  intent_confidence: 1.0,
+  intent_confidence_min: 1.0,
+  mode: 1.0,
+  mode_source: 1.0,
+  recommended_mode: 1.0,
+  shape_budget: 1.0,
+  shape_max_tokens_min: 0.5,
+  shape_max_tokens_max: 0.5,
+  must_contain: 2.0,
+  must_not_contain: 1.5,
+  min_output_length: 0.5,
+  max_output_length: 0.5,
+  grounding_sources_must_include: 1.5,
+  grounding_sources_must_exclude: 1.5,
+  system_prompt_must_contain: 1.5,
+  no_error: 2.0,
+};
+
+const CONFIDENCE_RANK = { low: 1, medium: 2, high: 3 };
+
+function scoreCheck(name, expected, actual, opts = {}) {
+  // Returns { passed: boolean, detail: string }
+  switch (name) {
+    case 'category':
+    case 'platform':
+    case 'intent':
+    case 'intent_confidence':
+    case 'mode':
+    case 'mode_source':
+    case 'recommended_mode':
+    case 'shape_budget': {
+      const pass = actual === expected;
+      return { passed: pass, detail: pass ? `${actual}` : `expected ${expected}, got ${actual}` };
+    }
+    case 'intent_confidence_min': {
+      const a = CONFIDENCE_RANK[actual] || 0;
+      const e = CONFIDENCE_RANK[expected] || 0;
+      const pass = a >= e;
+      return { passed: pass, detail: pass ? `${actual} ≥ ${expected}` : `expected ≥${expected}, got ${actual}` };
+    }
+    case 'shape_max_tokens_min': {
+      const pass = (actual || 0) >= expected;
+      return { passed: pass, detail: pass ? `${actual} ≥ ${expected}` : `expected ≥${expected}, got ${actual}` };
+    }
+    case 'shape_max_tokens_max': {
+      const pass = (actual || 0) <= expected;
+      return { passed: pass, detail: pass ? `${actual} ≤ ${expected}` : `expected ≤${expected}, got ${actual}` };
+    }
+    case 'min_output_length': {
+      const pass = (actual?.length || 0) >= expected;
+      return { passed: pass, detail: pass ? `len=${actual?.length || 0}` : `expected len ≥${expected}, got ${actual?.length || 0}` };
+    }
+    case 'max_output_length': {
+      const pass = (actual?.length || 0) <= expected;
+      return { passed: pass, detail: pass ? `len=${actual?.length || 0}` : `expected len ≤${expected}, got ${actual?.length || 0}` };
+    }
+    case 'must_contain':
+    case 'system_prompt_must_contain': {
+      const haystack = (actual || '').toLowerCase();
+      const missing = expected.filter((needle) => !haystack.includes(String(needle).toLowerCase()));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `all ${expected.length} found` : `missing: ${missing.join(', ')}` };
+    }
+    case 'must_not_contain': {
+      const haystack = (actual || '').toLowerCase();
+      const found = expected.filter((needle) => haystack.includes(String(needle).toLowerCase()));
+      return { passed: found.length === 0, detail: found.length === 0 ? `none of the ${expected.length} forbidden phrases found` : `found forbidden: ${found.join(', ')}` };
+    }
+    case 'grounding_sources_must_include': {
+      const sources = actual || [];
+      const missing = expected.filter((needle) => !sources.some((s) => s === needle || s.startsWith(`${needle}:`) || s.startsWith(`${needle}-`)));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `all ${expected.length} present` : `missing: ${missing.join(', ')}` };
+    }
+    case 'grounding_sources_must_exclude': {
+      const sources = actual || [];
+      const found = expected.filter((needle) => sources.some((s) => s === needle || s.startsWith(`${needle}:`) || s.startsWith(`${needle}-`)));
+      return { passed: found.length === 0, detail: found.length === 0 ? `clean` : `present unexpectedly: ${found.join(', ')}` };
+    }
+    case 'no_error': {
+      const pass = !opts.error;
+      return { passed: pass, detail: pass ? 'no error' : `error: ${opts.error?.message || opts.error}` };
+    }
+    default:
+      return { passed: true, detail: `(unknown check ${name} — skipped)` };
+  }
+}
+
+function evaluateFixture(fixture, result, systemPrompt) {
+  const expected = fixture.expected || {};
+  const checks = [];
+  let totalWeight = 0;
+  let earnedWeight = 0;
+
+  for (const [key, value] of Object.entries(expected)) {
+    const weight = CHECK_WEIGHTS[key] ?? 1.0;
+    let actual;
+    let opts = {};
+    switch (key) {
+      case 'category':                       actual = result.category; break;
+      case 'platform':                       actual = result.platform; break;
+      case 'intent':                         actual = result.analysis?.intent; break;
+      case 'intent_confidence':              actual = result.analysis?.confidence; break;
+      case 'intent_confidence_min':          actual = result.analysis?.confidence; break;
+      case 'mode':                           actual = result.mode; break;
+      case 'mode_source':                    actual = result.modeSource; break;
+      case 'recommended_mode':               actual = result.analysis?.recommendedMode; break;
+      case 'shape_budget':                   actual = result.shape?.systemPromptBudget; break;
+      case 'shape_max_tokens_min':           actual = result.shape?.maxTokens; break;
+      case 'shape_max_tokens_max':           actual = result.shape?.maxTokens; break;
+      case 'must_contain':
+      case 'must_not_contain':
+      case 'min_output_length':
+      case 'max_output_length':              actual = result.optimizedPrompt; break;
+      case 'grounding_sources_must_include':
+      case 'grounding_sources_must_exclude': actual = result.grounding?.sources || []; break;
+      case 'system_prompt_must_contain':     actual = systemPrompt || ''; break;
+      case 'no_error':                       opts = { error: result.error }; break;
+      default: continue;
+    }
+    const { passed, detail } = scoreCheck(key, value, actual, opts);
+    checks.push({ key, weight, passed, expected: value, detail });
+    totalWeight += weight;
+    if (passed) earnedWeight += weight;
+  }
+
+  const score = totalWeight > 0 ? earnedWeight / totalWeight : 1.0;
+  const passed = score >= PASS_THRESHOLD;
+  return { score, passed, totalWeight, earnedWeight, checks };
+}
+
+// ───── one-fixture run ─────
+async function runFixture(fixture) {
+  // Filter check FIRST so the user's explicit narrow doesn't get cluttered
+  // with skip messages for fixtures they didn't ask about.
+  if (!passesFilter(fixture)) return { fixture, status: 'filtered' };
+  const skipReason = shouldSkip(fixture, MODEL);
+  if (skipReason) return { fixture, status: 'skipped', skipReason };
+
+  const ws = await makeWorkspace(fixture);
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), 'clarify-eval-home-'));
+  const startedAt = Date.now();
+
+  const srv = startServer({ CLARIFYPROMPT_HOME: home });
+  try {
+    await srv.rpc('initialize', {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'eval-harness', version: '0.1.0' },
+    });
+    await srv.rpc('notifications/initialized', {}).catch(() => {});
+
+    const args = { ...fixture.input };
+    if (ws) args.cwd = ws;
+    args.include_bundle = true;
+
+    const result = await srv.callTool('optimize_prompt', args);
+
+    // Pull system prompt from the trace if any check needs it
+    let systemPrompt = '';
+    if (fixture.expected?.system_prompt_must_contain) {
+      try {
+        const trace = await srv.callTool('get_trace', { id: result.id });
+        systemPrompt = trace.systemPrompt || '';
+      } catch { /* trace may not be available; check will fail */ }
+    }
+
+    const evaluation = evaluateFixture(fixture, result, systemPrompt);
+    const elapsedMs = Date.now() - startedAt;
+
+    return {
+      fixture, status: 'ran', result, evaluation,
+      latencyMs: elapsedMs, model: MODEL,
+      stderr: srv.stderr().slice(0, 800),
+    };
+  } finally {
+    srv.proc.kill();
+    if (ws) fs.rm(ws, { recursive: true, force: true }).catch(() => {});
+    fs.rm(home, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+// ───── main ─────
+async function main() {
+  log(C.bold(C.cyan(`╔═ ClarifyPrompt eval harness v0 ═════════════════════════════════════════╗`)));
+  log(`  Model: ${C.bold(MODEL)}`);
+  log(`  Fixtures dir: ${FIXTURES_DIR}`);
+  if (FILTER) log(`  Filter: ${FILTER}`);
+  log(C.dim(`  Pass threshold: ${PASS_THRESHOLD}`));
+  log('');
+
+  const fixtures = await loadFixtures();
+  log(`  Loaded ${fixtures.length} fixture${fixtures.length === 1 ? '' : 's'}`);
+
+  const runs = [];
+  for (const fixture of fixtures) {
+    const run = await runFixture(fixture);
+    runs.push(run);
+    if (run.status === 'skipped') {
+      log(C.dim(`  ⊘ ${fixture.name.padEnd(48)} skipped — ${run.skipReason}`));
+    } else if (run.status === 'filtered') {
+      // suppress
+    } else {
+      const e = run.evaluation;
+      const symbol = e.passed ? C.green('✓') : C.red('✗');
+      const score = `${(e.score * 100).toFixed(0).padStart(3)}%`;
+      const lat = `${run.latencyMs}ms`.padStart(7);
+      log(`  ${symbol} ${fixture.name.padEnd(48)} ${score}  ${C.dim(lat)}`);
+      if (!e.passed) {
+        for (const ch of e.checks.filter((c) => !c.passed)) {
+          log(C.red(`      ✗ ${ch.key}: ${ch.detail}`));
+        }
+      }
+    }
+  }
+
+  const ran      = runs.filter((r) => r.status === 'ran');
+  const passed   = ran.filter((r) => r.evaluation.passed).length;
+  const failed   = ran.length - passed;
+  const skipped  = runs.filter((r) => r.status === 'skipped').length;
+  const filtered = runs.filter((r) => r.status === 'filtered').length;
+  const totalScore = ran.length ? ran.reduce((a, r) => a + r.evaluation.score, 0) / ran.length : 0;
+  const avgLatency = ran.length ? Math.round(ran.reduce((a, r) => a + r.latencyMs, 0) / ran.length) : 0;
+
+  log('');
+  log(C.bold(`╠═ summary ═══════════════════════════════════════════════════════════════╣`));
+  log(`  ${C.green(`${passed} passed`)} · ${failed > 0 ? C.red(`${failed} failed`) : C.dim('0 failed')} · ${C.dim(`${skipped} skipped`)}${filtered > 0 ? C.dim(` · ${filtered} filtered`) : ''}`);
+  log(`  Average score: ${(totalScore * 100).toFixed(0)}% · Average latency: ${avgLatency}ms`);
+  log(C.bold(`╚═════════════════════════════════════════════════════════════════════════╝`));
+
+  if (!NO_HTML) {
+    await writeHtmlReport({ runs, model: MODEL, ran, passed, failed, skipped, filtered, totalScore, avgLatency });
+    log(C.dim(`\n  HTML report: ${REPORT_PATH}`));
+  }
+
+  process.exit(failed > 0 ? 1 : 0);
+}
+
+// ───── HTML report ─────
+async function writeHtmlReport({ runs, model, ran, passed, failed, skipped, filtered, totalScore, avgLatency }) {
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const date = new Date().toISOString();
+
+  const rows = runs.map((r) => {
+    if (r.status === 'skipped') {
+      return `<tr class="skipped"><td>⊘</td><td>${esc(r.fixture.name)}</td><td colspan="3">skipped — ${esc(r.skipReason)}</td></tr>`;
+    }
+    if (r.status === 'filtered') return '';
+    const e = r.evaluation;
+    const checksHtml = e.checks.map((c) =>
+      `<li class="${c.passed ? 'ok' : 'fail'}"><b>${esc(c.key)}</b>: ${esc(c.detail)}</li>`
+    ).join('');
+    const tagsHtml = (r.fixture.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join(' ');
+    const optimized = esc((r.result?.optimizedPrompt || '').slice(0, 600));
+    return `
+      <tr class="${e.passed ? 'pass' : 'fail'}">
+        <td class="status">${e.passed ? '✓' : '✗'}</td>
+        <td>
+          <div class="name">${esc(r.fixture.name)}</div>
+          <div class="desc">${esc(r.fixture.description || '')}</div>
+          <div>${tagsHtml}</div>
+        </td>
+        <td class="score">${(e.score * 100).toFixed(0)}%</td>
+        <td class="latency">${r.latencyMs}ms</td>
+        <td class="checks">
+          <ul>${checksHtml}</ul>
+          <details><summary>output preview</summary><pre>${optimized}</pre></details>
+        </td>
+      </tr>`;
+  }).join('');
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ClarifyPrompt evals — ${esc(date)}</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #0d1117; color: #c9d1d9; max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #8b949e; font-size: 12px; margin-bottom: 24px; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px 16px; }
+  .card .label { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  .card .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .pass .value { color: #3fb950; }
+  .fail .value { color: #f85149; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  th { background: #161b22; color: #8b949e; font-size: 11px; text-transform: uppercase; }
+  tr.pass td.status { color: #3fb950; font-weight: 700; }
+  tr.fail td.status { color: #f85149; font-weight: 700; }
+  tr.skipped { color: #6e7681; font-style: italic; }
+  .name { font-weight: 600; color: #e6edf3; }
+  .desc { color: #8b949e; font-size: 12px; margin-top: 2px; }
+  .tag { display: inline-block; padding: 1px 6px; margin: 4px 4px 0 0; background: #21262d; border-radius: 3px; font-size: 10px; color: #8b949e; }
+  .score { font-weight: 600; text-align: right; }
+  .latency { color: #8b949e; text-align: right; }
+  ul { margin: 0; padding-left: 18px; }
+  ul li.ok { color: #56d364; }
+  ul li.fail { color: #ff7b72; font-weight: 600; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: #58a6ff; font-size: 11px; }
+  pre { background: #0d1117; border: 1px solid #21262d; padding: 8px; border-radius: 4px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; font-size: 11px; }
+</style>
+</head>
+<body>
+  <h1>ClarifyPrompt evals</h1>
+  <div class="meta">${esc(date)} · model <b>${esc(model)}</b> · pass threshold ${PASS_THRESHOLD}</div>
+  <div class="summary">
+    <div class="card pass"><div class="label">passed</div><div class="value">${passed}</div></div>
+    <div class="card ${failed > 0 ? 'fail' : ''}"><div class="label">failed</div><div class="value">${failed}</div></div>
+    <div class="card"><div class="label">skipped</div><div class="value">${skipped}</div></div>
+    <div class="card"><div class="label">avg score</div><div class="value">${(totalScore * 100).toFixed(0)}%</div></div>
+    <div class="card"><div class="label">avg latency</div><div class="value">${avgLatency}ms</div></div>
+    <div class="card"><div class="label">fixtures total</div><div class="value">${runs.length}</div></div>
+  </div>
+  <table>
+    <thead><tr><th></th><th>fixture</th><th>score</th><th>lat</th><th>checks</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`;
+
+  await fs.writeFile(REPORT_PATH, html, 'utf-8');
+}
+
+main().catch((err) => {
+  console.error('eval harness error:', err);
+  process.exit(2);
+});

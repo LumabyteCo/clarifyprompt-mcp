@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/LumabyteCo/clarifyprompt-mcp/evals/schema.json",
+  "title": "ClarifyPrompt eval fixture",
+  "description": "One fixture = one input + expected behaviors. Every key under `expected` is optional; the runner only scores what's declared.",
+  "type": "object",
+  "required": ["name", "input"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Stable identifier. Used in reports and to dedupe across runs."
+    },
+    "description": {
+      "type": "string",
+      "description": "One-line explanation of what this fixture verifies."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-form tags for filtering (e.g. ['analyzer', 'regression', 'critical'])."
+    },
+    "skip_unless_model_matches": {
+      "type": "string",
+      "description": "Regex pattern; fixture is skipped unless LLM_MODEL matches. Useful for size-specific tests."
+    },
+    "skip_if_model_matches": {
+      "type": "string",
+      "description": "Regex pattern; fixture is skipped if LLM_MODEL matches. Useful for excluding tiny models from quality tests."
+    },
+    "requires_workspace": {
+      "type": "object",
+      "description": "Files to materialize in a temp workspace before running. Lets fixtures test workspace-signal-driven behavior.",
+      "additionalProperties": { "type": "string" }
+    },
+    "input": {
+      "type": "object",
+      "required": ["prompt"],
+      "additionalProperties": false,
+      "description": "Args passed to optimize_prompt. Mirror the MCP tool schema.",
+      "properties": {
+        "prompt": { "type": "string" },
+        "category": { "type": "string", "enum": ["chat", "image", "voice", "video", "music", "code", "document"] },
+        "platform": { "type": "string" },
+        "mode": { "type": "string", "enum": ["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"] },
+        "skip_intent_resolution": { "type": "boolean" },
+        "user_pinned_instructions": { "type": "string" },
+        "user_locale": { "type": "string" }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Each property is one scoreable assertion. Omit any check that doesn't apply to this fixture.",
+      "properties": {
+        "category": { "type": "string", "description": "result.category must equal this." },
+        "platform": { "type": "string", "description": "result.platform must equal this (e.g. derived default like 'midjourney' for image)." },
+        "intent": { "type": "string", "description": "result.analysis.intent must equal this." },
+        "intent_confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+        "intent_confidence_min": { "type": "string", "enum": ["high", "medium", "low"], "description": "intent_confidence must be at least this level." },
+        "mode": { "type": "string", "description": "result.mode must equal this." },
+        "mode_source": { "type": "string", "enum": ["user", "analyzer", "default"] },
+        "recommended_mode": { "type": "string", "description": "result.analysis.recommendedMode must equal this." },
+        "shape_budget": { "type": "string", "enum": ["compact", "standard", "rich"], "description": "result.shape.systemPromptBudget must equal this." },
+        "shape_max_tokens_min": { "type": "integer", "description": "result.shape.maxTokens must be at least this." },
+        "shape_max_tokens_max": { "type": "integer", "description": "result.shape.maxTokens must be at most this." },
+        "must_contain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Case-insensitive substring matches against optimizedPrompt. ALL must be present."
+        },
+        "must_not_contain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Case-insensitive substring matches that must NOT appear."
+        },
+        "min_output_length": { "type": "integer" },
+        "max_output_length": { "type": "integer" },
+        "grounding_sources_must_include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Each value must appear (as exact match or prefix) in result.grounding.sources."
+        },
+        "grounding_sources_must_exclude": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "system_prompt_must_contain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Substrings in the rendered system prompt (read from the trace, not the response). Case-insensitive."
+        },
+        "no_error": { "type": "boolean", "description": "When true, result.error must be absent." }
+      }
+    }
+  }
+}

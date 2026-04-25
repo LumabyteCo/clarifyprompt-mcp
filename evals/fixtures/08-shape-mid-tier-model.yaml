@@ -1,0 +1,13 @@
+name: shape-mid-tier-model
+description: 'A 14B-class model gets standard budget — neither compact nor rich.'
+tags: [shape, target-model]
+skip_unless_model_matches: '(qwen2\.5:14b|qwen.*14b|aya:35b)'
+input:
+  prompt: 'summarize this PR for a release note'
+  category: document
+  skip_intent_resolution: true
+expected:
+  shape_budget: standard
+  shape_max_tokens_min: 1500
+  shape_max_tokens_max: 3000
+  no_error: true
