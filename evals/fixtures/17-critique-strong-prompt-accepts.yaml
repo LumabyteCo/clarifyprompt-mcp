@@ -1,0 +1,20 @@
+name: critique-strong-prompt-accepts
+description: 'A specific, well-formed prompt should score highly (≥7) with verdict=accept and NO rewrite produced.'
+tags: [critique, judge, regression]
+input:
+  tool: critique_prompt
+  prompt: |
+    You are a senior TypeScript engineer reviewing a pull request.
+    Audience: a junior contributor on the same team.
+    Task: review the diff below and produce one comment per concern, ordered most-critical first.
+    Format: bullet list. Each bullet ≤ 25 words. Cite the file:line being discussed.
+    Tone: warm, direct, never condescending. End with a single "ship/hold" recommendation.
+    If you spot fewer than three concerns, return only the ones you actually found — don't pad.
+  skip_rewrite: false
+expected:
+  verdict: accept
+  overall_score_min: 7
+  dimensions_min: 5
+  dimension_must_include: ['clarity', 'specificity', 'format_fitness']
+  improved_prompt_absent: true
+  no_error: true

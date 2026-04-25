@@ -177,6 +177,23 @@ const CHECK_WEIGHTS = {
   grounding_sources_must_exclude: 1.5,
   system_prompt_must_contain: 1.5,
   no_error: 2.0,
+  // clarify_with_user checks
+  clarification_needed: 2.0,
+  min_questions: 1.0,
+  max_questions: 1.0,
+  question_dimensions_must_include: 1.5,
+  questions_must_have_suggested_answer: 1.0,
+  // ground_prompt checks
+  used_sources_min: 2.0,
+  dropped_sources_max: 1.0,
+  // critique_prompt checks
+  verdict: 2.0,
+  overall_score_min: 1.5,
+  overall_score_max: 1.5,
+  dimension_must_include: 1.5,
+  dimensions_min: 1.0,
+  improved_prompt_present: 1.5,
+  improved_prompt_absent: 1.0,
 };
 
 const CONFIDENCE_RANK = { low: 1, medium: 2, high: 3 };
@@ -239,26 +256,108 @@ function scoreCheck(name, expected, actual, opts = {}) {
       return { passed: found.length === 0, detail: found.length === 0 ? `clean` : `present unexpectedly: ${found.join(', ')}` };
     }
     case 'no_error': {
-      const pass = !opts.error;
-      return { passed: pass, detail: pass ? 'no error' : `error: ${opts.error?.message || opts.error}` };
+      // expected=true → error MUST be absent. expected=false → error MUST be present.
+      const errPresent = !!opts.error;
+      const pass = expected ? !errPresent : errPresent;
+      const errStr = errPresent ? (opts.error?.message || opts.error) : '';
+      const detail = expected
+        ? (pass ? 'no error' : `unexpected error: ${errStr}`)
+        : (pass ? `error present (as expected): ${errStr}` : 'expected an error, none surfaced');
+      return { passed: pass, detail };
+    }
+    case 'clarification_needed': {
+      const pass = actual === expected;
+      return { passed: pass, detail: pass ? `clarificationNeeded=${actual}` : `expected ${expected}, got ${actual}` };
+    }
+    case 'min_questions': {
+      const n = Array.isArray(actual) ? actual.length : 0;
+      const pass = n >= expected;
+      return { passed: pass, detail: pass ? `${n} ≥ ${expected} questions` : `expected ≥${expected} questions, got ${n}` };
+    }
+    case 'max_questions': {
+      const n = Array.isArray(actual) ? actual.length : 0;
+      const pass = n <= expected;
+      return { passed: pass, detail: pass ? `${n} ≤ ${expected} questions` : `expected ≤${expected} questions, got ${n}` };
+    }
+    case 'question_dimensions_must_include': {
+      const dims = Array.isArray(actual) ? actual.map((q) => String(q?.dimension || '').toLowerCase()) : [];
+      const missing = expected.filter((needle) => !dims.includes(String(needle).toLowerCase()));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `dims present: ${dims.join(',')}` : `missing dim(s): ${missing.join(', ')}; got: ${dims.join(',') || '(none)'}` };
+    }
+    case 'questions_must_have_suggested_answer': {
+      const qs = Array.isArray(actual) ? actual : [];
+      const missing = qs.filter((q) => !q?.suggestedAnswer || !String(q.suggestedAnswer).trim()).length;
+      const want = !!expected;
+      const pass = want ? missing === 0 : true;
+      return { passed: pass, detail: pass ? `all ${qs.length} questions have a suggestedAnswer` : `${missing}/${qs.length} questions lack suggestedAnswer` };
+    }
+    case 'used_sources_min': {
+      const n = Array.isArray(actual) ? actual.length : 0;
+      const pass = n >= expected;
+      return { passed: pass, detail: pass ? `${n} ≥ ${expected} usedSources` : `expected ≥${expected} usedSources, got ${n}` };
+    }
+    case 'dropped_sources_max': {
+      const n = Array.isArray(actual) ? actual.length : 0;
+      const pass = n <= expected;
+      return { passed: pass, detail: pass ? `${n} ≤ ${expected} droppedSources` : `expected ≤${expected} droppedSources, got ${n}` };
+    }
+    case 'verdict': {
+      const pass = actual === expected;
+      return { passed: pass, detail: pass ? `verdict=${actual}` : `expected verdict=${expected}, got ${actual}` };
+    }
+    case 'overall_score_min': {
+      const n = typeof actual === 'number' ? actual : 0;
+      const pass = n >= expected;
+      return { passed: pass, detail: pass ? `${n} ≥ ${expected}` : `expected ≥${expected}, got ${n}` };
+    }
+    case 'overall_score_max': {
+      const n = typeof actual === 'number' ? actual : 0;
+      const pass = n <= expected;
+      return { passed: pass, detail: pass ? `${n} ≤ ${expected}` : `expected ≤${expected}, got ${n}` };
+    }
+    case 'dimensions_min': {
+      const n = Array.isArray(actual) ? actual.length : 0;
+      const pass = n >= expected;
+      return { passed: pass, detail: pass ? `${n} ≥ ${expected} dimensions` : `expected ≥${expected} dimensions, got ${n}` };
+    }
+    case 'dimension_must_include': {
+      const names = Array.isArray(actual) ? actual.map((d) => String(d?.name || '').toLowerCase()) : [];
+      const missing = expected.filter((needle) => !names.includes(String(needle).toLowerCase()));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `dims present: ${names.join(',')}` : `missing dim(s): ${missing.join(', ')}` };
+    }
+    case 'improved_prompt_present': {
+      const present = !!(actual && String(actual).trim());
+      const want = !!expected;
+      const pass = want ? present : !present;
+      return { passed: pass, detail: pass ? (present ? 'improvedPrompt present' : 'improvedPrompt absent (as expected)') : (present ? 'improvedPrompt unexpectedly present' : 'improvedPrompt unexpectedly absent') };
+    }
+    case 'improved_prompt_absent': {
+      const present = !!(actual && String(actual).trim());
+      const want = !!expected;
+      const pass = want ? !present : present;
+      return { passed: pass, detail: pass ? (present ? 'improvedPrompt present' : 'improvedPrompt absent') : 'unexpected state' };
     }
     default:
       return { passed: true, detail: `(unknown check ${name} — skipped)` };
   }
 }
 
-function evaluateFixture(fixture, result, systemPrompt) {
+function evaluateFixture(fixture, result, systemPrompt, tool) {
   const expected = fixture.expected || {};
   const checks = [];
   let totalWeight = 0;
   let earnedWeight = 0;
+
+  // optimize_prompt result has category/intent at top-level + analysis.intent;
+  // clarify_with_user result keeps everything under .analysis. Route accordingly.
+  const isClarify = tool === 'clarify_with_user';
 
   for (const [key, value] of Object.entries(expected)) {
     const weight = CHECK_WEIGHTS[key] ?? 1.0;
     let actual;
     let opts = {};
     switch (key) {
-      case 'category':                       actual = result.category; break;
+      case 'category':                       actual = isClarify ? result.analysis?.category : result.category; break;
       case 'platform':                       actual = result.platform; break;
       case 'intent':                         actual = result.analysis?.intent; break;
       case 'intent_confidence':              actual = result.analysis?.confidence; break;
@@ -277,6 +376,23 @@ function evaluateFixture(fixture, result, systemPrompt) {
       case 'grounding_sources_must_exclude': actual = result.grounding?.sources || []; break;
       case 'system_prompt_must_contain':     actual = systemPrompt || ''; break;
       case 'no_error':                       opts = { error: result.error }; break;
+      // clarify_with_user
+      case 'clarification_needed':           actual = result.clarificationNeeded; break;
+      case 'min_questions':
+      case 'max_questions':
+      case 'question_dimensions_must_include':
+      case 'questions_must_have_suggested_answer': actual = result.questions || []; break;
+      // ground_prompt
+      case 'used_sources_min':               actual = result.usedSources || []; break;
+      case 'dropped_sources_max':            actual = result.droppedSources || []; break;
+      // critique_prompt
+      case 'verdict':                        actual = result.verdict; break;
+      case 'overall_score_min':              actual = result.overallScore; break;
+      case 'overall_score_max':              actual = result.overallScore; break;
+      case 'dimensions_min':                 actual = result.dimensions || []; break;
+      case 'dimension_must_include':         actual = result.dimensions || []; break;
+      case 'improved_prompt_present':        actual = result.improvedPrompt; break;
+      case 'improved_prompt_absent':         actual = result.improvedPrompt; break;
       default: continue;
     }
     const { passed, detail } = scoreCheck(key, value, actual, opts);
@@ -312,21 +428,23 @@ async function runFixture(fixture) {
     await srv.rpc('notifications/initialized', {}).catch(() => {});
 
     const args = { ...fixture.input };
+    const tool = args.tool || 'optimize_prompt';
+    delete args.tool; // not part of MCP tool args
     if (ws) args.cwd = ws;
-    args.include_bundle = true;
+    if (tool === 'optimize_prompt' || tool === 'ground_prompt') args.include_bundle = true;
 
-    const result = await srv.callTool('optimize_prompt', args);
+    const result = await srv.callTool(tool, args);
 
-    // Pull system prompt from the trace if any check needs it
+    // Pull system prompt from the trace if any check needs it (optimize/ground only — they emit traces)
     let systemPrompt = '';
-    if (fixture.expected?.system_prompt_must_contain) {
+    if ((tool === 'optimize_prompt' || tool === 'ground_prompt') && fixture.expected?.system_prompt_must_contain) {
       try {
         const trace = await srv.callTool('get_trace', { id: result.id });
         systemPrompt = trace.systemPrompt || '';
       } catch { /* trace may not be available; check will fail */ }
     }
 
-    const evaluation = evaluateFixture(fixture, result, systemPrompt);
+    const evaluation = evaluateFixture(fixture, result, systemPrompt, tool);
     const elapsedMs = Date.now() - startedAt;
 
     return {

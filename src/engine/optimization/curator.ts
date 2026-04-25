@@ -11,6 +11,7 @@
 
 import type { ContextBundle, Intent } from '../context/types.js';
 import type { MemoryMatch } from '../memory/types.js';
+import type { UserProvidedSource } from './types.js';
 
 /** Approximate token count. 4 chars/token is the industry default for English text. */
 export function approxTokens(s: string): number {
@@ -217,10 +218,29 @@ export function buildCandidates(args: {
   acceptedExamples?: Array<{ originalPrompt: string; optimizedPrompt: string; ts: number }>;
   memoryMatches?: MemoryMatch[];
   intent?: Intent;
+  userProvidedSources?: UserProvidedSource[];
 }): Candidate[] {
   const now = Date.now();
   const candidates: Candidate[] = [];
   const bundle = args.bundle;
+
+  // Caller-provided sources land FIRST — they're explicit per-call grounding
+  // and outrank everything else. Each is pinned so the curator never drops them.
+  if (args.userProvidedSources?.length) {
+    for (const [i, src] of args.userProvidedSources.entries()) {
+      const body = src.body.slice(0, 4000);
+      candidates.push({
+        source: `user-source:${i}`,
+        label: src.label || `Provided Source ${i + 1}`,
+        body,
+        tokens: approxTokens(body),
+        baseUtility: 1.0,
+        authority: 1.0,
+        intentMatch: 1.0,
+        pinned: true,
+      });
+    }
+  }
 
   if (bundle?.user.pinnedInstructions) {
     const body = bundle.user.pinnedInstructions.slice(0, 2000);

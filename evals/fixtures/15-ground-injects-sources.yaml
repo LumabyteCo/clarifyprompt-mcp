@@ -1,0 +1,28 @@
+name: ground-injects-sources
+description: 'ground_prompt with two named sources should pin BOTH into the curated grounding (user-source:0 and user-source:1) and the optimized output should reflect the source content.'
+tags: [ground, grounding, regression]
+input:
+  tool: ground_prompt
+  prompt: 'rewrite the launch announcement to match our voice'
+  category: document
+  platform: claude
+  mode: detailed
+  skip_intent_resolution: true
+  sources:
+    - label: 'Brand Voice Rules'
+      body: |
+        Tone: warm, plain-spoken, no jargon.
+        Always lead with the user benefit. Avoid the words "leverage", "synergy", "robust".
+        Maximum sentence length: 18 words.
+      kind: rules
+    - label: 'Launch Draft'
+      body: |
+        Today we're launching FlowSync Pro — a tool to leverage AI synergy for robust team coordination.
+        FlowSync Pro brings powerful integrations and enterprise-grade security to every workspace.
+      kind: draft
+expected:
+  used_sources_min: 2
+  dropped_sources_max: 0
+  grounding_sources_must_include: ['user-source']
+  category: document
+  no_error: true

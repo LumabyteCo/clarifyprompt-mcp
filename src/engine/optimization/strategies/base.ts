@@ -235,6 +235,7 @@ Important Rules:
         platformInstructions,
         platformHints,
         acceptedExamples,
+        userProvidedSources: context.userProvidedSources,
       }).block;
     }
 
@@ -290,6 +291,7 @@ Ground the optimization in the Grounding Context above when relevant. Respect pr
       })),
       memoryMatches: context.memoryMatches,
       intent: context.bundle?.analysis?.intent,
+      userProvidedSources: context.userProvidedSources,
     });
 
     return curate(candidates, budget);

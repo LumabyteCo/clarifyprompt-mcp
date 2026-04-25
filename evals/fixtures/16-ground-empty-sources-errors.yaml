@@ -1,0 +1,13 @@
+name: ground-empty-sources-errors
+description: 'ground_prompt called with all-empty source bodies must surface an error (strict mode), not silently fall through to optimize_prompt.'
+tags: [ground, error-paths, regression]
+input:
+  tool: ground_prompt
+  prompt: 'help me write something'
+  sources:
+    - label: 'Empty Source'
+      body: '   '
+    - label: 'Also Empty'
+      body: ''
+expected:
+  no_error: false

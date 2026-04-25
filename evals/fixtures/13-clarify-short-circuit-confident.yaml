@@ -1,0 +1,12 @@
+name: clarify-short-circuit-confident
+description: 'A specific, well-formed prompt should make the analyzer highly confident → clarify_with_user must short-circuit with no questions.'
+tags: [clarify, short-circuit, regression]
+input:
+  tool: clarify_with_user
+  prompt: 'Write a TypeScript function that takes a list of email strings and returns only those matching RFC 5322 syntax. Include unit tests using Vitest.'
+expected:
+  clarification_needed: false
+  max_questions: 0
+  intent: production-code
+  intent_confidence_min: medium
+  no_error: true

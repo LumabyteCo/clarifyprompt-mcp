@@ -1,7 +1,7 @@
 import type { Category, Mode } from '../config/categories.js';
 import { CATEGORIES, getCategoryById } from '../config/categories.js';
 import { getPlatformRegistry } from '../config/registry.js';
-import type { OptimizationResult, OptimizationContext, AcceptedExampleRef } from './types.js';
+import type { OptimizationResult, OptimizationContext, AcceptedExampleRef, UserProvidedSource } from './types.js';
 import { getStrategy } from './strategies/index.js';
 import { BaseStrategy } from './strategies/base.js';
 import { getSearchClient } from '../search/client.js';
@@ -35,6 +35,11 @@ export interface OptimizeRequest {
   userPreferredMode?: Mode;
   includeBundle?: boolean;
   skipIntentResolution?: boolean;
+  /**
+   * Caller-provided grounding sources (used by the ground_prompt MCP tool).
+   * Each becomes a pinned, top-priority section in the curated grounding.
+   */
+  userProvidedSources?: UserProvidedSource[];
 }
 
 export class OptimizationEngine {
@@ -132,6 +137,7 @@ export class OptimizationEngine {
       bundle,
       acceptedExamples,
       memoryMatches,
+      userProvidedSources: request.userProvidedSources,
     };
 
     // Everything upstream has a graceful fallback; the LLM call itself can
@@ -185,6 +191,7 @@ export class OptimizationEngine {
         bundle, webSearchContext: enriched.enriched ? enriched.context : undefined,
         webSearchSources: enriched.sources, platformInstructions: platformConfig?.resolvedInstructions,
         platformHints: platformConfig?.syntaxHints, acceptedExamples,
+        userProvidedSources: request.userProvidedSources,
       });
       // Pull curation log if the strategy recorded one (Pass 6).
       const curation = strategy instanceof BaseStrategy && strategy.lastCuration
@@ -260,6 +267,7 @@ export class OptimizationEngine {
               bundle, webSearchContext: enriched.enriched ? enriched.context : undefined,
               webSearchSources: enriched.sources, platformInstructions: platformConfig?.resolvedInstructions,
               platformHints: platformConfig?.syntaxHints, acceptedExamples,
+              userProvidedSources: request.userProvidedSources,
             }).sources,
         acceptedExamplesUsed: acceptedExamples.length,
       },

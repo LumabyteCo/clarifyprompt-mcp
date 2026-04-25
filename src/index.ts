@@ -13,6 +13,9 @@ import { getTraceWriter } from "./engine/trace/writer.js";
 import { getMemoryStore } from "./engine/memory/store.js";
 import { reflectOnOutcome } from "./engine/memory/reflection.js";
 import { loadKnowledgePack } from "./engine/memory/packs.js";
+import { clarifyPrompt } from "./engine/clarification/clarify.js";
+import { groundPrompt } from "./engine/grounding/ground.js";
+import { critiquePrompt } from "./engine/critique/critique.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
@@ -580,6 +583,132 @@ server.tool(
       success: true,
       message: `Pack ${id} removed (cascade-deleted all its chunks + embeddings).`,
     }, null, 2) }] };
+  }
+);
+
+// --- Clarification (1.4.0-dev) ---
+
+server.tool(
+  "clarify_with_user",
+  "Given an ambiguous draft prompt, return 1–3 targeted clarifying questions instead of guessing. Each question carries a `suggested_answer` you can accept verbatim to keep moving, an optional 2–4 quick-pick `options` list, and a `dimension` tag (audience/scope/format/length/tone/constraints/goal/platform). When the analyzer is highly confident AND the prompt is non-trivially long, the tool short-circuits with `clarificationNeeded: false` so callers can pipeline this in front of optimize_prompt without paying a latency tax on every call. Pass `force: true` to always generate questions.",
+  {
+    prompt: z.string().describe("The draft prompt the user is unsure about."),
+    category: CATEGORY_ENUM.optional().describe("Category hint. Will skip questions about category/platform if you pass it."),
+    cwd: z.string().optional().describe("Working directory to pull workspace rules (CLAUDE.md / AGENTS.md / .cursorrules) from. Defaults to server cwd."),
+    file_path: z.string().optional().describe("Active file path — informs the clarifier's defaults."),
+    file_language: z.string().optional().describe("Explicit language override for the active file."),
+    file_excerpt: z.string().optional().describe("Short excerpt of the active file to ground the questions."),
+    user_locale: z.string().optional(),
+    force: z.boolean().optional().default(false).describe("Always generate questions even when the analyzer is highly confident. Useful for UIs that want to surface clarification on every call."),
+    max_questions: z.number().int().positive().max(5).optional().default(3).describe("Cap on returned questions. Default 3, hard max 5."),
+  },
+  async (args) => {
+    const result = await clarifyPrompt({
+      prompt: args.prompt,
+      category: args.category,
+      cwd: args.cwd,
+      filePath: args.file_path,
+      fileLanguage: args.file_language,
+      fileExcerpt: args.file_excerpt,
+      userLocale: args.user_locale,
+      force: args.force,
+      maxQuestions: args.max_questions,
+    });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  }
+);
+
+// --- Strict Grounding (1.4.0-dev) ---
+
+server.tool(
+  "ground_prompt",
+  "Optimize a prompt against EXPLICIT caller-provided grounding sources (a spec, a transcript excerpt, an RFC, an internal doc, etc.). Each source is pinned at the highest priority — above project rules, above pinned instructions — and tracked individually in the trace. Use this when you want the rewrite to cite specific material rather than letting the curator decide what's relevant. Requires at least one non-empty source; will error rather than silently fall through to optimize_prompt. Sources are capped at 4000 chars each so a single large paste can't dominate the budget.",
+  {
+    prompt: z.string().describe("The prompt to optimize."),
+    sources: z.array(z.object({
+      label: z.string().describe("Human-facing heading for this source (e.g. 'RFC 5322 §3.4')."),
+      body: z.string().describe("Source content. Used verbatim. Capped at 4000 chars per source."),
+      kind: z.string().optional().describe("Optional categorization (e.g. 'spec', 'transcript', 'doc'). Free-form."),
+    })).min(1).describe("Caller-provided grounding sources. Must be non-empty."),
+    category: CATEGORY_ENUM.optional(),
+    platform: z.string().optional(),
+    mode: MODE_ENUM.optional(),
+    cwd: z.string().optional(),
+    file_path: z.string().optional(),
+    file_language: z.string().optional(),
+    file_excerpt: z.string().optional(),
+    session_id: z.string().optional(),
+    user_locale: z.string().optional(),
+    user_pinned_instructions: z.string().optional(),
+    enrich_context: z.boolean().optional().default(false),
+    skip_intent_resolution: z.boolean().optional().default(false),
+    include_bundle: z.boolean().optional().default(false),
+  },
+  async (args) => {
+    try {
+      const result = await groundPrompt({
+        prompt: args.prompt,
+        sources: args.sources,
+        category: args.category,
+        platform: args.platform,
+        mode: args.mode,
+        modeExplicit: args.mode !== undefined,
+        cwd: args.cwd,
+        filePath: args.file_path,
+        fileLanguage: args.file_language,
+        fileExcerpt: args.file_excerpt,
+        sessionId: args.session_id,
+        userLocale: args.user_locale,
+        userPinnedInstructions: args.user_pinned_instructions,
+        enrichContext: args.enrich_context,
+        skipIntentResolution: args.skip_intent_resolution,
+        includeBundle: args.include_bundle,
+      });
+      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: (err as Error).message,
+      }) }], isError: true };
+    }
+  }
+);
+
+// --- Critique (1.4.0-dev) ---
+
+server.tool(
+  "critique_prompt",
+  "LLM-as-judge for a prompt. Scores it 0–10 across 5 default dimensions (clarity, specificity, intent_alignment, format_fitness, length_appropriateness) — or your own custom criteria — and returns per-dimension rationale + concrete suggestions, an overall score, and a verdict (`accept` / `revise` / `reject`). When the score is below `revise_threshold` (default 7.0), the tool also returns an `improvedPrompt` you can use as a drop-in replacement. Use it pre-flight (is this prompt good enough for the expensive model?), postmortem (was the prompt the cause of a bad output?), or to A/B-pick the best of N optimization variants. Pass `original_prompt` when critiquing an optimized version so the judge can verify intent was preserved.",
+  {
+    prompt: z.string().describe("The candidate prompt to critique."),
+    original_prompt: z.string().optional().describe("If `prompt` is an optimized version, the user's original ask. Used for the intent_alignment dimension."),
+    category: CATEGORY_ENUM.optional(),
+    cwd: z.string().optional(),
+    file_path: z.string().optional(),
+    file_language: z.string().optional(),
+    file_excerpt: z.string().optional(),
+    user_locale: z.string().optional(),
+    criteria: z.array(z.object({
+      name: z.string().describe("Short snake_case identifier."),
+      description: z.string().describe("One sentence explaining what this dimension measures."),
+    })).optional().describe("Override the default 5 criteria. Up to ~8 dimensions; more bloats the judge call."),
+    revise_threshold: z.number().min(0).max(10).optional().default(7.0).describe("Overall score below this triggers the rewrite pass. Default 7.0."),
+    skip_rewrite: z.boolean().optional().default(false).describe("Skip the rewrite pass even when below threshold (faster; just returns scores)."),
+  },
+  async (args) => {
+    const result = await critiquePrompt({
+      prompt: args.prompt,
+      originalPrompt: args.original_prompt,
+      category: args.category,
+      cwd: args.cwd,
+      filePath: args.file_path,
+      fileLanguage: args.file_language,
+      fileExcerpt: args.file_excerpt,
+      userLocale: args.user_locale,
+      criteria: args.criteria,
+      reviseThreshold: args.revise_threshold,
+      skipRewrite: args.skip_rewrite,
+    });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   }
 );
 

@@ -37,15 +37,34 @@
       "type": "object",
       "required": ["prompt"],
       "additionalProperties": false,
-      "description": "Args passed to optimize_prompt. Mirror the MCP tool schema.",
+      "description": "Args passed to the MCP tool under test. Defaults to optimize_prompt; set `tool` to target another tool. Extra keys are forwarded as-is to the tool's MCP schema.",
       "properties": {
+        "tool": { "type": "string", "enum": ["optimize_prompt", "clarify_with_user", "ground_prompt", "critique_prompt"], "description": "Which MCP tool to invoke. Default: optimize_prompt." },
         "prompt": { "type": "string" },
         "category": { "type": "string", "enum": ["chat", "image", "voice", "video", "music", "code", "document"] },
         "platform": { "type": "string" },
         "mode": { "type": "string", "enum": ["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"] },
         "skip_intent_resolution": { "type": "boolean" },
         "user_pinned_instructions": { "type": "string" },
-        "user_locale": { "type": "string" }
+        "user_locale": { "type": "string" },
+        "force": { "type": "boolean", "description": "clarify_with_user: always generate questions even when the analyzer is highly confident." },
+        "max_questions": { "type": "integer", "minimum": 1, "maximum": 5, "description": "clarify_with_user: cap on returned questions." },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "body"],
+            "properties": {
+              "label": { "type": "string" },
+              "body": { "type": "string" },
+              "kind": { "type": "string" }
+            }
+          },
+          "description": "ground_prompt: caller-provided grounding sources. Required (≥1)."
+        },
+        "original_prompt": { "type": "string", "description": "critique_prompt: when critiquing an optimized prompt, the original ask." },
+        "skip_rewrite": { "type": "boolean", "description": "critique_prompt: skip the rewrite pass even when below threshold." },
+        "revise_threshold": { "type": "number", "minimum": 0, "maximum": 10, "description": "critique_prompt: overall score below this triggers a rewrite." }
       }
     },
     "expected": {
@@ -90,7 +109,25 @@
           "items": { "type": "string" },
           "description": "Substrings in the rendered system prompt (read from the trace, not the response). Case-insensitive."
         },
-        "no_error": { "type": "boolean", "description": "When true, result.error must be absent." }
+        "no_error": { "type": "boolean", "description": "When true, result.error must be absent." },
+        "clarification_needed": { "type": "boolean", "description": "clarify_with_user: result.clarificationNeeded must equal this." },
+        "min_questions": { "type": "integer", "minimum": 0, "description": "clarify_with_user: at least N questions returned." },
+        "max_questions": { "type": "integer", "minimum": 0, "description": "clarify_with_user: at most N questions returned." },
+        "question_dimensions_must_include": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["audience", "scope", "format", "length", "tone", "constraints", "goal", "platform", "other"] },
+          "description": "clarify_with_user: at least one returned question must carry each listed dimension tag."
+        },
+        "questions_must_have_suggested_answer": { "type": "boolean", "description": "clarify_with_user: when true, every question must carry a non-empty suggestedAnswer." },
+        "used_sources_min": { "type": "integer", "minimum": 0, "description": "ground_prompt: at least N sources must appear in result.usedSources." },
+        "dropped_sources_max": { "type": "integer", "minimum": 0, "description": "ground_prompt: at most N sources may appear in result.droppedSources." },
+        "verdict": { "type": "string", "enum": ["accept", "revise", "reject"], "description": "critique_prompt: result.verdict must equal this." },
+        "overall_score_min": { "type": "number", "minimum": 0, "maximum": 10, "description": "critique_prompt: overallScore must be at least this." },
+        "overall_score_max": { "type": "number", "minimum": 0, "maximum": 10, "description": "critique_prompt: overallScore must be at most this." },
+        "dimensions_min": { "type": "integer", "minimum": 0, "description": "critique_prompt: at least N dimensions must be returned." },
+        "dimension_must_include": { "type": "array", "items": { "type": "string" }, "description": "critique_prompt: every listed dimension name must appear in result.dimensions." },
+        "improved_prompt_present": { "type": "boolean", "description": "critique_prompt: when true, result.improvedPrompt must be a non-empty string." },
+        "improved_prompt_absent": { "type": "boolean", "description": "critique_prompt: when true, result.improvedPrompt must be absent." }
       }
     }
   }

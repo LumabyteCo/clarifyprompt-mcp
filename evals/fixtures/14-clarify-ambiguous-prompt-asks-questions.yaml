@@ -1,0 +1,13 @@
+name: clarify-ambiguous-prompt-asks-questions
+description: 'A vague three-word prompt must trigger clarify_with_user to return at least one targeted question with a suggested default answer.'
+tags: [clarify, ambiguity, regression]
+input:
+  tool: clarify_with_user
+  prompt: 'make it better'
+  force: true
+expected:
+  clarification_needed: true
+  min_questions: 1
+  max_questions: 3
+  questions_must_have_suggested_answer: true
+  no_error: true

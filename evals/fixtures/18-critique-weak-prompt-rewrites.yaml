@@ -1,0 +1,12 @@
+name: critique-weak-prompt-rewrites
+description: 'A vague three-word prompt should score low, get a non-accept verdict, and produce an improvedPrompt that is materially different from the input.'
+tags: [critique, judge, rewrite, regression]
+input:
+  tool: critique_prompt
+  prompt: 'make it good'
+  revise_threshold: 7
+expected:
+  overall_score_max: 6
+  dimensions_min: 5
+  improved_prompt_present: true
+  no_error: true

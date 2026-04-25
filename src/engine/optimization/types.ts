@@ -11,6 +11,15 @@ export interface AcceptedExampleRef {
   ts: number;
 }
 
+export interface UserProvidedSource {
+  /** Human-facing label rendered in the grounding context heading. */
+  label: string;
+  /** Source content. Used verbatim. */
+  body: string;
+  /** Optional categorization for analytics. Free-form (e.g. 'spec', 'rfc', 'transcript'). */
+  kind?: string;
+}
+
 export interface OptimizationContext {
   category: Category;
   platform?: string;
@@ -21,6 +30,11 @@ export interface OptimizationContext {
   bundle?: ContextBundle;
   acceptedExamples?: AcceptedExampleRef[];
   memoryMatches?: import('../memory/types.js').MemoryMatch[];
+  /**
+   * Caller-supplied grounding sources (from ground_prompt). Each becomes a
+   * pinned, highest-priority section in the curated grounding context.
+   */
+  userProvidedSources?: UserProvidedSource[];
 }
 
 export interface OptimizationResult {

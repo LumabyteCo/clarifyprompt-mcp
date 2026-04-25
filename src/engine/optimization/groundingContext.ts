@@ -2,6 +2,7 @@ import type { ContextBundle } from '../context/types.js';
 import type { Intent } from '../context/types.js';
 import type { Category, Mode } from '../config/categories.js';
 import type { SessionOptimizationEntry, SessionOutcomeEntry } from '../context/types.js';
+import type { UserProvidedSource } from './types.js';
 
 /**
  * Single authoritative context assembly. All context sources merge here,
@@ -15,6 +16,7 @@ export interface GroundingInputs {
   platformInstructions?: string;      // from ConfigStore.resolveInstructions
   platformHints?: string[];
   acceptedExamples?: AcceptedExample[]; // from Pass D retrieval
+  userProvidedSources?: UserProvidedSource[]; // explicit per-call grounding (ground_prompt)
 }
 
 export interface AcceptedExample {
@@ -37,6 +39,7 @@ export interface GroundingOutput {
  * Priority order (highest → lowest). Documented so contributors don't add
  * a 4th silo silently:
  *
+ *   0. Caller-provided sources (ground_prompt explicit grounding — per-call)
  *   1. User pinned instructions (authoritative; the user said "always do X")
  *   2. Project rules (CLAUDE.md / AGENTS.md / .cursorrules / clarify.md)
  *   3. Active file context (what they're working on)
@@ -50,6 +53,16 @@ export interface GroundingOutput {
 export function buildGroundingContext(inputs: GroundingInputs): GroundingOutput {
   const sections: { label: string; body: string; source: string }[] = [];
   const bundle = inputs.bundle;
+
+  if (inputs.userProvidedSources?.length) {
+    for (const [i, src] of inputs.userProvidedSources.entries()) {
+      sections.push({
+        label: src.label || `Provided Source ${i + 1}`,
+        body: src.body.slice(0, 4000),
+        source: `user-source:${i}`,
+      });
+    }
+  }
 
   if (bundle?.user.pinnedInstructions) {
     sections.push({
