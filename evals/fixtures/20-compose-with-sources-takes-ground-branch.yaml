@@ -1,0 +1,29 @@
+name: compose-with-sources-takes-ground-branch
+description: 'compose_prompt called with sources should take the ground_prompt branch (stage=ground, not optimize) and pin all sources at user-source priority.'
+tags: [compose, ground, branch-routing, regression]
+input:
+  tool: compose_prompt
+  prompt: 'rewrite the launch announcement to match our voice'
+  category: document
+  platform: claude
+  mode: detailed
+  skip_intent_resolution: true
+  pre_clarify: never
+  post_critique: false
+  sources:
+    - label: 'Brand Voice Rules'
+      body: |
+        Tone: warm, plain-spoken, no jargon.
+        Always lead with the user benefit. Avoid the words "leverage", "synergy", "robust".
+        Maximum sentence length: 18 words.
+      kind: rules
+    - label: 'Launch Draft'
+      body: |
+        Today we're launching FlowSync Pro — a tool to leverage AI synergy for robust team coordination.
+        FlowSync Pro brings powerful integrations and enterprise-grade security to every workspace.
+      kind: draft
+expected:
+  stages_must_include: ['ground']
+  stages_must_exclude: ['clarify', 'optimize', 'critique', 'revise']
+  clarification_required: false
+  no_error: true

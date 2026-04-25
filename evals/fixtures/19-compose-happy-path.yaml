@@ -1,0 +1,19 @@
+name: compose-happy-path
+description: 'compose_prompt with a specific prompt → clarify auto-skips → optimize runs → critique runs and accepts → finalPrompt is the optimized output, not a rewrite.'
+tags: [compose, pipeline, regression]
+input:
+  tool: compose_prompt
+  prompt: 'Write a TypeScript function that takes an array of email strings and returns only those that match RFC 5322 syntax. Include unit tests using Vitest with at least 6 test cases covering valid, invalid, and edge-case inputs.'
+  pre_clarify: auto
+  post_critique: true
+  auto_revise: false
+expected:
+  # pre_clarify=auto runs clarify, but short-circuits without surfacing questions —
+  # so 'clarify' DOES appear in stages (with a "no clarification needed" summary).
+  # The signal we're testing here is that the chain didn't STOP at clarify and
+  # didn't take the ground branch / didn't revise.
+  stages_must_include: ['clarify', 'optimize', 'critique']
+  stages_must_exclude: ['ground', 'revise']
+  clarification_required: false
+  revised: false
+  no_error: true

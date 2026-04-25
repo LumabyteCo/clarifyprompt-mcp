@@ -194,6 +194,13 @@ const CHECK_WEIGHTS = {
   dimensions_min: 1.0,
   improved_prompt_present: 1.5,
   improved_prompt_absent: 1.0,
+  // compose_prompt checks
+  stages_must_include: 2.0,
+  stages_must_exclude: 1.5,
+  clarification_required: 2.0,
+  revised: 1.5,
+  final_prompt_must_contain: 2.0,
+  final_prompt_must_not_contain: 1.5,
 };
 
 const CONFIDENCE_RANK = { low: 1, medium: 2, high: 3 };
@@ -337,6 +344,34 @@ function scoreCheck(name, expected, actual, opts = {}) {
       const pass = want ? !present : present;
       return { passed: pass, detail: pass ? (present ? 'improvedPrompt present' : 'improvedPrompt absent') : 'unexpected state' };
     }
+    case 'stages_must_include': {
+      const names = Array.isArray(actual) ? actual.map((s) => String(s?.name || '').toLowerCase()) : [];
+      const missing = expected.filter((needle) => !names.includes(String(needle).toLowerCase()));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `stages: ${names.join('→')}` : `missing stage(s): ${missing.join(', ')}; ran: ${names.join('→') || '(none)'}` };
+    }
+    case 'stages_must_exclude': {
+      const names = Array.isArray(actual) ? actual.map((s) => String(s?.name || '').toLowerCase()) : [];
+      const found = expected.filter((needle) => names.includes(String(needle).toLowerCase()));
+      return { passed: found.length === 0, detail: found.length === 0 ? `clean: ${names.join('→')}` : `unexpected stage(s) ran: ${found.join(', ')}` };
+    }
+    case 'clarification_required': {
+      const pass = !!actual === !!expected;
+      return { passed: pass, detail: pass ? `clarificationRequired=${!!actual}` : `expected ${expected}, got ${!!actual}` };
+    }
+    case 'revised': {
+      const pass = !!actual === !!expected;
+      return { passed: pass, detail: pass ? `revised=${!!actual}` : `expected ${expected}, got ${!!actual}` };
+    }
+    case 'final_prompt_must_contain': {
+      const haystack = (actual || '').toLowerCase();
+      const missing = expected.filter((needle) => !haystack.includes(String(needle).toLowerCase()));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `all ${expected.length} found in finalPrompt` : `missing in finalPrompt: ${missing.join(', ')}` };
+    }
+    case 'final_prompt_must_not_contain': {
+      const haystack = (actual || '').toLowerCase();
+      const found = expected.filter((needle) => haystack.includes(String(needle).toLowerCase()));
+      return { passed: found.length === 0, detail: found.length === 0 ? `clean` : `forbidden in finalPrompt: ${found.join(', ')}` };
+    }
     default:
       return { passed: true, detail: `(unknown check ${name} — skipped)` };
   }
@@ -349,8 +384,10 @@ function evaluateFixture(fixture, result, systemPrompt, tool) {
   let earnedWeight = 0;
 
   // optimize_prompt result has category/intent at top-level + analysis.intent;
-  // clarify_with_user result keeps everything under .analysis. Route accordingly.
+  // clarify_with_user result keeps everything under .analysis;
+  // compose_prompt nests critique.* and optimization.* under their stages.
   const isClarify = tool === 'clarify_with_user';
+  const isCompose = tool === 'compose_prompt';
 
   for (const [key, value] of Object.entries(expected)) {
     const weight = CHECK_WEIGHTS[key] ?? 1.0;
@@ -385,14 +422,21 @@ function evaluateFixture(fixture, result, systemPrompt, tool) {
       // ground_prompt
       case 'used_sources_min':               actual = result.usedSources || []; break;
       case 'dropped_sources_max':            actual = result.droppedSources || []; break;
-      // critique_prompt
-      case 'verdict':                        actual = result.verdict; break;
-      case 'overall_score_min':              actual = result.overallScore; break;
-      case 'overall_score_max':              actual = result.overallScore; break;
-      case 'dimensions_min':                 actual = result.dimensions || []; break;
-      case 'dimension_must_include':         actual = result.dimensions || []; break;
-      case 'improved_prompt_present':        actual = result.improvedPrompt; break;
-      case 'improved_prompt_absent':         actual = result.improvedPrompt; break;
+      // critique_prompt — also reads compose result.critique.*
+      case 'verdict':                        actual = isCompose ? result.critique?.verdict : result.verdict; break;
+      case 'overall_score_min':              actual = isCompose ? result.critique?.overallScore : result.overallScore; break;
+      case 'overall_score_max':              actual = isCompose ? result.critique?.overallScore : result.overallScore; break;
+      case 'dimensions_min':                 actual = isCompose ? (result.critique?.dimensions || []) : (result.dimensions || []); break;
+      case 'dimension_must_include':         actual = isCompose ? (result.critique?.dimensions || []) : (result.dimensions || []); break;
+      case 'improved_prompt_present':        actual = isCompose ? result.critique?.improvedPrompt : result.improvedPrompt; break;
+      case 'improved_prompt_absent':         actual = isCompose ? result.critique?.improvedPrompt : result.improvedPrompt; break;
+      // compose_prompt
+      case 'stages_must_include':
+      case 'stages_must_exclude':            actual = result.stages || []; break;
+      case 'clarification_required':         actual = result.clarificationRequired; break;
+      case 'revised':                        actual = result.revised; break;
+      case 'final_prompt_must_contain':
+      case 'final_prompt_must_not_contain':  actual = result.finalPrompt; break;
       default: continue;
     }
     const { passed, detail } = scoreCheck(key, value, actual, opts);
@@ -435,13 +479,19 @@ async function runFixture(fixture) {
 
     const result = await srv.callTool(tool, args);
 
-    // Pull system prompt from the trace if any check needs it (optimize/ground only — they emit traces)
+    // Pull system prompt from the trace if any check needs it (optimize/ground only — they emit traces).
+    // compose_prompt nests these under .optimization or .grounding; pull the inner trace id.
     let systemPrompt = '';
-    if ((tool === 'optimize_prompt' || tool === 'ground_prompt') && fixture.expected?.system_prompt_must_contain) {
-      try {
-        const trace = await srv.callTool('get_trace', { id: result.id });
-        systemPrompt = trace.systemPrompt || '';
-      } catch { /* trace may not be available; check will fail */ }
+    if (fixture.expected?.system_prompt_must_contain) {
+      let traceId = null;
+      if (tool === 'optimize_prompt' || tool === 'ground_prompt') traceId = result.id;
+      else if (tool === 'compose_prompt') traceId = result.optimization?.id ?? result.grounding?.id ?? null;
+      if (traceId) {
+        try {
+          const trace = await srv.callTool('get_trace', { id: traceId });
+          systemPrompt = trace.systemPrompt || '';
+        } catch { /* trace may not be available; check will fail */ }
+      }
     }
 
     const evaluation = evaluateFixture(fixture, result, systemPrompt, tool);

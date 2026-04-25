@@ -9,7 +9,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.3.0:** The Context Curator. Every call is now an explicit token-budget problem — persistent memory, knowledge packs, reflection — with full inspectability via `explain_last_curation`. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.4.0:** The pipeline ships. Four new MCP tools — `clarify_with_user`, `ground_prompt`, `critique_prompt`, `compose_prompt` — turn the canonical happy path (clarify → ground/optimize → critique) into first-class operations. Plus a deterministic eval harness with 20 fixtures, opt-in CI-gated evals, and a per-call audit log. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,17 +26,30 @@ ClarifyPrompt returns (for DALL-E):
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
 
-## What's new in 1.3.0
+## What's new in 1.4.0
 
-**Stop tuning prompts. Start curating context.** 1.3 introduces the **Context Curator** — every outgoing LLM call is an explicit token-budget problem. The curator scores every candidate grounding source (user-pinned rules, project `CLAUDE.md`, active file, past accepted outputs, semantic memory matches, pack chunks, web search, platform hints) and fits the highest-utility subset into the model's remaining window.
+**The pipeline ships.** Four new MCP tools turn ClarifyPrompt's core operations into a composable pipeline. Use any tool standalone, or run the whole chain in one call:
 
-- **Persistent memory** — SQLite + sqlite-vec under `$CLARIFYPROMPT_HOME/memory/memory.db`. Bi-temporal facts, entities, outcomes, pack chunks. Graceful degradation when the vector extension can't load.
-- **Reflective learning** — `save_outcome` with verdict=`accepted` extracts atomic facts via an LLM pass and stores them with embeddings, so future similar prompts retrieve what worked. Rejection invalidates recent reflection facts.
-- **Knowledge packs** — community-contributable markdown+YAML documents loaded by URL, local path, or inline. The curator treats pack chunks as first-class grounding sources. [Starter registry](https://github.com/LumabyteCo/clarifyprompt-packs) with 3 packs (nextjs-14 / anthropic-brand-voice / sox-compliance); add your own with a PR.
-- **Curation observability** — `explain_last_curation` renders a per-call breakdown: which candidates were kept, which were cut, why, and how many tokens each used.
-- **4 new MCP tools** (15 total): `load_knowledge_pack`, `list_packs`, `unload_pack`, `memory_search`, `explain_last_curation`.
+```
+  ┌─────────────┐     ┌─────────────────────┐     ┌──────────────┐
+  │  clarify    │ →   │  ground OR optimize │ →   │   critique   │
+  │  (optional) │     │       (core)        │     │  (optional)  │
+  └─────────────┘     └─────────────────────┘     └──────────────┘
 
-## What's in the box (cumulative through 1.3.0)
+  one call = compose_prompt(prompt, [sources], post_critique, auto_revise, ...)
+```
+
+- **`clarify_with_user`** — Given an ambiguous draft, returns 1–3 targeted clarifying questions, each with a `suggested_answer` you can accept verbatim, optional 2–4 quick-pick `options`, and a `dimension` tag (audience/scope/format/length/tone/constraints/goal/platform). Short-circuits with `clarificationNeeded: false` on confident, well-formed prompts so it pipelines cleanly in front of `optimize_prompt` without a per-call latency tax.
+- **`ground_prompt`** — The strict, retrieval-augmented variant of `optimize_prompt`. Caller-provided sources are pinned at the **highest** priority — above project rules, above pinned instructions — and tracked individually in the trace as `user-source:N`. Strict mode: zero non-empty sources → error, no silent fall-through. Per-source body cap (4000 chars) so a single huge paste can't dominate the budget.
+- **`critique_prompt`** — LLM-as-judge. Scores a candidate prompt 0–10 across 5 default dimensions (clarity, specificity, intent_alignment, format_fitness, length_appropriateness) — or your own criteria — with per-dimension rationale + concrete suggestions, an overall score, and a verdict (`accept` / `revise` / `reject`). Below `revise_threshold` (default 7.0) it also returns an `improvedPrompt` you can drop in. Use it pre-flight ("is this prompt good enough for the expensive model?"), postmortem ("was the prompt the cause?"), or to A/B-pick the best of N optimization variants.
+- **`compose_prompt`** — One MCP call runs the canonical pipeline. Auto-decides the ground vs. optimize branch from whether you passed `sources`. `pre_clarify: 'auto' | 'always' | 'never'`. `post_critique: true` adds a judge pass. `auto_revise: true` replaces `final_prompt` with the rewrite when the verdict isn't `accept`. Returns a per-stage `stages` audit array so the caller sees exactly what ran.
+- **Eval harness v0** — Deterministic regression tests under `evals/`. 20 YAML fixtures cover analyzer, shape, intent-overlay, grounding, clarify, critique, ground, and compose surfaces. `npm run eval` produces a console summary + self-contained dark-themed HTML report. Multi-model matrix is just bash: run `LLM_MODEL=... npm run eval -- --report-path evals/report-X.html` per model.
+- **CI-gated evals (opt-in)** — When `OPENAI_API_KEY` is set as a repo secret, the eval harness runs in CI against `gpt-4o-mini` as a release gate. Off by default; nothing leaves your machine without the secret.
+- **5 new MCP tools** (20 total). `optimize_prompt` also gains a `userProvidedSources` injection point — both `ground_prompt` and `compose_prompt` use it under the hood, but it's available directly if you want explicit control without the strict-mode validation.
+
+> Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
+
+## What's in the box (cumulative through 1.4.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -256,6 +269,157 @@ The canonical classification field is `analysis`. The `detection` and `intent` f
 `grounding.sources` lists which Grounding Context sections contributed, in priority order. `grounding.acceptedExamplesUsed` tells you how many few-shot examples the engine pulled from `save_outcome` history.
 
 `shape` tells you how the system prompt was sized for your target model.
+
+### `clarify_with_user` *(new in 1.4.0)*
+
+Given an ambiguous draft prompt, returns 1–3 targeted clarifying questions instead of guessing. Use it as a pre-stage before `optimize_prompt` when you can't tell whether the user's request will produce a good rewrite.
+
+```json
+{
+  "prompt": "make it better",
+  "force": true
+}
+```
+
+**Response:**
+
+```json
+{
+  "clarificationNeeded": true,
+  "reason": "Clarification recommended (analyzer confidence=low; intent=unknown; prompt is short (12 chars); caller passed force=true).",
+  "questions": [
+    {
+      "question": "What outcome do you want from this prompt — what does success look like?",
+      "reasoning": "The draft is ambiguous on the goal/audience dimension; pinning this typically resolves most downstream ambiguity.",
+      "suggestedAnswer": "Make the email shorter, clearer, and more action-oriented.",
+      "options": ["Make it shorter", "Make it more formal", "Make it more persuasive"],
+      "dimension": "goal"
+    }
+  ],
+  "analysis": { "category": "chat", "intent": "unknown", "confidence": "low" }
+}
+```
+
+`suggestedAnswer` is always populated — the caller can accept it verbatim and keep moving. `options` is optional; UI clients can render it as quick-pick buttons. The `dimension` tag classifies which axis the question addresses.
+
+**Short-circuit:** when the analyzer's confidence is `high` AND the prompt is non-trivially long, the tool returns `clarificationNeeded: false` with no LLM call beyond the analyzer — so you can pipeline it in front of `optimize_prompt` without a latency tax on every call. Pass `force: true` to disable the short-circuit.
+
+### `ground_prompt` *(new in 1.4.0)*
+
+Strict, retrieval-augmented variant of `optimize_prompt`. Caller-provided sources are **pinned at the highest priority** — above project rules and pinned instructions — so the rewrite is grounded in the material you provided rather than whatever the curator decides is relevant.
+
+```json
+{
+  "prompt": "rewrite the launch announcement to match our voice",
+  "category": "document",
+  "platform": "claude",
+  "sources": [
+    {
+      "label": "Brand Voice Rules",
+      "body": "Tone: warm, plain-spoken, no jargon. Always lead with the user benefit. Avoid 'leverage', 'synergy', 'robust'. Max sentence length: 18 words.",
+      "kind": "rules"
+    },
+    {
+      "label": "Launch Draft",
+      "body": "Today we're launching FlowSync Pro — a tool to leverage AI synergy for robust team coordination...",
+      "kind": "draft"
+    }
+  ]
+}
+```
+
+Returns the same shape as `optimize_prompt` plus `usedSources` (which sources actually landed in the curated grounding) and `droppedSources` (sources that were empty or dropped). Sources appear in the trace as `user-source:0`, `user-source:1`, etc.
+
+**Strict mode:** zero non-empty sources → error, not silent fall-through. Per-source body cap is 4000 chars so a single huge paste can't dominate the budget.
+
+### `critique_prompt` *(new in 1.4.0)*
+
+LLM-as-judge. Scores a candidate prompt 0–10 across 5 default dimensions and (when below threshold) returns an improved rewrite.
+
+```json
+{
+  "prompt": "make it good",
+  "revise_threshold": 7
+}
+```
+
+**Response:**
+
+```json
+{
+  "overallScore": 2.0,
+  "verdict": "reject",
+  "summary": "Reject — substantial rewrite required.",
+  "dimensions": [
+    { "name": "clarity", "score": 1, "rationale": "...", "suggestions": ["Specify what 'it' refers to", "..."] },
+    { "name": "specificity", "score": 0, "rationale": "...", "suggestions": [...] },
+    { "name": "intent_alignment", "score": 3, "rationale": "...", "suggestions": [...] },
+    { "name": "format_fitness", "score": 2, "rationale": "...", "suggestions": [...] },
+    { "name": "length_appropriateness", "score": 1, "rationale": "...", "suggestions": [...] }
+  ],
+  "improvedPrompt": "Improve the README's getting-started section: shorten...",
+  "improvements": ["Specified the artifact (README's getting-started section)", "Added concrete success criteria", "..."],
+  "judgeModel": "qwen2.5-coder:7b-instruct-q4_K_M"
+}
+```
+
+**Parameters:**
+
+| Parameter | Default | Description |
+|---|---|---|
+| `prompt` | — | Candidate prompt to score. |
+| `original_prompt` | — | When critiquing an optimized version, the user's original ask. Used for the `intent_alignment` dimension. |
+| `criteria` | 5 defaults | Custom dimensions: `[{ name, description }, ...]`. Up to ~8 dimensions. |
+| `revise_threshold` | `7.0` | Overall score below this triggers the rewrite pass. |
+| `skip_rewrite` | `false` | Skip the rewrite pass entirely (faster; just returns scores). |
+
+**Sanity-check:** if the judge inflates `overall` more than 2.5 points above the per-dimension mean, the engine corrects it.
+
+### `compose_prompt` *(new in 1.4.0)*
+
+The canonical pipeline. One call runs clarify → ground/optimize → critique → optional auto-revise.
+
+```json
+{
+  "prompt": "Write a TypeScript function that takes an array of email strings and returns only those that match RFC 5322 syntax. Include unit tests using Vitest with at least 6 test cases.",
+  "pre_clarify": "auto",
+  "post_critique": true,
+  "auto_revise": true
+}
+```
+
+**Response (truncated):**
+
+```json
+{
+  "stages": [
+    { "name": "clarify",  "ranAt": "...", "durationMs":  541, "summary": "no clarification needed (short-circuit)" },
+    { "name": "optimize", "ranAt": "...", "durationMs": 3128, "summary": "5 grounding source(s) selected" },
+    { "name": "critique", "ranAt": "...", "durationMs": 3422, "summary": "verdict=accept, score=8.4" }
+  ],
+  "finalPrompt": "Write a TypeScript function `validateEmails(emails: string[]): string[]` that...",
+  "clarificationRequired": false,
+  "clarification": { "clarificationNeeded": false, ... },
+  "optimization": { "id": "opt_...", "optimizedPrompt": "...", ... },
+  "critique": { "overallScore": 8.4, "verdict": "accept", ... }
+}
+```
+
+`finalPrompt` is what you should send downstream. It equals `optimization.optimizedPrompt` (or `grounding.optimizedPrompt`) unless `auto_revise: true` AND the critique verdict isn't `accept` AND there's an `improvedPrompt` — in which case `finalPrompt` is the rewrite and `revised: true`.
+
+**Branching:**
+
+| Inputs | Path |
+|---|---|
+| no `sources` | `optimize_prompt` branch (auto-curated grounding) |
+| non-empty `sources` | `ground_prompt` branch (strict, caller-provided sources pinned) |
+| `pre_clarify: "auto"` (default) | clarify runs; short-circuits without surfacing questions on confident prompts |
+| `pre_clarify: "always"` | clarify always runs and STOPS the chain if questions surface |
+| `pre_clarify: "never"` | skip clarify entirely |
+| `post_critique: true` | critique runs after optimize/ground |
+| `auto_revise: true` (with `post_critique: true`) | when verdict !== `accept` and there's an `improvedPrompt`, replace `finalPrompt` |
+
+**Hard stop:** if clarify surfaces questions (only happens when `pre_clarify: "always"`, or `auto` on a low-confidence prompt), the chain stops and returns `clarificationRequired: true`. Caller answers the questions, edits the prompt to incorporate the answers, and re-calls (typically with `pre_clarify: "never"` to skip the second clarify pass).
 
 ### `inspect_context` *(new in 1.2.0)*
 
@@ -643,7 +807,7 @@ Supported as a first-class case. The engine auto-detects reasoners at family lev
 ```
 clarifyprompt-mcp/
   src/
-    index.ts                           MCP server entry point (11 tools, 1 resource)
+    index.ts                           MCP server entry point (20 tools, 1 resource)
     engine/
       config/
         categories.ts                  7 categories, 58 platforms, 7 modes
@@ -661,12 +825,17 @@ clarifyprompt-mcp/
       trace/                           Local tracing (1.2.0)
         types.ts                       TraceEntry schema (shape, groundingSources, error)
         writer.ts                      JSONL + OTel-stub writer, reader, lookup
+      memory/                          Persistent memory + knowledge packs (1.3.0)
+        store.ts                       SQLite + sqlite-vec; bi-temporal facts, outcomes, packs
+        packs.ts                       Knowledge-pack loader (local / URL / inline)
+        reflection.ts                  LLM fact extraction on save_outcome
       llm/client.ts                    Multi-provider LLM client (OpenAI + Anthropic)
       search/client.ts                 Web search (6 providers; results merge into Grounding Context)
       optimization/
         engine.ts                      Core orchestrator — analyzer, shape, grounding, retrieval, trace
+        curator.ts                     Token-budget grounding curator (1.3.0)
         groundingContext.ts            Priority-ordered context assembly + mode/shape helpers
-        types.ts                       OptimizationContext + result shape
+        types.ts                       OptimizationContext + result shape (UserProvidedSource)
         strategies/
           base.ts                      Bundle-aware base strategy (intent overlay + shape-aware sizing)
           chat.ts                      9 platforms
@@ -676,6 +845,14 @@ clarifyprompt-mcp/
           music.ts                     4 platforms
           code.ts                      9 platforms
           document.ts                  8 platforms
+      clarification/clarify.ts         (1.4.0) clarify_with_user — targeted questions w/ defaults
+      grounding/ground.ts              (1.4.0) ground_prompt — strict caller-provided grounding
+      critique/critique.ts             (1.4.0) critique_prompt — LLM-as-judge + optional rewrite
+      composition/compose.ts           (1.4.0) compose_prompt — canonical clarify→ground/opt→critique pipeline
+  evals/                                Eval harness v0 (1.3.0)
+    run.mjs                            YAML fixtures → MCP server → scored HTML report
+    fixtures/*.yaml                    20 deterministic fixtures
+    schema.json                        Fixture schema
 ```
 
 ## Docker

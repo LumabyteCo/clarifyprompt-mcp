@@ -4,6 +4,37 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-04-25
+
+**The pipeline ships.** Four new MCP tools turn ClarifyPrompt's core operations into a composable pipeline. The first deterministic eval harness lands under version control with 20 fixtures; opt-in CI gating runs evals on every push when an `OPENAI_API_KEY` secret is configured.
+
+### Added
+
+- **`clarify_with_user`** — Given an ambiguous draft, returns 1–3 targeted clarifying questions, each with a `suggested_answer` the caller can accept verbatim, optional 2–4 quick-pick `options`, and a `dimension` tag (audience/scope/format/length/tone/constraints/goal/platform). Short-circuits with `clarificationNeeded: false` on confident, well-formed prompts so it pipelines cleanly in front of `optimize_prompt` without a per-call latency tax. Pass `force: true` to disable the short-circuit.
+- **`ground_prompt`** — Strict, retrieval-augmented variant of `optimize_prompt`. Caller-provided sources are pinned at the **highest** priority — above project rules, above pinned instructions — and tracked individually in the trace as `user-source:N`. Strict mode: zero non-empty sources → error, no silent fall-through. Per-source body cap of 4000 chars.
+- **`critique_prompt`** — LLM-as-judge. Scores a candidate prompt 0–10 across 5 default dimensions (clarity, specificity, intent_alignment, format_fitness, length_appropriateness) — or caller-supplied criteria — with per-dimension rationale + concrete suggestions, an overall score, and a verdict (`accept` / `revise` / `reject`). When the score is below `revise_threshold` (default 7.0), runs a second pass to produce an `improvedPrompt` the caller can use as a drop-in replacement. Sanity-check: if the judge inflates `overall` more than 2.5 points above the per-dimension mean, the engine corrects it.
+- **`compose_prompt`** — One MCP call runs the canonical pipeline: clarify → ground OR optimize → critique → optional auto-revise. Auto-decides the ground vs. optimize branch from whether `sources` is non-empty. `pre_clarify: 'auto' | 'always' | 'never'`. `post_critique: true` adds a judge pass. `auto_revise: true` replaces `final_prompt` with the rewrite when verdict !== `accept`. Returns a per-stage `stages` audit array.
+- **`UserProvidedSource` injection point on `optimize_prompt`** — A new top-priority slot in the curator (`user-source:N`) above pinned instructions. Both `ground_prompt` and `compose_prompt` use it under the hood; available directly when you want explicit grounding control without strict-mode validation.
+- **Eval harness v0** — Deterministic regression tests under `evals/`. 20 YAML fixtures cover analyzer, shape, intent-overlay, grounding, clarify, critique, ground, and compose surfaces. `npm run eval` produces a console summary + self-contained dark-themed HTML report. Fixtures are tool-aware: any fixture can target `optimize_prompt` (default) / `clarify_with_user` / `ground_prompt` / `critique_prompt` / `compose_prompt` via `input.tool`.
+- **Eval-gated CI workflow** (opt-in) — When `OPENAI_API_KEY` is set as a repo secret, GitHub Actions runs `npm run eval` against `gpt-4o-mini` as a release gate. Off by default; nothing leaves your machine without the secret.
+
+### Changed
+
+- **20 MCP tools** (was 16). New: `clarify_with_user`, `ground_prompt`, `critique_prompt`, `compose_prompt`. The other 16 are unchanged.
+- **Tests under version control.** The Day-1/Day-2 ad-hoc test scripts that were living in `/tmp/` are now in `tests/` and runnable as `npm run test:integration / test:day2 / test:reasoning / test:wire / test:all`.
+
+### Eval baseline (qwen2.5-coder:7b-instruct-q4_K_M, single-model run)
+
+- 16 passed / 1 failed / 3 skipped / **96% avg score** across 20 fixtures.
+- The lone failure (`analyzer-creative-media`) is a deliberately retained signal: 7B coder-tuned models cannot reliably classify creative-media prompts. Larger models (qwen2.5:14b) and frontier hosted models (gpt-4o-mini, claude-haiku) classify it correctly. Multi-model matrix: see `evals/README.md`.
+- The 3 skipped fixtures are gated by `skip_unless_model_matches` for model-class-specific behavior (tiny / mid / reasoning) and only fire on the appropriate model.
+
+### Notes for integrators
+
+- Same env-var surface as 1.3.x — no new required env vars.
+- Same publish surface (`dist/` + `packs/` + `README.md` + `LICENSE` + `CHANGELOG.md` + `.env.example`).
+- All pre-1.4 tools and result shapes are unchanged. `optimize_prompt`'s response shape is fully back-compat; `userProvidedSources` is a new optional field that defaults to undefined.
+
 ## [1.3.2] — 2026-04-24
 
 Closes the audit loop opened by ship-check during the 1.3.1 retrospective. Pure docs + metadata + skill-library hygiene; no engine code changes.

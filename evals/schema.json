@@ -39,7 +39,7 @@
       "additionalProperties": false,
       "description": "Args passed to the MCP tool under test. Defaults to optimize_prompt; set `tool` to target another tool. Extra keys are forwarded as-is to the tool's MCP schema.",
       "properties": {
-        "tool": { "type": "string", "enum": ["optimize_prompt", "clarify_with_user", "ground_prompt", "critique_prompt"], "description": "Which MCP tool to invoke. Default: optimize_prompt." },
+        "tool": { "type": "string", "enum": ["optimize_prompt", "clarify_with_user", "ground_prompt", "critique_prompt", "compose_prompt"], "description": "Which MCP tool to invoke. Default: optimize_prompt." },
         "prompt": { "type": "string" },
         "category": { "type": "string", "enum": ["chat", "image", "voice", "video", "music", "code", "document"] },
         "platform": { "type": "string" },
@@ -64,7 +64,10 @@
         },
         "original_prompt": { "type": "string", "description": "critique_prompt: when critiquing an optimized prompt, the original ask." },
         "skip_rewrite": { "type": "boolean", "description": "critique_prompt: skip the rewrite pass even when below threshold." },
-        "revise_threshold": { "type": "number", "minimum": 0, "maximum": 10, "description": "critique_prompt: overall score below this triggers a rewrite." }
+        "revise_threshold": { "type": "number", "minimum": 0, "maximum": 10, "description": "critique_prompt: overall score below this triggers a rewrite." },
+        "pre_clarify": { "type": "string", "enum": ["auto", "always", "never"], "description": "compose_prompt: clarify pre-stage policy." },
+        "post_critique": { "type": "boolean", "description": "compose_prompt: run critique after the optimization." },
+        "auto_revise": { "type": "boolean", "description": "compose_prompt: when critique returns a non-accept verdict + improvedPrompt, replace finalPrompt with the rewrite." }
       }
     },
     "expected": {
@@ -127,7 +130,13 @@
         "dimensions_min": { "type": "integer", "minimum": 0, "description": "critique_prompt: at least N dimensions must be returned." },
         "dimension_must_include": { "type": "array", "items": { "type": "string" }, "description": "critique_prompt: every listed dimension name must appear in result.dimensions." },
         "improved_prompt_present": { "type": "boolean", "description": "critique_prompt: when true, result.improvedPrompt must be a non-empty string." },
-        "improved_prompt_absent": { "type": "boolean", "description": "critique_prompt: when true, result.improvedPrompt must be absent." }
+        "improved_prompt_absent": { "type": "boolean", "description": "critique_prompt: when true, result.improvedPrompt must be absent." },
+        "stages_must_include": { "type": "array", "items": { "type": "string", "enum": ["clarify", "ground", "optimize", "critique", "revise"] }, "description": "compose_prompt: every named stage must appear in result.stages." },
+        "stages_must_exclude": { "type": "array", "items": { "type": "string", "enum": ["clarify", "ground", "optimize", "critique", "revise"] }, "description": "compose_prompt: none of the named stages may appear in result.stages." },
+        "clarification_required": { "type": "boolean", "description": "compose_prompt: result.clarificationRequired must equal this." },
+        "revised": { "type": "boolean", "description": "compose_prompt: whether finalPrompt was replaced by critique.improvedPrompt." },
+        "final_prompt_must_contain": { "type": "array", "items": { "type": "string" }, "description": "compose_prompt: substrings that must appear in result.finalPrompt." },
+        "final_prompt_must_not_contain": { "type": "array", "items": { "type": "string" }, "description": "compose_prompt: substrings that must NOT appear in result.finalPrompt." }
       }
     }
   }

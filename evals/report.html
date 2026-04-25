@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ClarifyPrompt evals — 2026-04-25T16:29:05.559Z</title>
+<title>ClarifyPrompt evals — 2026-04-25T16:52:23.837Z</title>
 <style>
   :root { color-scheme: dark; }
   body { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #0d1117; color: #c9d1d9; max-width: 1100px; margin: 24px auto; padding: 0 16px; }
@@ -35,14 +35,14 @@
 </head>
 <body>
   <h1>ClarifyPrompt evals</h1>
-  <div class="meta">2026-04-25T16:29:05.559Z · model <b>qwen2.5-coder:7b-instruct-q4_K_M</b> · pass threshold 0.85</div>
+  <div class="meta">2026-04-25T16:52:23.837Z · model <b>qwen2.5-coder:7b-instruct-q4_K_M</b> · pass threshold 0.85</div>
   <div class="summary">
-    <div class="card pass"><div class="label">passed</div><div class="value">14</div></div>
+    <div class="card pass"><div class="label">passed</div><div class="value">16</div></div>
     <div class="card fail"><div class="label">failed</div><div class="value">1</div></div>
     <div class="card"><div class="label">skipped</div><div class="value">3</div></div>
-    <div class="card"><div class="label">avg score</div><div class="value">95%</div></div>
-    <div class="card"><div class="label">avg latency</div><div class="value">1818ms</div></div>
-    <div class="card"><div class="label">fixtures total</div><div class="value">18</div></div>
+    <div class="card"><div class="label">avg score</div><div class="value">96%</div></div>
+    <div class="card"><div class="label">avg latency</div><div class="value">2072ms</div></div>
+    <div class="card"><div class="label">fixtures total</div><div class="value">20</div></div>
   </div>
   <table>
     <thead><tr><th></th><th>fixture</th><th>score</th><th>lat</th><th>checks</th></tr></thead>
@@ -55,20 +55,24 @@
           <div><span class="tag">analyzer</span> <span class="tag">regression</span> <span class="tag">critical</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">3007ms</td>
+        <td class="latency">3289ms</td>
         <td class="checks">
-          <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>recommended_mode</b>: technical</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>no_error</b>: no error</li><li class="ok"><b>min_output_length</b>: len=822</li></ul>
+          <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>recommended_mode</b>: technical</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>no_error</b>: no error</li><li class="ok"><b>min_output_length</b>: len=931</li></ul>
           <details><summary>output preview</summary><pre>```typescript
 /**
- * Write a TypeScript function named `validateEmail` to validate email addresses.
- * The function should use a regular expression to ensure the email address follows standard email format.
+ * Function to validate email addresses according to RFC 5322 standards.
  * 
  * Requirements:
- * - The function must accept an email string as its parameter.
- * - It should return a boolean indicating whether the email is valid or not.
- * - Use named types for clarity, e.g., `EmailFormat` for the regex pattern.
- * - Implement explicit interfaces for any related data structures, if necessary.
- * - Handle edge cases such as empty strings, null values, and invalid </pre></details>
+ * - Must use TypeScript/JavaScript
+ * - Must be part of the clarifyprompt-mcp package
+ * - Must work in a MCP Server environment
+ * - Must handle various edge cases (e.g., empty strings, null, undefined)
+ * - Must include comprehensive error handling with descriptive messages
+ * - Must use named types and explicit interfaces to avoid magic constants
+ * - Must provide unit tests covering all valid and invalid email formats
+ * 
+ * @param email - The email address to validate
+ * @retur</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -79,10 +83,12 @@
           <div><span class="tag">analyzer</span> <span class="tag">ambiguity</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1157ms</td>
+        <td class="latency">1223ms</td>
         <td class="checks">
           <ul><li class="ok"><b>intent</b>: unknown</li><li class="ok"><b>intent_confidence</b>: low</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>&quot;I want to enhance the quality of this prompt for a chat category on Claude. Please make it better.&quot;</pre></details>
+          <details><summary>output preview</summary><pre>&quot;&quot;&quot;
+improve this prompt for the chat category on Claude, ensuring it&#39;s clear, detailed, and effective while preserving intent and optimizing for AI comprehension
+&quot;&quot;&quot;</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -93,10 +99,10 @@
           <div><span class="tag">analyzer</span> <span class="tag">stakeholder</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1464ms</td>
+        <td class="latency">1443ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: document</li><li class="ok"><b>intent</b>: stakeholder-comm</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>recommended_mode</b>: detailed</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Write a concise note to the finance team explaining the Q2 variance and requesting a 2-week extension for review. Ensure the tone is professional and formal, using clear and straightforward language.</pre></details>
+          <details><summary>output preview</summary><pre>Write a concise note to the finance team explaining the Q2 variance and requesting a 2-week extension. Ensure the tone is professional and formal, suitable for a business context. Deadline is [insert date].</pre></details>
         </td>
       </tr>
       <tr class="fail">
@@ -107,10 +113,10 @@
           <div><span class="tag">analyzer</span> <span class="tag">creative</span> <span class="tag">image</span></div>
         </td>
         <td class="score">32%</td>
-        <td class="latency">1448ms</td>
+        <td class="latency">1393ms</td>
         <td class="checks">
           <ul><li class="fail"><b>category</b>: expected image, got chat</li><li class="fail"><b>intent</b>: expected creative-media, got exploration</li><li class="fail"><b>platform</b>: expected midjourney, got claude</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="fail"><b>must_contain</b>: missing: --ar, --v</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>A dragon flying over a medieval castle at sunset, cinematic, with dramatic lighting and detailed textures to capture the grandeur and atmosphere of the scene. What artistic elements would you include to enhance the visual impact?</pre></details>
+          <details><summary>output preview</summary><pre>A dragon flying over a medieval castle at sunset, cinematic style. Include trade-offs and considerations for different art styles and lighting effects. What information would be necessary to decide on the best composition?</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -121,10 +127,10 @@
           <div><span class="tag">analyzer</span> <span class="tag">mode</span> <span class="tag">arbitration</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1509ms</td>
+        <td class="latency">1499ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>mode</b>: concise</li><li class="ok"><b>mode_source</b>: user</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Refactor the authentication middleware to support refresh tokens and include comprehensive unit tests for all scenarios. Ensure the code uses named types, explicit interfaces, and avoids magic constants. Identify and document any obvious failure modes and ensure proper error handling.</pre></details>
+          <details><summary>output preview</summary><pre>Refactor the auth middleware to support refresh tokens and include comprehensive tests in TypeScript for a MCP Server application. Ensure the code uses named types, explicit interfaces, and avoids magic constants. Identify and document obvious failure modes without papering over them.</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -135,10 +141,10 @@
           <div><span class="tag">analyzer</span> <span class="tag">mode</span> <span class="tag">arbitration</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1785ms</td>
+        <td class="latency">1649ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>mode_source</b>: analyzer</li><li class="ok"><b>mode</b>: technical</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Refactor the auth middleware to support refresh tokens and add tests using TypeScript/JavaScript within the `clarifyprompt-mcp` package. Ensure that the refactored code uses named types, explicit interfaces, and no magic constants. Include comprehensive error handling and edge case scenarios in your implementation. Write unit tests to cover all functionality, including success and failure cases.</pre></details>
+          <details><summary>output preview</summary><pre>Refactor the auth middleware to support refresh tokens and add tests for TypeScript/JavaScript in the clarifyprompt-mcp package using MCP Server framework. Ensure the code uses named types, explicit interfaces, and no magic constants. Document any obvious failure modes and include comprehensive unit tests that cover all edge cases.</pre></details>
         </td>
       </tr><tr class="skipped"><td>⊘</td><td>shape-small-local-model</td><td colspan="3">skipped — skip_unless_model_matches=/(llama3\.2:3b|phi-3:mini|gemma:2b)/ vs LLM_MODEL=qwen2.5-coder:7b-instruct-q4_K_M</td></tr><tr class="skipped"><td>⊘</td><td>shape-mid-tier-model</td><td colspan="3">skipped — skip_unless_model_matches=/(qwen2\.5:14b|qwen.*14b|aya:35b)/ vs LLM_MODEL=qwen2.5-coder:7b-instruct-q4_K_M</td></tr><tr class="skipped"><td>⊘</td><td>shape-reasoning-model</td><td colspan="3">skipped — skip_unless_model_matches=/(gpt-oss|deepseek[-_]?r|.*thinking|o[1-4](-mini)?)/ vs LLM_MODEL=qwen2.5-coder:7b-instruct-q4_K_M</td></tr>
       <tr class="pass">
@@ -149,7 +155,7 @@
           <div><span class="tag">intent</span> <span class="tag">overlay</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1285ms</td>
+        <td class="latency">1372ms</td>
         <td class="checks">
           <ul><li class="ok"><b>intent</b>: data-extract</li><li class="ok"><b>system_prompt_must_contain</b>: all 2 found</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre>```json
@@ -167,10 +173,10 @@
           <div><span class="tag">grounding</span> <span class="tag">project-rules</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">893ms</td>
+        <td class="latency">752ms</td>
         <td class="checks">
           <ul><li class="ok"><b>must_contain</b>: all 1 found</li><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>&quot;Write a compelling hero headline for our new AI copilot that aligns with our brand&#39;s confident and warm tone, using TypeScript/JavaScript in a Next.js or React framework. Include a clear CTA.&quot;</pre></details>
+          <details><summary>output preview</summary><pre>Write a confident and warm hero headline for our new AI copilot, tailored to attract users with a clear CTA on our brand landing page.</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -181,10 +187,14 @@
           <div><span class="tag">grounding</span> <span class="tag">project-rules</span> <span class="tag">control</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">570ms</td>
+        <td class="latency">743ms</td>
         <td class="checks">
           <ul><li class="ok"><b>grounding_sources_must_exclude</b>: clean</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>&quot;Craft a compelling hero headline for our new AI copilot tailored for digital platforms.&quot;</pre></details>
+          <details><summary>output preview</summary><pre>```json
+{
+  &quot;prompt&quot;: &quot;Craft a compelling hero headline for our new AI copilot that will captivate potential users and highlight its unique features.&quot;
+}
+```</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -195,7 +205,7 @@
           <div><span class="tag">clarify</span> <span class="tag">short-circuit</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">547ms</td>
+        <td class="latency">539ms</td>
         <td class="checks">
           <ul><li class="ok"><b>clarification_needed</b>: clarificationNeeded=false</li><li class="ok"><b>max_questions</b>: 0 ≤ 0 questions</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -209,7 +219,7 @@
           <div><span class="tag">clarify</span> <span class="tag">ambiguity</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">3231ms</td>
+        <td class="latency">3038ms</td>
         <td class="checks">
           <ul><li class="ok"><b>clarification_needed</b>: clarificationNeeded=true</li><li class="ok"><b>min_questions</b>: 3 ≥ 1 questions</li><li class="ok"><b>max_questions</b>: 3 ≤ 3 questions</li><li class="ok"><b>questions_must_have_suggested_answer</b>: all 3 questions have a suggestedAnswer</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -223,10 +233,10 @@
           <div><span class="tag">ground</span> <span class="tag">grounding</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1095ms</td>
+        <td class="latency">1029ms</td>
         <td class="checks">
           <ul><li class="ok"><b>used_sources_min</b>: 2 ≥ 2 usedSources</li><li class="ok"><b>dropped_sources_max</b>: 0 ≤ 0 droppedSources</li><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>category</b>: document</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Rewrite the launch announcement for FlowSync Pro to match our warm, plain-spoken brand voice. Avoid using words like &quot;leverage&quot; or &quot;robust.&quot; Keep sentences under 18 words each.</pre></details>
+          <details><summary>output preview</summary><pre>&quot;Rewrite the launch announcement for FlowSync Pro to match our warm, plain-spoken brand voice, avoiding jargon and focusing on user benefits. Keep sentences under 18 words.&quot;</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -237,7 +247,7 @@
           <div><span class="tag">ground</span> <span class="tag">error-paths</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">106ms</td>
+        <td class="latency">109ms</td>
         <td class="checks">
           <ul><li class="ok"><b>no_error</b>: error present (as expected): ground_prompt: all 2 provided source(s) were empty. Provide at least one non-empty body.</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -251,7 +261,7 @@
           <div><span class="tag">critique</span> <span class="tag">judge</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">3997ms</td>
+        <td class="latency">4069ms</td>
         <td class="checks">
           <ul><li class="ok"><b>verdict</b>: verdict=accept</li><li class="ok"><b>overall_score_min</b>: 8 ≥ 7</li><li class="ok"><b>dimensions_min</b>: 5 ≥ 5 dimensions</li><li class="ok"><b>dimension_must_include</b>: dims present: clarity,specificity,intent_alignment,format_fitness,length_appropriateness</li><li class="ok"><b>improved_prompt_absent</b>: improvedPrompt absent</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -265,9 +275,37 @@
           <div><span class="tag">critique</span> <span class="tag">judge</span> <span class="tag">rewrite</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">5170ms</td>
+        <td class="latency">5337ms</td>
         <td class="checks">
-          <ul><li class="ok"><b>overall_score_max</b>: 4 ≤ 6</li><li class="ok"><b>dimensions_min</b>: 5 ≥ 5 dimensions</li><li class="ok"><b>improved_prompt_present</b>: improvedPrompt present</li><li class="ok"><b>no_error</b>: no error</li></ul>
+          <ul><li class="ok"><b>overall_score_max</b>: 3 ≤ 6</li><li class="ok"><b>dimensions_min</b>: 5 ≥ 5 dimensions</li><li class="ok"><b>improved_prompt_present</b>: improvedPrompt present</li><li class="ok"><b>no_error</b>: no error</li></ul>
+          <details><summary>output preview</summary><pre></pre></details>
+        </td>
+      </tr>
+      <tr class="pass">
+        <td class="status">✓</td>
+        <td>
+          <div class="name">compose-happy-path</div>
+          <div class="desc">compose_prompt with a specific prompt → clarify auto-skips → optimize runs → critique runs and accepts → finalPrompt is the optimized output, not a rewrite.</div>
+          <div><span class="tag">compose</span> <span class="tag">pipeline</span> <span class="tag">regression</span></div>
+        </td>
+        <td class="score">100%</td>
+        <td class="latency">6571ms</td>
+        <td class="checks">
+          <ul><li class="ok"><b>stages_must_include</b>: stages: clarify→optimize→critique</li><li class="ok"><b>stages_must_exclude</b>: clean: clarify→optimize→critique</li><li class="ok"><b>clarification_required</b>: clarificationRequired=false</li><li class="ok"><b>revised</b>: revised=false</li><li class="ok"><b>no_error</b>: no error</li></ul>
+          <details><summary>output preview</summary><pre></pre></details>
+        </td>
+      </tr>
+      <tr class="pass">
+        <td class="status">✓</td>
+        <td>
+          <div class="name">compose-with-sources-takes-ground-branch</div>
+          <div class="desc">compose_prompt called with sources should take the ground_prompt branch (stage=ground, not optimize) and pin all sources at user-source priority.</div>
+          <div><span class="tag">compose</span> <span class="tag">ground</span> <span class="tag">branch-routing</span> <span class="tag">regression</span></div>
+        </td>
+        <td class="score">100%</td>
+        <td class="latency">1163ms</td>
+        <td class="checks">
+          <ul><li class="ok"><b>stages_must_include</b>: stages: ground</li><li class="ok"><b>stages_must_exclude</b>: clean: ground</li><li class="ok"><b>clarification_required</b>: clarificationRequired=false</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
         </td>
       </tr></tbody>

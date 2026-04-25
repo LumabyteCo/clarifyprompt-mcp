@@ -16,10 +16,11 @@ import { loadKnowledgePack } from "./engine/memory/packs.js";
 import { clarifyPrompt } from "./engine/clarification/clarify.js";
 import { groundPrompt } from "./engine/grounding/ground.js";
 import { critiquePrompt } from "./engine/critique/critique.js";
+import { composePrompt } from "./engine/composition/compose.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.3.2",
+  version: "1.4.0",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
@@ -707,6 +708,73 @@ server.tool(
       criteria: args.criteria,
       reviseThreshold: args.revise_threshold,
       skipRewrite: args.skip_rewrite,
+    });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  }
+);
+
+// --- Composition (1.4.0) — the canonical pipeline ---
+
+server.tool(
+  "compose_prompt",
+  "Run the canonical ClarifyPrompt pipeline in ONE call: clarify (optional pre-stage) → ground OR optimize (core) → critique (optional post-stage) → optional auto-revise. Use this when you want the four-tool happy path without orchestrating five round-trips. Short-circuits if `pre_clarify` surfaces questions — caller answers and re-calls. When `sources` is non-empty the chain takes the strict ground_prompt branch; otherwise it goes through optimize_prompt. When `auto_revise` is true and critique returns a non-accept verdict with an improved rewrite, `final_prompt` is the rewrite. The `stages` array is a per-call audit log so callers can see exactly what ran.",
+  {
+    prompt: z.string().describe("The prompt to compose."),
+    pre_clarify: z.enum(['auto', 'always', 'never']).optional().default('auto')
+      .describe("'auto' = run clarify only if analyzer confidence is low / prompt is short. 'always' = force clarify. 'never' = skip. When clarification questions surface, the chain stops; caller answers and re-calls."),
+    max_questions: z.number().int().positive().max(5).optional().default(3),
+    sources: z.array(z.object({
+      label: z.string(),
+      body: z.string(),
+      kind: z.string().optional(),
+    })).optional().describe("When non-empty, the chain takes the strict ground_prompt branch (caller-provided sources pinned at highest priority)."),
+    post_critique: z.boolean().optional().default(false)
+      .describe("Run the critique judge against the optimized output. Adds ~3-5s on a local model."),
+    revise_threshold: z.number().min(0).max(10).optional().default(7.0),
+    critique_criteria: z.array(z.object({
+      name: z.string(),
+      description: z.string(),
+    })).optional().describe("Override the default 5 critique criteria."),
+    auto_revise: z.boolean().optional().default(false)
+      .describe("When true AND post_critique is true AND verdict !== 'accept' AND there's an improvedPrompt: `final_prompt` becomes the rewritten version instead of the raw optimization."),
+    category: CATEGORY_ENUM.optional(),
+    platform: z.string().optional(),
+    mode: MODE_ENUM.optional(),
+    enrich_context: z.boolean().optional().default(false),
+    session_id: z.string().optional(),
+    file_path: z.string().optional(),
+    file_language: z.string().optional(),
+    file_excerpt: z.string().optional(),
+    cwd: z.string().optional(),
+    user_locale: z.string().optional(),
+    user_pinned_instructions: z.string().optional(),
+    skip_intent_resolution: z.boolean().optional().default(false),
+    include_bundle: z.boolean().optional().default(false),
+  },
+  async (args) => {
+    const result = await composePrompt({
+      prompt: args.prompt,
+      preClarify: args.pre_clarify,
+      maxQuestions: args.max_questions,
+      sources: args.sources,
+      postCritique: args.post_critique,
+      reviseThreshold: args.revise_threshold,
+      critiqueCriteria: args.critique_criteria,
+      autoRevise: args.auto_revise,
+      category: args.category,
+      platform: args.platform,
+      mode: args.mode,
+      modeExplicit: args.mode !== undefined,
+      enrichContext: args.enrich_context,
+      sessionId: args.session_id,
+      filePath: args.file_path,
+      fileLanguage: args.file_language,
+      fileExcerpt: args.file_excerpt,
+      cwd: args.cwd,
+      userLocale: args.user_locale,
+      userPinnedInstructions: args.user_pinned_instructions,
+      skipIntentResolution: args.skip_intent_resolution,
+      includeBundle: args.include_bundle,
     });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   }
