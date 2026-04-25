@@ -1,6 +1,6 @@
 {
   "name": "clarifyprompt-mcp",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "mcpName": "io.github.LumabyteCo/clarifyprompt",
   "description": "Context-aware MCP prompt compiler: persistent memory, knowledge packs, explicit token-budget curation, reflective learning, 58+ AI platforms, workspace signals (CLAUDE.md / AGENTS.md / .cursorrules), reasoning-model support. Stop tuning prompts — curate context.",
   "type": "module",

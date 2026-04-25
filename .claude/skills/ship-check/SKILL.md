@@ -16,57 +16,28 @@ Each directive is also tagged with a **generalization hint** — whether the che
 
 ---
 
-## AUGMENT: Version consistency — extra sources
+## AUGMENT: Version consistency — extra source for MCP Node SDK
 
-Beyond the general version sources, this repo has:
+The general check already inspects `package.json`, `package-lock.json`, `server.json` (both top-level and `packages[*].version`), `CHANGELOG.md`, and ecosystem-specific manifests. This repo additionally has:
 
-- `server.json` → two version fields: `$.version` (top-level) AND `$.packages[0].version` (npm subsection). Both must match `package.json#version`.
-- `src/index.ts` → the `McpServer({ name, version })` literal must match.
+- `src/index.ts` → the `McpServer({ name, version })` literal must match all of the above.
 
-Run the general version-consistency check as-is, then additionally verify those two files.
+Run the general check, then verify `grep -oE 'version: "[^"]+"' src/index.ts` matches `package.json#version`.
 
-**Generalization hint:** `server.json` is the MCP Registry manifest — any MCP-server project will have the same double-version quirk. **Promotion candidate** after a second MCP project adopts ship-check.
+**Generalization hint:** the `src/index.ts` McpServer literal is specific to MCP servers built with `@modelcontextprotocol/sdk` for Node. **Promotion candidate** once a second such project adopts ship-check, with detection gated on the SDK being a declared dep.
 
 ---
 
 ## AUGMENT: Secrets sweep — repo-specific guards
 
-Keep all general secret patterns AND also hard-fail if any of these appear in tracked files:
+Keep all general patterns AND additionally hard-fail on:
 
 - Any 40+ character hex string following `_authToken=` (a leaked `~/.npmrc` value).
-- The literal token prefix we rotated during 1.2.0 prep: `npm_EYF3iBwo` (defense against someone accidentally re-adding it from transcript history).
+- The literal token prefix `npm_EYF3iBwo` we rotated during 1.2.0 prep — defense against someone re-adding it from transcript history.
 
-The second pattern is an artifact of this project's history and expires once the token is safely out of our backscroll. Review quarterly; remove when no longer needed.
+The second pattern is an artifact of this project's history and expires once the token is safely out of all backscroll. Review quarterly; remove when no longer needed.
 
-**Generalization hint:** "add project-specific secret patterns" is itself a general pattern — but the specific patterns here are clarifyprompt-only.
-
----
-
-## ADD: CP-2 — server.json env-var declarations match `.env.example`
-
-Every env var documented in `.env.example` (non-comment, non-legacy rows) must have a corresponding entry in `server.json.packages[0].environmentVariables[*].name`.
-
-Current expected set:
-
-```
-LLM_API_URL, LLM_API_KEY, LLM_MODEL,
-CLARIFYPROMPT_HOME, CLARIFYPROMPT_DATA_DIR, CLARIFYPROMPT_TRACE,
-EMBED_API_URL, EMBED_API_KEY, EMBED_MODEL, EMBED_DIMENSION
-```
-
-**Hard fail** on any variable present in `.env.example` but missing from `server.json`. The 1.3.0 → 1.3.1 patch was caused by this gap.
-
-**Generalization hint:** applies to any MCP-server project shipping a `server.json` manifest. **Strong promotion candidate.**
-
----
-
-## ADD: CP-3 — README env-var reference table completeness
-
-The README's `### Environment Variables` (or `## Environment Variables`) section includes a markdown pipe-table. Every variable in `.env.example` must appear as a row; reverse also holds.
-
-**Soft fail** (warning, not blocker) on drift in either direction.
-
-**Generalization hint:** README structure varies too much to promote yet. Revisit once 3+ projects adopt this pattern.
+**Generalization hint:** "add project-specific secret patterns" is itself a general capability — the parent skill already supports it via this AUGMENT operator. The specific patterns here are clarifyprompt-only.
 
 ---
 
@@ -101,18 +72,6 @@ When preparing a release, compare `./packs/` against [LumabyteCo/clarifyprompt-p
 
 ---
 
-## ADD: CP-7 — Apache-2.0 license guard
-
-Non-negotiable per our public commitment in `CONTRIBUTING.md` and `SECURITY.md`:
-
-- `LICENSE` file exists and starts with `"Apache License"`.
-- `package.json#license === "Apache-2.0"`.
-- Hard fail on any drift.
-
-**Generalization hint:** any OSS project with a declared license benefits. **Promotion candidate** as a parameterized check (project declares its committed license; general skill enforces it).
-
----
-
 ## ADD: CP-8 — integration test batteries present (informational)
 
 For minor-version prep (e.g. `1.3.0 → 1.4.0`), confirm the test batteries exist and can at least parse:
@@ -127,15 +86,6 @@ For minor-version prep (e.g. `1.3.0 → 1.4.0`), confirm the test batteries exis
 
 ---
 
-## ADD: CP-9 — `dist/` is gitignored AND not committed
-
-- `dist/` must appear in `.gitignore`.
-- `git ls-files dist/` must return empty.
-
-**Generalization hint:** applies to any compiled-language project (TypeScript, Rust, C++, Go-with-generated-artifacts). **Strong promotion candidate.**
-
----
-
 ## ADD: CP-10 — git tag format
 
 Tags for this repo follow `v<major>.<minor>.<patch>` strictly (e.g. `v1.3.1`). No `v1.3.1-beta`, no `release-1.3.1`, no unprefixed `1.3.1`.
@@ -144,12 +94,29 @@ Tags for this repo follow `v<major>.<minor>.<patch>` strictly (e.g. `v1.3.1`). N
 
 ---
 
-## Promotion candidates — ranked
+## Promotion log
 
-When the user next runs a skills consolidation pass, these are the strongest promotion candidates (proven useful here, should help most projects):
+Track which project-scoped checks have been **promoted** to the user-scoped skill, with the date. Once promoted, the project-scoped entry is removed (or shrunk to project-only specifics) — running ship-check then picks up the general version automatically.
 
-1. **`ADD: CP-2` (server.json env-var cross-check)** — every MCP server benefits.
-2. **`ADD: CP-7` (license commitment guard)** — every OSS project benefits.
-3. **`ADD: CP-9` (dist/ hygiene)** — every compiled-language project benefits.
+| Date | What was promoted | From → to |
+|---|---|---|
+| 2026-04-24 | **CP-2: server.json env-var declarations match `.env.example`** — caught the gap that drove 1.3.0 → 1.3.1 | project `ADD: CP-2` → user `### 11. MCP server-manifest env-var cross-check (conditional)` (now also cross-checks the README env-var table) |
+| 2026-04-24 | **CP-3: README env-var table completeness** — folded into the same general check #11 | project `ADD: CP-3` → user `### 11.` (third surface) |
+| 2026-04-24 | **CP-7: Apache-2.0 license guard** — generalized into a parameterized license-consistency check + a commitment-drift heuristic that reads CONTRIBUTING.md / SECURITY.md / README for "no relicensing" signals | project `ADD: CP-7` → user `### 9. License consistency` |
+| 2026-04-24 | **CP-9: dist/ hygiene** — generalized to all common build-artifact directories across Node / Python / Rust / Java / Go ecosystems | project `ADD: CP-9` → user `### 10. Build-artifact directory hygiene` |
 
-The AUGMENT-level items (version consistency extras, secret pattern adds) are examples of how to use those operators rather than themselves promotable — they are already baked into the general skill's extension points.
+---
+
+## Active promotion candidates (still project-scoped)
+
+When the user next runs a skills consolidation pass, these are the strongest candidates remaining — proven useful here, would help most projects, but waiting on a second-project signal:
+
+1. **AUGMENT version consistency** (`src/index.ts` McpServer literal) — every Node-SDK MCP server benefits. Promote with a detection gate (SDK present in deps).
+2. **CP-6 companion registry sync** — any project with a "main repo + curated companion registry" pattern. Promote when the general skill grows a "companion registry URL" config field.
+3. **CP-8 integration battery presence** — generic once the test files are version-controlled (currently TODO for 1.4).
+
+---
+
+## Notes for re-running specific checks
+
+Don't duplicate the general checks here. If a general check needs tuning for this repo (e.g., an additional secret pattern), override it in this file with a comment explaining why — don't just add a parallel variant.

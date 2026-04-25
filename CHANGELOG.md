@@ -4,6 +4,37 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] — 2026-04-24
+
+Closes the audit loop opened by ship-check during the 1.3.1 retrospective. Pure docs + metadata + skill-library hygiene; no engine code changes.
+
+### Added
+
+- **`server.json` env-var declarations for the search-enrichment feature** — `SEARCH_PROVIDER`, `SEARCH_API_KEY` (secret), `SEARCH_API_URL`. These were documented in `.env.example` since the optional context-enrichment feature shipped in 1.1.x but never made it into the MCP Registry manifest. Users installing via the registry UI will now be prompted for them.
+- **README env-var reference table rows for `SEARCH_*`** — same gap on the docs side, also closed.
+- **Synced `server.json` description** to match the 1.3.0+ pitch ("persistent memory, knowledge packs, explicit token-budget curation…"). Was still on 1.2.0-era language.
+
+### Changed
+
+- **Removed the `CLARIFYPROMPT_TELEMETRY` placeholder line from `.env.example`.** It was a forward-looking commented-out example for a feature that doesn't exist yet. Documenting features that don't exist makes the docs slightly lie. Will reappear the moment any telemetry code lands.
+
+### Skill library — consolidation pass
+
+The `ship-check` skill caught its own first audit findings during the 1.3.1 → 1.3.2 cycle. Used the moment to run the first **promotion pass** under the cascade-learning model we established:
+
+- **Promoted CP-7 → general check #9** (License consistency + commitment-drift heuristic). Now applies to any project regardless of language.
+- **Promoted CP-9 → general check #10** (Build-artifact directory hygiene across Node / Python / Rust / Java / Go).
+- **Promoted CP-2 + CP-3 → general check #11** (MCP server-manifest env-var cross-check, conditional on `server.json` existence — now also reconciles against the README env-var table).
+- **Audit-logic fixes in the user-scoped skill**: secrets sweep now excludes `.claude/skills/**` (skill files commonly enumerate token patterns; matching them is a self-reference false positive); `.env.example` parser now includes commented `# VAR=` lines.
+
+The project-scoped skill at `.claude/skills/ship-check/SKILL.md` now carries a **promotion log** — a dated audit trail of which checks moved from project-scoped to user-scoped, with one-line rationales each.
+
+### Notes for integrators
+
+- npm tarball still ships `dist/` + `packs/` + `README.md` + `LICENSE` + `CHANGELOG.md` + `.env.example`. No file-list changes.
+- No new MCP tools (still 16 from 1.3.0).
+- No env vars *removed* (only the `CLARIFYPROMPT_TELEMETRY` example comment was removed, and that was never a live env var).
+
 ## [1.3.1] — 2026-04-24
 
 Post-1.3.0 audit fixes. No engine behavior change; three real gaps found and closed.
