@@ -86,6 +86,80 @@ For minor-version prep (e.g. `1.3.0 → 1.4.0`), confirm the test batteries exis
 
 ---
 
+## ADD: CP-11 — README marketing surfaces match the current version
+
+**Problem this fixes:** between 1.4.0 and 1.5.0 the version was bumped everywhere except the README's marketing prose — the headline `> **New in 1.4.0:**` blockquote and the `## What's new in 1.4.0` / `## What's in the box (cumulative through 1.4.0)` headings stayed on the old version. Every other surface was correct, so the existing version-consistency check (general #1) didn't catch it. This new check closes that loop.
+
+When preparing a release where the target version is `X.Y.Z` (i.e. `package.json#version` matches `CHANGELOG`'s most recent entry header):
+
+1. **README headline blockquote** — the first `> **New in <ver>:**` blockquote near the top of `README.md` must reference `X.Y.Z`. Hard fail otherwise.
+2. **What's new heading** — the most-recent `## What's new in <ver>` heading must say `X.Y.Z`. Hard fail otherwise.
+3. **Cumulative-through heading** — `## What's in the box (cumulative through <ver>)` must say `X.Y.Z`. Hard fail otherwise.
+4. **Architecture tree mentions** — `(<ver>)` annotations in the architecture diagram for files added in this release must use `X.Y.Z` (soft warning if drift; not hard fail).
+
+Detection commands (BSD-grep compatible):
+
+```bash
+TARGET_VERSION=$(node -p "require('./package.json').version")
+grep -q "> \*\*New in ${TARGET_VERSION}:" README.md \
+  || echo "::error::README headline blockquote not on ${TARGET_VERSION}"
+grep -q "^## What's new in ${TARGET_VERSION}" README.md \
+  || echo "::error::No '## What's new in ${TARGET_VERSION}' heading in README.md"
+grep -q "^## What's in the box (cumulative through ${TARGET_VERSION})" README.md \
+  || echo "::error::'cumulative through' heading not on ${TARGET_VERSION}"
+```
+
+**Generalization hint:** every project with a marketing-style README that highlights "what's new this release" benefits from this check. The exact heading patterns are project-specific (`What's new in X` vs. `Release X` vs. `Highlights`), but the underlying invariant — "if the version bumped, the marketing surface should mention it" — is universal. **Promotion candidate** the moment a second project adopts ship-check with a similar README pattern. Promote with a configurable list of heading templates.
+
+---
+
+## ADD: CP-12 — Platform-pack format validity (1.5.0+)
+
+For every `packs/platforms/<category>.yaml` shipped in the repo:
+
+1. The file must parse as YAML.
+2. It must declare a top-level `category:` mapping with at least `id` and `defaultPlatform`.
+3. `category.id` must be one of: `chat`, `image`, `voice`, `video`, `music`, `code`, `document`.
+4. The file must declare a `platforms:` array with at least one entry.
+5. Every platform entry must have non-empty `id`, `label`, `description`.
+6. The `defaultPlatform` must reference a `platforms[].id` that exists in the same file.
+
+Detection (Node + js-yaml; runs at the project root):
+
+```bash
+node --input-type=module -e "
+import yaml from 'js-yaml';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+const dir = 'packs/platforms';
+if (!fs.existsSync(dir)) { console.log('no platform packs to validate'); process.exit(0); }
+const VALID = ['chat','image','voice','video','music','code','document'];
+let fails = 0;
+for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.yaml'))) {
+  const file = path.join(dir, f);
+  try {
+    const doc = yaml.load(fs.readFileSync(file, 'utf-8'));
+    const c = doc?.category;
+    if (!c?.id || !VALID.includes(c.id)) throw new Error('missing/invalid category.id');
+    if (!Array.isArray(doc.platforms) || doc.platforms.length === 0) throw new Error('missing platforms[]');
+    for (const p of doc.platforms) {
+      if (!p?.id || !p?.label || !p?.description) throw new Error('platform entry missing id/label/description');
+    }
+    if (c.defaultPlatform && !doc.platforms.find(p => p.id === c.defaultPlatform)) throw new Error('defaultPlatform not in platforms[]');
+    console.log('  ✔', f, c.id, doc.platforms.length, 'platforms');
+  } catch (e) {
+    console.error('  ✖', f, '-', e.message);
+    fails++;
+  }
+}
+process.exit(fails);
+"
+```
+
+**Generalization hint:** the pattern of "declarative data files in YAML at a known location, validated at ship-time" generalizes — every project with this shape (knowledge packs, platform packs, prompt templates, model configs, etc.) benefits. **Promotion candidate** when a second project adopts a similar YAML-pack pattern, with the schema parameterized.
+
+---
+
 ## ADD: CP-10 — git tag format
 
 Tags for this repo follow `v<major>.<minor>.<patch>` strictly (e.g. `v1.3.1`). No `v1.3.1-beta`, no `release-1.3.1`, no unprefixed `1.3.1`.

@@ -9,7 +9,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.4.0:** The pipeline ships. Four new MCP tools — `clarify_with_user`, `ground_prompt`, `critique_prompt`, `compose_prompt` — turn the canonical happy path (clarify → ground/optimize → critique) into first-class operations. Plus a deterministic eval harness with 20 fixtures, opt-in CI-gated evals, and a per-call audit log. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.5.0:** Built-in platforms become declarative. The 58+ hardcoded TypeScript platform arrays move to `packs/platforms/*.yaml` — adding a built-in platform is now a YAML edit, no TS rebuild needed. Plus memory-layer eval coverage (knowledge-pack retrieval + vector-search ranking now exercise the `setup:` multi-call extension), and `docs/adoption/` ships with launch-post drafts + catalog submission specs. **23 deterministic eval fixtures** under version control. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,9 +26,33 @@ ClarifyPrompt returns (for DALL-E):
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
 
-## What's new in 1.4.0
+## What's new in 1.5.0
 
-**The pipeline ships.** Four new MCP tools turn ClarifyPrompt's core operations into a composable pipeline. Use any tool standalone, or run the whole chain in one call:
+**Built-in platforms become declarative.** The 58+ hardcoded TypeScript platform arrays move to `packs/platforms/*.yaml` — adding a built-in platform is now a YAML edit, not a TS edit. The TypeScript layer becomes a runtime loader with a hardcoded fallback table. Malformed YAML can never soft-brick the server.
+
+```
+packs/platforms/
+  chat.yaml       9 platforms
+  code.yaml       9
+  document.yaml   8
+  image.yaml     10
+  music.yaml      4
+  video.yaml     11
+  voice.yaml      7
+  README.md      contributor docs
+```
+
+To add a new built-in platform: append an entry to the relevant category file, run `npm run build`, open a PR. No TS edit required. Custom-platform-via-runtime (`register_platform`) still works identically for user-installed platforms.
+
+- **Memory-layer eval coverage.** The eval harness now supports `setup: [{tool, args}, ...]` — a list of MCP tool calls executed BEFORE the main `input`. Two new fixtures use it: one loads a knowledge pack inline and verifies the chunk surfaces in `grounding.sources` after the embed → store → retrieve → curate → ground pipeline; the other proves vector-search ranking quality. **23 fixtures total** (was 20 in 1.4.0).
+- **Test infrastructure modernization.** The integration + Day-2 test batteries used to assert literal version strings (`1.3.0`, `16 tools`) and broke on every bump. Now they read `EXPECTED_VERSION` from `package.json` and assert presence of a tool *set* rather than a tool *count*. Future bumps don't break the tests.
+- **Adoption materials.** `docs/adoption/` ships with copy/paste-ready Show HN body, Reddit posts, Twitter thread, awesome-mcp-servers PR template, and catalog submission specs (mcp.so, Smithery, mcp-get, PulseMCP, modelcontextprotocol/servers).
+- **One new runtime dep:** `js-yaml` promoted from devDependency for the platform loader (~200 KB).
+- **Same MCP tool surface as 1.4.** 20 tools, 1 resource. No new tools; no removed tools; result shapes unchanged.
+
+## Previously in 1.4.0 — the composable pipeline
+
+Four core operations as first-class MCP tools that compose. Use any tool standalone, or run the whole chain in one call:
 
 ```
   ┌─────────────┐     ┌─────────────────────┐     ┌──────────────┐
@@ -49,7 +73,7 @@ Same prompt, different platform, completely different output. ClarifyPrompt know
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.4.0)
+## What's in the box (cumulative through 1.5.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -810,7 +834,8 @@ clarifyprompt-mcp/
     index.ts                           MCP server entry point (20 tools, 1 resource)
     engine/
       config/
-        categories.ts                  7 categories, 58 platforms, 7 modes
+        categories.ts                  CategoryConfig type + CATEGORIES const (loaded from YAML in 1.5.0)
+        platformLoader.ts              (1.5.0) YAML pack loader — reads packs/platforms/*.yaml at boot
         paths.ts                       Unified $CLARIFYPROMPT_HOME resolver (1.2.0)
         persistence.ts                 ConfigStore — JSON config + .md file loading
         registry.ts                    PlatformRegistry — merges built-in + custom
@@ -849,10 +874,14 @@ clarifyprompt-mcp/
       grounding/ground.ts              (1.4.0) ground_prompt — strict caller-provided grounding
       critique/critique.ts             (1.4.0) critique_prompt — LLM-as-judge + optional rewrite
       composition/compose.ts           (1.4.0) compose_prompt — canonical clarify→ground/opt→critique pipeline
-  evals/                                Eval harness v0 (1.3.0)
+  evals/                                Eval harness v0 (1.3.0; setup: multi-call in 1.5.0)
     run.mjs                            YAML fixtures → MCP server → scored HTML report
-    fixtures/*.yaml                    20 deterministic fixtures
+    fixtures/*.yaml                    23 deterministic fixtures
     schema.json                        Fixture schema
+  packs/                                (1.3.0) knowledge packs + (1.5.0) platform packs
+    *.md                               Knowledge packs (community-contributable)
+    platforms/*.yaml                   (1.5.0) built-in AI platform declarations — 7 files, 58 platforms
+  docs/adoption/                        (1.5.0) launch-post drafts + catalog submission specs
 ```
 
 ## Docker
