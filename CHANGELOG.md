@@ -4,6 +4,33 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-04-26
+
+**Built-in platforms become declarative.** The 58+ hardcoded TypeScript platform arrays are now loaded from YAML packs at runtime — adding a built-in platform is now a YAML edit, not a TS edit. Plus the eval harness gains multi-call fixtures (`setup:`), with two new fixtures covering the persistent memory + knowledge-pack retrieval pipeline that was previously uncovered.
+
+### Added
+
+- **YAML platform packs** — `packs/platforms/<category>.yaml`, one file per category, each declaring the platforms in that category with their syntax hints. The TypeScript layer (`src/engine/config/platformLoader.ts`) reads them at module-load and merges with a hardcoded fallback table. Adding a built-in platform now means appending a YAML entry; no TS edit, no rebuild for downstream consumers who pull a fresh tarball.
+- **Graceful fallback** — any individual YAML that fails to parse logs a single stderr line and is skipped; the hardcoded fallback fills in for the affected category. A missing `packs/platforms/` directory entirely → falls through cleanly. Malformed YAML can never soft-brick the server.
+- **Multi-call eval fixtures** — `evals/run.mjs` now supports a `setup: [{tool, args}, ...]` array that runs MCP tool calls before the main `input`. Setup calls aren't scored; their job is to establish state (e.g. load a knowledge pack) for the main call to exercise.
+- **Memory-layer eval fixtures** — two new fixtures cover the previously-uncovered memory pipeline:
+  - `memory-pack-chunk-grounds-optimize` — loads an inline knowledge pack via setup, then runs `optimize_prompt` on a related query and verifies the pack chunk surfaces in `grounding.sources` as `memory:pack_chunk:N`. Proves the full embed → store → retrieve → curate → ground pipeline.
+  - `memory-search-ranks-pack-by-similarity` — loads a multi-section pack with one SOX-related and two unrelated sections, then runs `memory_search` for a SOX query and verifies the top result's content matches.
+- **`top_result_must_contain` / `top_result_kind` / `count_min` / `count_max` checks** — eval harness check types for `memory_search` result shape.
+- **`adoption/` docs directory** — `docs/adoption/` ships with HN/Reddit launch post drafts, an awesome-mcp-servers PR template, and catalog submission specs. Pure docs; doesn't affect runtime.
+
+### Changed
+
+- **`js-yaml` promoted from devDependency to runtime dependency** (`^4.1.1`). ~200 KB of unpacked dependency for the YAML platform-pack loader. Already used by the eval harness pre-1.5; now also used by the server at boot.
+- **Eval baseline** (qwen2.5-coder:7b-instruct-q4_K_M, single-model run): **19 passed / 1 failed / 3 skipped / 96% avg** across 23 fixtures (was 17/1/3/96% across 21). The lone failure remains `analyzer-creative-media` (unchanged — deliberate signal that 7B coder models can't reliably classify creative-media prompts).
+
+### Notes for integrators
+
+- **Same MCP tool surface as 1.4.0.** No new tools; no removed tools. 20 MCP tools, 1 resource.
+- **Same env-var surface.** No new required env vars.
+- **Same publish surface.** `dist/` + `packs/` + `README.md` + `LICENSE` + `CHANGELOG.md` + `.env.example`. The npm tarball now includes `packs/platforms/*.yaml` (~12 KB total) so `npx clarifyprompt-mcp` users get the YAML-driven platform list out of the box.
+- **Custom platforms via `register_platform`** still work identically; user-registered platforms persist in `~/.clarifyprompt/config.json` regardless of the YAML pack changes.
+
 ## [1.4.0] — 2026-04-25
 
 **The pipeline ships.** Four new MCP tools turn ClarifyPrompt's core operations into a composable pipeline. The first deterministic eval harness lands under version control with 20 fixtures; opt-in CI gating runs evals on every push when an `OPENAI_API_KEY` secret is configured.

@@ -33,14 +33,29 @@
       "description": "Files to materialize in a temp workspace before running. Lets fixtures test workspace-signal-driven behavior.",
       "additionalProperties": { "type": "string" }
     },
+    "setup": {
+      "type": "array",
+      "description": "Optional list of MCP tool calls executed BEFORE the main `input`. Use this to load knowledge packs, register custom platforms, save outcomes, or anything else that establishes state the main call needs. Setup results are not scored.",
+      "items": {
+        "type": "object",
+        "required": ["tool"],
+        "additionalProperties": false,
+        "properties": {
+          "tool": { "type": "string" },
+          "args": { "type": "object" }
+        }
+      }
+    },
     "input": {
       "type": "object",
-      "required": ["prompt"],
       "additionalProperties": false,
-      "description": "Args passed to the MCP tool under test. Defaults to optimize_prompt; set `tool` to target another tool. Extra keys are forwarded as-is to the tool's MCP schema.",
+      "description": "Args passed to the MCP tool under test. Defaults to optimize_prompt; set `tool` to target another tool. `prompt` is required for optimize/clarify/ground/critique/compose; memory_search uses `query` instead.",
       "properties": {
-        "tool": { "type": "string", "enum": ["optimize_prompt", "clarify_with_user", "ground_prompt", "critique_prompt", "compose_prompt"], "description": "Which MCP tool to invoke. Default: optimize_prompt." },
+        "tool": { "type": "string", "enum": ["optimize_prompt", "clarify_with_user", "ground_prompt", "critique_prompt", "compose_prompt", "memory_search"], "description": "Which MCP tool to invoke. Default: optimize_prompt." },
         "prompt": { "type": "string" },
+        "query": { "type": "string", "description": "memory_search: the search query." },
+        "kinds": { "type": "array", "items": { "type": "string", "enum": ["fact", "outcome", "pack_chunk", "optimization"] }, "description": "memory_search: which memory kinds to search." },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 25, "description": "memory_search: max results." },
         "category": { "type": "string", "enum": ["chat", "image", "voice", "video", "music", "code", "document"] },
         "platform": { "type": "string" },
         "mode": { "type": "string", "enum": ["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"] },
@@ -136,7 +151,11 @@
         "clarification_required": { "type": "boolean", "description": "compose_prompt: result.clarificationRequired must equal this." },
         "revised": { "type": "boolean", "description": "compose_prompt: whether finalPrompt was replaced by critique.improvedPrompt." },
         "final_prompt_must_contain": { "type": "array", "items": { "type": "string" }, "description": "compose_prompt: substrings that must appear in result.finalPrompt." },
-        "final_prompt_must_not_contain": { "type": "array", "items": { "type": "string" }, "description": "compose_prompt: substrings that must NOT appear in result.finalPrompt." }
+        "final_prompt_must_not_contain": { "type": "array", "items": { "type": "string" }, "description": "compose_prompt: substrings that must NOT appear in result.finalPrompt." },
+        "count_min": { "type": "integer", "minimum": 0, "description": "memory_search: result.count must be at least this." },
+        "count_max": { "type": "integer", "minimum": 0, "description": "memory_search: result.count must be at most this." },
+        "top_result_must_contain": { "type": "array", "items": { "type": "string" }, "description": "memory_search: result.results[0].content must contain all listed substrings." },
+        "top_result_kind": { "type": "string", "enum": ["fact", "outcome", "pack_chunk", "optimization"], "description": "memory_search: result.results[0].kind must equal this." }
       }
     }
   }

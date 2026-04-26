@@ -1,0 +1,94 @@
+category:
+  id: chat
+  label: Chat
+  description: General conversation & Q&A
+  defaultPlatform: claude
+  defaultMode: detailed
+
+platforms:
+  - id: claude
+    label: Claude
+    description: Anthropic, strong reasoning and analysis
+    syntaxHints:
+      - system prompts
+      - XML tags
+      - chain of thought
+      - long context
+      - artifacts
+
+  - id: chatgpt
+    label: ChatGPT
+    description: OpenAI, versatile conversation
+    syntaxHints:
+      - system prompts
+      - browsing
+      - code interpreter
+      - DALL-E integration
+      - custom GPTs
+
+  - id: gemini
+    label: Gemini
+    description: Google, multimodal reasoning
+    syntaxHints:
+      - multimodal input
+      - Google integration
+      - long context
+      - grounding
+
+  - id: llama
+    label: Llama
+    description: Meta, open weights, local deployment
+    syntaxHints:
+      - open weights
+      - system prompts
+      - local deployment
+      - fine-tunable
+      - Ollama/vLLM
+
+  - id: deepseek
+    label: DeepSeek
+    description: Open weights, strong reasoning (R1/V3)
+    syntaxHints:
+      - open weights
+      - system prompts
+      - chain of thought
+      - deep reasoning
+      - local deployment
+
+  - id: qwen
+    label: Qwen
+    description: Alibaba, open weights, multilingual
+    syntaxHints:
+      - open weights
+      - system prompts
+      - multilingual
+      - tool use
+      - local deployment
+
+  - id: kimi
+    label: Kimi
+    description: Moonshot AI, ultra-long context (2M tokens)
+    syntaxHints:
+      - ultra-long context
+      - document analysis
+      - natural language
+      - file upload
+
+  - id: glm
+    label: GLM
+    description: Zhipu AI, ChatGLM series, open weights
+    syntaxHints:
+      - open weights
+      - system prompts
+      - multilingual
+      - tool use
+      - local deployment
+
+  - id: minimax-chat
+    label: Minimax
+    description: Minimax, strong general reasoning
+    syntaxHints:
+      - system prompts
+      - function calling
+      - long context
+      - multilingual

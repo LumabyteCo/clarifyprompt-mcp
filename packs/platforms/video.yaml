@@ -1,0 +1,106 @@
+category:
+  id: video
+  label: Video
+  description: Video generation
+  defaultPlatform: runway
+  defaultMode: detailed
+
+platforms:
+  - id: sora
+    label: Sora
+    description: OpenAI, cinematic quality
+    syntaxHints:
+      - natural language
+      - duration
+      - camera motion
+      - scene description
+
+  - id: runway
+    label: Runway Gen-3
+    description: Motion control, professional
+    syntaxHints:
+      - motion brush
+      - camera controls
+      - motion amount
+      - extend
+
+  - id: pika
+    label: Pika Labs
+    description: Quick iterations, stylized
+    syntaxHints:
+      - motion parameters
+      - camera movements
+      - "-gs"
+      - "-motion"
+
+  - id: kling
+    label: Kling AI
+    description: Long clips, high quality
+    syntaxHints:
+      - natural language
+      - duration up to 2min
+      - professional mode
+
+  - id: luma
+    label: Luma Dream Machine
+    description: Fast, keyframe control
+    syntaxHints:
+      - natural language
+      - keyframes
+      - camera motion
+
+  - id: minimax
+    label: Minimax / Hailuo
+    description: Expressive motion, Asian style
+    syntaxHints:
+      - natural language
+      - character animation
+      - expressions
+
+  - id: veo
+    label: Google Veo 2
+    description: DeepMind, cinematic 4K
+    syntaxHints:
+      - natural language
+      - cinematic quality
+      - 4K output
+      - up to 2 minutes
+
+  - id: wan
+    label: Wan
+    description: Open source, versatile
+    syntaxHints:
+      - natural language
+      - open source
+      - image-to-video
+      - text-to-video
+
+  - id: heygen
+    label: HeyGen
+    description: AI avatar videos, talking heads
+    syntaxHints:
+      - avatar selection
+      - script input
+      - voice pairing
+      - gestures
+      - background
+
+  - id: synthesia
+    label: Synthesia
+    description: Enterprise AI avatar videos
+    syntaxHints:
+      - avatar selection
+      - script input
+      - multi-language
+      - brand templates
+      - slides
+
+  - id: cogvideox
+    label: CogVideoX
+    description: Open weights, high quality text-to-video
+    syntaxHints:
+      - natural language
+      - open weights
+      - text-to-video
+      - image-to-video
+      - detailed descriptions

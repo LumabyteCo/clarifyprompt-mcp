@@ -1,0 +1,48 @@
+category:
+  id: music
+  label: Music
+  description: Music generation
+  defaultPlatform: suno
+  defaultMode: detailed
+
+platforms:
+  - id: suno
+    label: Suno AI
+    description: Music from text prompts
+    syntaxHints:
+      - genre
+      - mood
+      - lyrics
+      - instrumental
+      - style tags
+
+  - id: udio
+    label: Udio
+    description: Music generation, remixing
+    syntaxHints:
+      - genre tags
+      - mood
+      - extend
+      - remix
+
+  - id: stable-audio
+    label: Stable Audio
+    description: Stability AI, high-quality audio
+    syntaxHints:
+      - natural language
+      - duration
+      - genre
+      - mood
+      - instruments
+      - BPM
+
+  - id: musicgen
+    label: MusicGen
+    description: Meta, open weights music generation
+    syntaxHints:
+      - open weights
+      - natural language
+      - melody conditioning
+      - genre
+      - tempo
+      - local deployment

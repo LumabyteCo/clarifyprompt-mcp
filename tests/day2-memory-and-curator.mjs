@@ -73,15 +73,24 @@ const srv = startServer();
 const init = await srv.rpc('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'day2', version: '0.0.1' } });
 await srv.rpc('notifications/initialized', {}).catch(() => {});
 
-// ---- D1: server version + 15 tools ----
-sep('D1: server advertises 1.3.0 and 15 tools');
+// ---- D1: server version matches package.json + Day-2 tools all present ----
+// Version-agnostic: asserts the SET of Day-2 tools exists, not a specific count,
+// so post-1.3 versions that add new tools (1.4: clarify/ground/critique/compose)
+// don't fail this battery.
+const pkg = JSON.parse(await import('node:fs').then(fs => fs.promises.readFile('./package.json', 'utf-8')));
+const EXPECTED_VERSION = pkg.version;
+
+sep(`D1: server advertises ${EXPECTED_VERSION} and the 5 Day-2 tools (memory + packs + curator)`);
 kv('server version', init.serverInfo.version);
 const tools = (await srv.rpc('tools/list', {})).tools;
 kv('tool count', tools.length);
-const newTools = ['load_knowledge_pack', 'list_packs', 'unload_pack', 'memory_search', 'explain_last_curation'];
-const missing = newTools.filter(n => !tools.some(t => t.name === n));
-if (init.serverInfo.version === '1.3.0' && missing.length === 0 && tools.length === 16) pass('1.3.0 + 16 tools + all 5 new tools present');
-else fail(`version=${init.serverInfo.version} tools=${tools.length} missing=${missing.join(',')}`);
+const day2Tools = ['load_knowledge_pack', 'list_packs', 'unload_pack', 'memory_search', 'explain_last_curation'];
+const missing = day2Tools.filter(n => !tools.some(t => t.name === n));
+if (init.serverInfo.version === EXPECTED_VERSION && missing.length === 0) {
+  pass(`${EXPECTED_VERSION} (matches package.json) + all 5 Day-2 tools present (server has ${tools.length} tools total)`);
+} else {
+  fail(`version=${init.serverInfo.version} (expected ${EXPECTED_VERSION}); tools=${tools.length}; missing=${missing.join(',') || '(none)'}`);
+}
 
 // ---- D2: load a knowledge pack, list, confirm ----
 sep('D2: load knowledge pack from local path');

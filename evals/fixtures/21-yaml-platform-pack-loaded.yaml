@@ -1,0 +1,18 @@
+name: yaml-platform-pack-loaded
+description: 'Built-in platform data is now loaded from packs/platforms/image.yaml at runtime. Verify the YAML-declared Midjourney syntax hints (--ar, --v, --style raw, --chaos, --s) flow into the rendered system prompt. We check the SYSTEM PROMPT, not the output, because that is the deterministic surface — the strategy MUST inject every declared hint regardless of what the downstream LLM chooses to emit.'
+tags: [pass-6, yaml-platform-packs, regression]
+input:
+  prompt: 'a tabby cat sitting on a sunlit windowsill'
+  category: image
+  platform: midjourney
+  mode: detailed
+  skip_intent_resolution: true
+expected:
+  category: image
+  platform: midjourney
+  # Deterministic check: 'platform-hints' must appear in grounding.sources.
+  # The strategy only emits this source when the platform was found in the
+  # registry AND has non-empty syntaxHints. Both conditions require the
+  # YAML loader to have produced the platform — broken loader → no source.
+  grounding_sources_must_include: ['platform-hints']
+  no_error: true

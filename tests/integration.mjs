@@ -85,16 +85,36 @@ const srv = startServer();
 const init = await srv.rpc('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'integ', version: '0.0.1' } });
 await srv.rpc('notifications/initialized', {}).catch(() => {});
 
-// ---------------- D1: server version / 11 tools / save_outcome visible ------
-sep('D1: server advertises 1.3.0 and 16 tools including save_outcome');
+// ---------------- D1: server version matches package.json + tool surface present ------
+// Version + tool-count are version-agnostic: read package.json for the source-of-truth
+// version, and assert ≥ a minimum tool count + presence of every tool added across
+// versions. This way the test never goes stale on a version bump.
+const pkg = JSON.parse(await import('node:fs').then(fs => fs.promises.readFile('./package.json', 'utf-8')));
+const EXPECTED_VERSION = pkg.version;
+const REQUIRED_TOOLS = [
+  // Pre-1.4 (16 tools)
+  'optimize_prompt', 'list_categories', 'list_platforms', 'list_modes',
+  'register_platform', 'update_platform', 'unregister_platform',
+  'inspect_context', 'list_traces', 'get_trace',
+  'save_outcome', 'memory_search', 'explain_last_curation',
+  'load_knowledge_pack', 'list_packs', 'unload_pack',
+  // 1.4+ (4 new tools)
+  'clarify_with_user', 'ground_prompt', 'critique_prompt', 'compose_prompt',
+];
+
+sep(`D1: server advertises ${EXPECTED_VERSION} and the full tool surface (${REQUIRED_TOOLS.length} required)`);
 kv('server version', init.serverInfo.version);
 const tools = (await srv.rpc('tools/list', {})).tools;
+const toolNames = tools.map(t => t.name);
 kv('tool count', tools.length);
-kv('save_outcome present', tools.some(t => t.name === 'save_outcome') ? 'yes' : 'NO');
-if (init.serverInfo.version === '1.3.0') pass('version = 1.3.0');
-else fail(`version mismatch: ${init.serverInfo.version}`);
-if (tools.length === 16 && tools.some(t => t.name === 'save_outcome')) pass('16 tools with save_outcome');
-else fail('tool list incomplete');
+kv('save_outcome present', toolNames.includes('save_outcome') ? 'yes' : 'NO');
+
+if (init.serverInfo.version === EXPECTED_VERSION) pass(`version = ${EXPECTED_VERSION} (matches package.json)`);
+else fail(`version mismatch: server=${init.serverInfo.version} package.json=${EXPECTED_VERSION}`);
+
+const missingTools = REQUIRED_TOOLS.filter(t => !toolNames.includes(t));
+if (missingTools.length === 0) pass(`all ${REQUIRED_TOOLS.length} required tools present (server has ${tools.length})`);
+else fail(`missing tools: ${missingTools.join(', ')}`);
 
 // ---------------- D2: category-bug fixed (emails → code, not document) ------
 sep('D2: "write a function to validate emails" routes to code, not document');

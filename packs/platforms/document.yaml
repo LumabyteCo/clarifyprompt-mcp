@@ -1,0 +1,85 @@
+category:
+  id: document
+  label: Document
+  description: Writing & documents
+  defaultPlatform: claude
+  defaultMode: detailed
+
+platforms:
+  - id: claude
+    label: Claude
+    description: Anthropic, long-form writing and analysis
+    syntaxHints:
+      - system prompts
+      - XML tags
+      - long context
+      - artifacts
+      - structured output
+
+  - id: chatgpt
+    label: ChatGPT
+    description: OpenAI, versatile writing
+    syntaxHints:
+      - system prompts
+      - browsing for research
+      - custom GPTs
+      - markdown output
+
+  - id: gemini
+    label: Gemini
+    description: Google, research-backed writing
+    syntaxHints:
+      - grounding
+      - Google Search integration
+      - long context
+      - multimodal input
+
+  - id: jasper
+    label: Jasper
+    description: Marketing copy and brand content
+    syntaxHints:
+      - brand voice
+      - templates
+      - tone of voice
+      - campaign briefs
+      - SEO mode
+
+  - id: copy-ai
+    label: Copy.ai
+    description: Marketing copy and workflows
+    syntaxHints:
+      - templates
+      - workflows
+      - brand voice
+      - tone selection
+      - use cases
+
+  - id: notion-ai
+    label: Notion AI
+    description: Integrated writing assistant
+    syntaxHints:
+      - in-context editing
+      - summarize
+      - translate
+      - tone adjustment
+      - action items
+
+  - id: grammarly
+    label: Grammarly
+    description: Editing, rewriting, tone adjustment
+    syntaxHints:
+      - tone detection
+      - rewrite suggestions
+      - formality level
+      - audience
+      - intent
+
+  - id: writesonic
+    label: Writesonic
+    description: SEO content and articles
+    syntaxHints:
+      - SEO keywords
+      - article templates
+      - tone
+      - word count
+      - target audience

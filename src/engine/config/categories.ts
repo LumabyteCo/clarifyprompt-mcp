@@ -1,3 +1,5 @@
+import { loadCategoriesFromPacks, mergeWithFallback } from './platformLoader.js';
+
 export type Category = 'chat' | 'image' | 'voice' | 'video' | 'code' | 'document' | 'music';
 export type Mode = 'concise' | 'detailed' | 'structured' | 'step-by-step' | 'bullet-points' | 'technical' | 'simple';
 
@@ -104,7 +106,17 @@ const DOCUMENT_PLATFORMS: PlatformConfig[] = [
   { id: 'writesonic', label: 'Writesonic', description: 'SEO content and articles', syntaxHints: ['SEO keywords', 'article templates', 'tone', 'word count', 'target audience'] },
 ];
 
-export const CATEGORIES: CategoryConfig[] = [
+/**
+ * Hardcoded fallback table. Pre-1.5 this WAS the source of truth. Now it's
+ * a defense layer: if `packs/platforms/<category>.yaml` is missing or
+ * unparseable for some category, we fall back to this entry for that one
+ * category — the rest still load from YAML.
+ *
+ * Editing built-in platforms? Edit `packs/platforms/*.yaml`. This array
+ * is kept in sync with the YAML packs but should not be the place you make
+ * changes.
+ */
+const FALLBACK_CATEGORIES: CategoryConfig[] = [
   { id: 'chat', label: 'Chat', description: 'General conversation & Q&A', platforms: CHAT_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true },
   { id: 'image', label: 'Image', description: 'Image generation', platforms: IMAGE_PLATFORMS, defaultPlatform: 'midjourney', defaultMode: 'detailed', hasPlatforms: true },
   { id: 'voice', label: 'Voice', description: 'Voice & speech synthesis', platforms: VOICE_PLATFORMS, defaultPlatform: 'elevenlabs', defaultMode: 'detailed', hasPlatforms: true },
@@ -113,6 +125,19 @@ export const CATEGORIES: CategoryConfig[] = [
   { id: 'code', label: 'Code', description: 'Programming & development', platforms: CODE_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true },
   { id: 'document', label: 'Document', description: 'Writing & documents', platforms: DOCUMENT_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true },
 ];
+
+/**
+ * The live table the rest of the engine reads from. Loaded once at module
+ * import: YAML packs win where present, fallback entries fill any gaps.
+ *
+ * Side effect: missing-pack and parse-failure warnings are written to
+ * stderr by the loader. We don't throw — better to boot with the fallback
+ * than to refuse to start because of a malformed YAML edit.
+ */
+export const CATEGORIES: CategoryConfig[] = mergeWithFallback(
+  loadCategoriesFromPacks(),
+  FALLBACK_CATEGORIES,
+);
 
 export const MODES: { id: Mode; label: string; description: string }[] = [
   { id: 'concise', label: 'Concise', description: 'Short and to the point' },

@@ -1,0 +1,92 @@
+category:
+  id: code
+  label: Code
+  description: Programming & development
+  defaultPlatform: claude
+  defaultMode: detailed
+
+platforms:
+  - id: claude
+    label: Claude
+    description: Anthropic, long context reasoning
+    syntaxHints:
+      - system prompts
+      - XML tags
+      - chain of thought
+      - artifacts
+
+  - id: chatgpt
+    label: ChatGPT
+    description: OpenAI, general coding
+    syntaxHints:
+      - system prompts
+      - code interpreter
+      - function calling
+      - markdown
+
+  - id: cursor
+    label: Cursor
+    description: AI-first IDE
+    syntaxHints:
+      - inline edits
+      - codebase context
+      - "@file references"
+      - .cursorrules
+
+  - id: copilot
+    label: GitHub Copilot
+    description: Inline completions
+    syntaxHints:
+      - inline suggestions
+      - comment-driven
+      - context from open files
+      - short prompts
+
+  - id: windsurf
+    label: Windsurf
+    description: Codeium, flow-based
+    syntaxHints:
+      - cascade flows
+      - multi-file edits
+      - codebase awareness
+      - natural language
+
+  - id: deepseek-coder
+    label: DeepSeek Coder
+    description: Open weights, top coding benchmarks
+    syntaxHints:
+      - open weights
+      - system prompts
+      - fill-in-middle
+      - code completion
+      - local deployment
+
+  - id: qwen-coder
+    label: Qwen Coder
+    description: Alibaba, open weights coding specialist
+    syntaxHints:
+      - open weights
+      - system prompts
+      - code completion
+      - multi-language
+      - local deployment
+
+  - id: codestral
+    label: Codestral
+    description: Mistral, fast code generation
+    syntaxHints:
+      - open weights
+      - fill-in-middle
+      - fast inference
+      - 32K context
+      - local deployment
+
+  - id: gemini-code
+    label: Gemini
+    description: Google, strong coding with long context
+    syntaxHints:
+      - system prompts
+      - long context
+      - multimodal
+      - grounding
+      - Google integration

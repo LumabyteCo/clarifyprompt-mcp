@@ -1,0 +1,72 @@
+category:
+  id: voice
+  label: Voice
+  description: Voice & speech synthesis
+  defaultPlatform: elevenlabs
+  defaultMode: detailed
+
+platforms:
+  - id: elevenlabs
+    label: ElevenLabs
+    description: Voice cloning, realistic TTS
+    syntaxHints:
+      - voice settings
+      - stability
+      - clarity
+      - style
+
+  - id: openai-tts
+    label: OpenAI TTS
+    description: Simple, reliable voices
+    syntaxHints:
+      - voice selection
+      - speed
+      - alloy/echo/fable/onyx/nova/shimmer
+
+  - id: fish-audio
+    label: Fish Audio
+    description: Voice cloning, multilingual
+    syntaxHints:
+      - voice cloning
+      - multilingual
+      - emotional control
+      - reference audio
+
+  - id: sesame
+    label: Sesame
+    description: Conversational AI voices
+    syntaxHints:
+      - conversational style
+      - emotional expression
+      - natural dialogue
+      - character voices
+
+  - id: google-tts
+    label: Google TTS
+    description: Cloud TTS, WaveNet voices
+    syntaxHints:
+      - SSML support
+      - WaveNet voices
+      - Neural2 voices
+      - speaking rate
+      - pitch
+
+  - id: playht
+    label: PlayHT
+    description: Ultra-realistic TTS, voice cloning
+    syntaxHints:
+      - voice selection
+      - emotion control
+      - speed
+      - voice cloning
+      - PlayHT 2.0 turbo
+
+  - id: kokoro
+    label: Kokoro
+    description: Open weights, fast expressive TTS
+    syntaxHints:
+      - open weights
+      - voice presets
+      - emotional control
+      - fast inference
+      - local deployment

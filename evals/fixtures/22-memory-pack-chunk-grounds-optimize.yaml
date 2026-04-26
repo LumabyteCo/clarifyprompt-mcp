@@ -1,0 +1,45 @@
+name: memory-pack-chunk-grounds-optimize
+description: 'After loading a topical knowledge pack inline, a related optimize_prompt call should retrieve the pack chunk via vector search and surface it in grounding.sources as `memory:pack_chunk:N`. Proves the full memory pipeline is wired: pack → embedding → store → retrieval → curator → grounding.'
+tags: [memory, knowledge-packs, retrieval, regression]
+setup:
+  - tool: load_knowledge_pack
+    args:
+      source: |
+        ---
+        name: vitest-eval-pack
+        version: 1.0.0
+        description: Test pack — Vitest conventions for the eval harness
+        scope: project:eval-test
+        author: ClarifyPrompt eval
+        license: Apache-2.0
+        ---
+
+        ## Test file naming
+
+        All Vitest test files use the `.test.ts` suffix. Place them adjacent
+        to the module under test, never in a parallel `__tests__/` directory.
+
+        ## Mocking convention
+
+        Prefer `vi.fn()` for inline mocks and `vi.spyOn()` for partial-mocking
+        existing modules. Avoid `vi.mock()` at the top of the file unless the
+        whole module needs replacement.
+
+        ## Coverage targets
+
+        Hit 80% line coverage at minimum. Branch coverage on critical paths
+        (auth, billing, schema validation) must be 95% or higher.
+      source_type: inline
+      scope: project:eval-test
+      name: vitest-eval-pack
+input:
+  prompt: 'how should I write tests for the new validateEmail function in TypeScript using our team conventions?'
+  category: code
+  platform: claude
+  mode: technical
+expected:
+  category: code
+  # The retrieval should pull the pack chunk into the curated grounding.
+  # The prefix-match logic in the harness lets `memory` match `memory:pack_chunk:N`.
+  grounding_sources_must_include: ['memory']
+  no_error: true

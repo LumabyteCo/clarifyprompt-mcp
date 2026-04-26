@@ -201,6 +201,11 @@ const CHECK_WEIGHTS = {
   revised: 1.5,
   final_prompt_must_contain: 2.0,
   final_prompt_must_not_contain: 1.5,
+  // memory_search checks
+  count_min: 1.5,
+  count_max: 1.0,
+  top_result_must_contain: 2.0,
+  top_result_kind: 1.5,
 };
 
 const CONFIDENCE_RANK = { low: 1, medium: 2, high: 3 };
@@ -372,6 +377,26 @@ function scoreCheck(name, expected, actual, opts = {}) {
       const found = expected.filter((needle) => haystack.includes(String(needle).toLowerCase()));
       return { passed: found.length === 0, detail: found.length === 0 ? `clean` : `forbidden in finalPrompt: ${found.join(', ')}` };
     }
+    case 'count_min': {
+      const n = typeof actual === 'number' ? actual : 0;
+      const pass = n >= expected;
+      return { passed: pass, detail: pass ? `count=${n} ≥ ${expected}` : `expected count ≥${expected}, got ${n}` };
+    }
+    case 'count_max': {
+      const n = typeof actual === 'number' ? actual : 0;
+      const pass = n <= expected;
+      return { passed: pass, detail: pass ? `count=${n} ≤ ${expected}` : `expected count ≤${expected}, got ${n}` };
+    }
+    case 'top_result_must_contain': {
+      const top = Array.isArray(actual) && actual[0] ? String(actual[0].content || '').toLowerCase() : '';
+      const missing = expected.filter((needle) => !top.includes(String(needle).toLowerCase()));
+      return { passed: missing.length === 0, detail: missing.length === 0 ? `top result contains all ${expected.length}` : `top result missing: ${missing.join(', ')}` };
+    }
+    case 'top_result_kind': {
+      const top = Array.isArray(actual) && actual[0] ? actual[0].kind : '';
+      const pass = top === expected;
+      return { passed: pass, detail: pass ? `top result kind=${top}` : `expected top kind=${expected}, got ${top}` };
+    }
     default:
       return { passed: true, detail: `(unknown check ${name} — skipped)` };
   }
@@ -437,6 +462,11 @@ function evaluateFixture(fixture, result, systemPrompt, tool) {
       case 'revised':                        actual = result.revised; break;
       case 'final_prompt_must_contain':
       case 'final_prompt_must_not_contain':  actual = result.finalPrompt; break;
+      // memory_search
+      case 'count_min':
+      case 'count_max':                      actual = result.count; break;
+      case 'top_result_must_contain':
+      case 'top_result_kind':                actual = result.results || []; break;
       default: continue;
     }
     const { passed, detail } = scoreCheck(key, value, actual, opts);
@@ -470,6 +500,21 @@ async function runFixture(fixture) {
       clientInfo: { name: 'eval-harness', version: '0.1.0' },
     });
     await srv.rpc('notifications/initialized', {}).catch(() => {});
+
+    // Optional `setup:` sequence — a list of MCP tool calls executed BEFORE
+    // the main `input`. Used by multi-call fixtures (e.g. load a knowledge
+    // pack first, then optimize against it). Setup results aren't scored;
+    // failures during setup fail the fixture as a whole.
+    if (Array.isArray(fixture.setup) && fixture.setup.length > 0) {
+      for (const [i, step] of fixture.setup.entries()) {
+        if (!step?.tool) {
+          throw new Error(`fixture ${fixture.name}: setup[${i}] missing 'tool' field`);
+        }
+        const setupArgs = { ...(step.args || {}) };
+        if (ws && setupArgs.cwd === undefined) setupArgs.cwd = ws;
+        await srv.callTool(step.tool, setupArgs);
+      }
+    }
 
     const args = { ...fixture.input };
     const tool = args.tool || 'optimize_prompt';

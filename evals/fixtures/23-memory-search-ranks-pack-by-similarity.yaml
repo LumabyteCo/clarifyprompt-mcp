@@ -1,0 +1,47 @@
+name: memory-search-ranks-pack-by-similarity
+description: 'Direct memory_search query against a freshly loaded multi-section pack should return at least one pack_chunk hit ranked by vector similarity. The top result for a SOX-specific query must come from the SOX-related section, not the unrelated section in the same pack.'
+tags: [memory, memory-search, vector-ranking, regression]
+setup:
+  - tool: load_knowledge_pack
+    args:
+      source: |
+        ---
+        name: mixed-topics-pack
+        version: 1.0.0
+        description: Test pack — two unrelated sections to verify ranking
+        scope: project:eval-search
+        author: ClarifyPrompt eval
+        license: Apache-2.0
+        ---
+
+        ## Sourdough starter maintenance
+
+        Feed your sourdough starter with equal parts flour and water by
+        weight every 12 hours at room temperature. A healthy starter
+        doubles in volume within 4-6 hours of feeding and smells pleasantly
+        sour, never acrid or vinegary.
+
+        ## SOX 404 internal controls
+
+        Section 404 of the Sarbanes-Oxley Act requires public companies to
+        document and test internal controls over financial reporting (ICFR).
+        Management must annually attest to control effectiveness; external
+        auditors must independently attest in a separate opinion. Material
+        weaknesses are disclosable events.
+
+        ## Container-on-air kerning
+
+        Adjust letter-spacing to compensate for container-on-air visual
+        density when typesetting display copy at 72pt or larger. Negative
+        tracking of -10 to -25 units works well for most sans-serif faces.
+input:
+  tool: memory_search
+  query: 'what are the SOX 404 attestation requirements?'
+  kinds: [pack_chunk]
+  limit: 5
+expected:
+  count_min: 1
+  # The top result must be the SOX section, not sourdough or kerning.
+  top_result_kind: pack_chunk
+  top_result_must_contain: ['sox', '404']
+  no_error: true

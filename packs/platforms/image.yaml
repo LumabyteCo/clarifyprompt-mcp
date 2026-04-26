@@ -1,0 +1,102 @@
+# Built-in image-generation platforms.
+#
+# To add a new platform: append an entry under `platforms:` with a unique `id`,
+# a human label, a one-line description, and the platform's syntax hints.
+# Restart the server (or rebuild) to pick up the change.
+
+category:
+  id: image
+  label: Image
+  description: Image generation
+  defaultPlatform: midjourney
+  defaultMode: detailed
+
+platforms:
+  - id: midjourney
+    label: Midjourney
+    description: Artistic, stylized imagery
+    syntaxHints:
+      - "--ar"
+      - "--v 6.1"
+      - "--style raw"
+      - "--chaos"
+      - "--weird"
+      - "--q"
+      - "--s"
+
+  - id: dall-e
+    label: DALL-E 3
+    description: Natural language, versatile
+    syntaxHints:
+      - natural language
+      - "size: 1024x1024, 1792x1024, 1024x1792"
+
+  - id: stable-diffusion
+    label: Stable Diffusion
+    description: Open source, highly customizable
+    syntaxHints:
+      - negative prompts
+      - CFG scale
+      - steps
+      - samplers
+      - LoRA
+      - embeddings
+
+  - id: flux
+    label: Flux
+    description: High detail, photorealistic
+    syntaxHints:
+      - natural language
+      - high detail focus
+      - guidance scale
+
+  - id: ideogram
+    label: Ideogram
+    description: Best for text in images
+    syntaxHints:
+      - magic prompt
+      - text rendering
+      - typography
+
+  - id: leonardo
+    label: Leonardo AI
+    description: Preset styles, game art
+    syntaxHints:
+      - preset styles
+      - guidance scale
+      - contrast
+      - alchemy
+
+  - id: firefly
+    label: Adobe Firefly
+    description: Commercial safe, natural
+    syntaxHints:
+      - natural language
+      - style references
+      - effects
+
+  - id: grok-aurora
+    label: Grok Aurora
+    description: xAI, fast and creative
+    syntaxHints:
+      - natural language
+      - creative interpretation
+      - fast generation
+
+  - id: imagen
+    label: Google Imagen 3
+    description: Photorealistic, via Gemini
+    syntaxHints:
+      - natural language
+      - photorealistic
+      - "size: 1024x1024"
+      - aspect ratios
+
+  - id: recraft
+    label: Recraft
+    description: Vector design, brand assets
+    syntaxHints:
+      - style selection
+      - vector output
+      - brand colors
+      - SVG export
