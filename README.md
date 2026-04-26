@@ -879,6 +879,43 @@ npx @modelcontextprotocol/inspector node dist/index.js
 
 Set environment variables in the Inspector's "Environment Variables" section before connecting.
 
+### Tests + evals
+
+| Command | What it does |
+|---|---|
+| `npm run test:integration` | Day-1 integration battery (intent + grounding + shape) |
+| `npm run test:day2` | Day-2 memory + curator + reflection battery |
+| `npm run test:reasoning` | Reasoning-model coverage (chain-of-thought maxTokens bump) |
+| `npm run test:wire` | MCP-wire smoke test (server boots, tools list, initialize round-trips) |
+| `npm run test:all` | All four batteries in sequence |
+| `npm run eval` | Run the 20 deterministic eval fixtures + render `evals/report.html` |
+| `npm run eval -- --filter <name>` | Run only fixtures matching `<name>` (or a tag) |
+| `npm run eval -- --quiet` | Exit-code-only output (CI-friendly) |
+
+Eval harness details, fixture format, and multi-model matrix instructions: [`evals/README.md`](./evals/README.md).
+
+### CI / Quality gates
+
+The repo ships a GitHub Actions workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) with five jobs:
+
+| Job | Runs on | What it gates |
+|---|---|---|
+| `build` | every push + PR | Typecheck + build + boot smoke-test on Node 18/20/22 across Linux + macOS |
+| `secrets-audit` | every push + PR | git-grep for known API-key prefixes in tracked files |
+| `evals` | every push + PR (opt-in) | `npm run eval` against `gpt-4o-mini`. Skips with success when `OPENAI_API_KEY` secret is unset; blocks publish when configured and any fixture regresses |
+| `docker` | every push + PR | `docker build` + container boot smoke-test |
+| `publish` | tag pushes only | `npm publish --provenance` when tag matches `package.json#version`, gated on all four jobs above |
+
+**To enable evals as a release gate on your fork:**
+
+1. Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+2. Name: `OPENAI_API_KEY` · Value: an OpenAI API key with access to `gpt-4o-mini`
+3. Push or re-run any workflow
+
+Cost: ~$0.005 per CI run (17 active fixtures × ~1500 input tokens × ~600 output tokens at gpt-4o-mini pricing). The eval harness's HTML report is uploaded as a build artifact (30-day retention) so you can inspect any failure without re-running locally.
+
+**To enable npm-publish on tag pushes:** add an `NPM_TOKEN` secret with a Granular Access Token scoped to `clarifyprompt-mcp` (bypass-2FA enabled). Same Settings flow.
+
 ## License
 
 [Apache-2.0](LICENSE)

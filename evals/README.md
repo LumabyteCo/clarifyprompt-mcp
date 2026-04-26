@@ -113,9 +113,26 @@ The aggregate "average score" line in the summary is the unweighted mean of fixt
 5. Add `tags` to make it filterable.
 6. Run `npm run eval -- --filter <your-fixture-name>` to verify before committing.
 
+## CI integration (opt-in)
+
+The harness runs in GitHub Actions as a release gate when an `OPENAI_API_KEY` repo secret is configured. It uses `gpt-4o-mini` (~$0.005 per CI run on the current 17 active fixtures). To enable on your fork:
+
+1. Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+2. Name: `OPENAI_API_KEY` · Value: an OpenAI API key with access to `gpt-4o-mini`
+3. Push or re-run any workflow
+
+The `evals` job will:
+- run `npm run eval` against `gpt-4o-mini`
+- upload the generated `evals/report.html` as a build artifact (30-day retention)
+- block the `publish` job (tag-triggered npm publish) if any fixture regresses
+
+When the secret is **unset** (the default for forks): the job runs but skips the eval step with a banner explaining how to enable. Nothing leaves the machine without the secret. Forked PRs always skip cleanly because forks don't have access to the parent repo's secrets.
+
+Workflow source: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the `evals` job.
+
 ## What's NOT in v0
 
-- **LLM-judge scoring** for "is this output qualitatively good?" — coming in v1; currently we only do deterministic checks.
-- **Cross-run trend dashboard** — each run is standalone HTML. v1 could persist results into a JSON timeline.
+- **LLM-judge scoring at the harness level** — `critique_prompt` itself ships as a runtime tool in 1.4, but the harness's per-fixture scoring is still deterministic-only. Adding LLM-judge as an optional score-blender is a v1 candidate.
+- **Cross-run trend dashboard** — each run is standalone HTML. v1 could persist results into a JSON timeline so you can see drift over commits or model versions.
 - **Auto-tagging based on which engine surface the fixture exercises** — manual tags for now.
-- **CI integration** — needs a model. Open question for 1.4+: opt-in CI job that runs `npm run eval` against `gpt-4o-mini` if `OPENAI_API_KEY` secret is set.
+- **Memory-layer fixture coverage** — knowledge packs, reflection facts, vector retrieval ranking — the most-novel engine surface has the least eval coverage. Tracked as "D" in the post-1.4 backlog.
