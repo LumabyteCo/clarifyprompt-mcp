@@ -4,6 +4,26 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-04-26
+
+A patch release on top of 1.5.0. **Runtime behavior unchanged.** Pure docs + ship-process: refreshes the README's marketing surfaces (which shipped stale on 1.5.0) and adds two new ship-check audits so future releases can't repeat the mistake.
+
+### Fixed
+
+- **README marketing surfaces** — the 1.5.0 npm tarball + GitHub release shipped with the README headline blockquote (`> **New in 1.4.0:**`), the `## What's new in 1.4.0` heading, and the `## What's in the box (cumulative through 1.4.0)` heading all still on 1.4.0. Every machine-readable version surface (package.json, lock, server.json, src/index.ts, CHANGELOG) was on 1.5.0; only the prose drifted. Fixed in 1.5.1.
+
+### Added
+
+- **Two new ship-check audits**:
+  - `CP-11` — README marketing-surface coherence with the current version. Hard-fails if the headline blockquote, "What's new in X" heading, or "cumulative through X" annotation reference any version other than `package.json#version`.
+  - `CP-12` — Platform-pack format validity. Parses every `packs/platforms/*.yaml`, asserts the file declares a known `category.id`, has at least one platform with `id/label/description`, and `defaultPlatform` references an existing platform in the file.
+- **CP-11 promoted to the user-scoped ship-check skill** the same day, so future projects (not just clarifyprompt-mcp) get this check by default. The project-scoped variant becomes an `AUGMENT` with the exact-string heading templates this repo uses.
+
+### Notes for integrators
+
+- **No code changes.** No new MCP tools. No removed tools. No new env vars. No tarball anatomy changes beyond the refreshed README + CHANGELOG (~3 KB).
+- **No reason to upgrade urgently.** If you're on 1.5.0, the engine is identical. The only reason to bump is to see the corrected story on the npm package page.
+
 ## [1.5.0] — 2026-04-26
 
 **Built-in platforms become declarative.** The 58+ hardcoded TypeScript platform arrays are now loaded from YAML packs at runtime — adding a built-in platform is now a YAML edit, not a TS edit. Plus the eval harness gains multi-call fixtures (`setup:`), with two new fixtures covering the persistent memory + knowledge-pack retrieval pipeline that was previously uncovered.

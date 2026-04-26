@@ -86,30 +86,22 @@ For minor-version prep (e.g. `1.3.0 → 1.4.0`), confirm the test batteries exis
 
 ---
 
-## ADD: CP-11 — README marketing surfaces match the current version
+## AUGMENT: README marketing-surface coherence with current version
 
-**Problem this fixes:** between 1.4.0 and 1.5.0 the version was bumped everywhere except the README's marketing prose — the headline `> **New in 1.4.0:**` blockquote and the `## What's new in 1.4.0` / `## What's in the box (cumulative through 1.4.0)` headings stayed on the old version. Every other surface was correct, so the existing version-consistency check (general #1) didn't catch it. This new check closes that loop.
-
-When preparing a release where the target version is `X.Y.Z` (i.e. `package.json#version` matches `CHANGELOG`'s most recent entry header):
-
-1. **README headline blockquote** — the first `> **New in <ver>:**` blockquote near the top of `README.md` must reference `X.Y.Z`. Hard fail otherwise.
-2. **What's new heading** — the most-recent `## What's new in <ver>` heading must say `X.Y.Z`. Hard fail otherwise.
-3. **Cumulative-through heading** — `## What's in the box (cumulative through <ver>)` must say `X.Y.Z`. Hard fail otherwise.
-4. **Architecture tree mentions** — `(<ver>)` annotations in the architecture diagram for files added in this release must use `X.Y.Z` (soft warning if drift; not hard fail).
-
-Detection commands (BSD-grep compatible):
+The general check (user-scoped `### 12.`) handles the abstract pattern via heuristics. This AUGMENT pins the *exact* heading templates this repo uses so the check can run as a strict literal-string match instead of a heuristic, eliminating any false-negative risk:
 
 ```bash
 TARGET_VERSION=$(node -p "require('./package.json').version")
+
 grep -q "> \*\*New in ${TARGET_VERSION}:" README.md \
-  || echo "::error::README headline blockquote not on ${TARGET_VERSION}"
+  || echo "::error::CP-11/AUGMENT: README headline blockquote not on ${TARGET_VERSION}"
 grep -q "^## What's new in ${TARGET_VERSION}" README.md \
-  || echo "::error::No '## What's new in ${TARGET_VERSION}' heading in README.md"
+  || echo "::error::CP-11/AUGMENT: '## What's new in ${TARGET_VERSION}' heading missing"
 grep -q "^## What's in the box (cumulative through ${TARGET_VERSION})" README.md \
-  || echo "::error::'cumulative through' heading not on ${TARGET_VERSION}"
+  || echo "::error::CP-11/AUGMENT: 'cumulative through' heading not on ${TARGET_VERSION}"
 ```
 
-**Generalization hint:** every project with a marketing-style README that highlights "what's new this release" benefits from this check. The exact heading patterns are project-specific (`What's new in X` vs. `Release X` vs. `Highlights`), but the underlying invariant — "if the version bumped, the marketing surface should mention it" — is universal. **Promotion candidate** the moment a second project adopts ship-check with a similar README pattern. Promote with a configurable list of heading templates.
+History: this repo IS the precedent that birthed the general check. Originally added as project-scoped `CP-11` after the 1.5.0 npm tarball shipped with the README still saying 1.4.0. Promoted to general check #12 the same day (see promotion log). The augment retains the exact-string variant locally because it's faster than the heuristic and we know the templates aren't going to change here.
 
 ---
 
@@ -178,6 +170,7 @@ Track which project-scoped checks have been **promoted** to the user-scoped skil
 | 2026-04-24 | **CP-3: README env-var table completeness** — folded into the same general check #11 | project `ADD: CP-3` → user `### 11.` (third surface) |
 | 2026-04-24 | **CP-7: Apache-2.0 license guard** — generalized into a parameterized license-consistency check + a commitment-drift heuristic that reads CONTRIBUTING.md / SECURITY.md / README for "no relicensing" signals | project `ADD: CP-7` → user `### 9. License consistency` |
 | 2026-04-24 | **CP-9: dist/ hygiene** — generalized to all common build-artifact directories across Node / Python / Rust / Java / Go ecosystems | project `ADD: CP-9` → user `### 10. Build-artifact directory hygiene` |
+| 2026-04-26 | **CP-11: README marketing-surface coherence with current version** — generalized via heuristics so any project's `What's new in X` / `Highlights — X` / `Release X` heading variants get checked, not just this repo's specific templates. Promoted same-day after 1.5.0 shipped to npm with the README still on 1.4.0. | project `ADD: CP-11` → user `### 12. README marketing-surface coherence with current version`. Project-scoped becomes `AUGMENT` with the exact-string variants for this repo's templates. |
 
 ---
 

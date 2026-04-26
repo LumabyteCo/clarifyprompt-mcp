@@ -9,7 +9,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.5.0:** Built-in platforms become declarative. The 58+ hardcoded TypeScript platform arrays move to `packs/platforms/*.yaml` — adding a built-in platform is now a YAML edit, no TS rebuild needed. Plus memory-layer eval coverage (knowledge-pack retrieval + vector-search ranking now exercise the `setup:` multi-call extension), and `docs/adoption/` ships with launch-post drafts + catalog submission specs. **23 deterministic eval fixtures** under version control. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.5.1:** Docs polish on top of the 1.5 release. The runtime story is unchanged from 1.5.0 — built-in platforms moved to declarative YAML packs (`packs/platforms/*.yaml`), memory-layer eval coverage landed (23 fixtures), and `docs/adoption/` shipped with launch-post drafts + catalog submission specs. 1.5.1 also adds two new ship-check audits (CP-11 + CP-12) so future releases can't ship with stale README marketing prose. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -25,6 +25,14 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.5.1
+
+A patch release on top of 1.5.0. Pure docs + ship-process improvements; **runtime behavior is identical to 1.5.0**.
+
+- **README marketing surfaces refreshed** — the 1.5.0 release shipped with the README still on 1.4.0 in three places (headline blockquote, "What's new in X" heading, "cumulative through X" annotation). Every other version surface (`package.json`, `package-lock.json`, `server.json`, `src/index.ts`, `CHANGELOG`) was correct, but the prose drifted because nothing automated touched it. 1.5.1 fixes that.
+- **Two new ship-check audits** — `CP-11` (README marketing-surface coherence) hard-fails if any of the three above don't reference the current `package.json#version`. `CP-12` (Platform-pack format validity) parses every `packs/platforms/*.yaml` and asserts schema validity. CP-11 was promoted to the user-scoped (cross-project) ship-check skill the same day, so future projects benefit too.
+- **No code changes.** No new MCP tools. No new env vars. Same tarball anatomy as 1.5.0 plus a few hundred bytes of CHANGELOG.
 
 ## What's new in 1.5.0
 
@@ -73,7 +81,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.5.0)
+## What's in the box (cumulative through 1.5.1)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
