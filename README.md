@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.5.1:** Docs polish on top of the 1.5 release. The runtime story is unchanged from 1.5.0 — built-in platforms moved to declarative YAML packs (`packs/platforms/*.yaml`), memory-layer eval coverage landed (23 fixtures), and `docs/adoption/` shipped with launch-post drafts + catalog submission specs. 1.5.1 also adds two new ship-check audits (CP-11 + CP-12) so future releases can't ship with stale README marketing prose. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.5.2:** First eval-gate-driven release. CI now runs `npm run eval` against `gpt-4o-mini` on every push (when `OPENAI_API_KEY` is configured as a repo secret), and the live runs surfaced four real issues — three of which were latent bugs no one had hit because the default Ollama setup happens to side-step them. The headline fix: **the persistent memory store now supports any embedding dimension** (was hardcoded to 768 / nomic-embed-text). [#2](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/2). Plus `LLM_TIMEOUT_MS` env override + harness hardening. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,17 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.5.2
+
+The first release where CI's eval gate (against `gpt-4o-mini`) drove the diff. Three real fixes that the gate caught the moment we wired in the `OPENAI_API_KEY` secret:
+
+- **Memory store now supports any embedding dimension** ([#2](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/2)). The persistent vec table was hardcoded to 768 dims (the nomic-embed-text default), so anyone configuring `EMBED_MODEL=text-embedding-3-small` (1536), `voyage-3` (1024), `embed-english-v3.0` (1024), or any non-768 model would hit `Dimension mismatch: expected 768, got N` on the first `memory_search` call. The store now derives the table name from the embedder's actual dimension and creates the dim-specific table at boot. Existing 768-dim installs are unaffected.
+- **`LLM_TIMEOUT_MS` env-var override** on the LLM client. Default stays at 30s; users on slow hosted models can bump it. The eval workflow uses 120s for `gpt-4o-mini`.
+- **Eval harness hardened** — no longer crashes when a tool throws an exception (the SDK returns plain-text error responses; the harness used to `JSON.parse` them and die). One bad fixture no longer tanks the whole run.
+- **Live evals badge.** The `evals.yml` workflow runs on every push to main. The `[![evals]](...)` badge at the top of this README is its real-time status. Currently green at 20/0/3 · 100% on `gpt-4o-mini`.
+
+No new MCP tools. No env-var surface changes (only an added optional `LLM_TIMEOUT_MS`). Fully back-compat with 1.5.x.
 
 ## What's new in 1.5.1
 
@@ -82,7 +93,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.5.1)
+## What's in the box (cumulative through 1.5.2)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

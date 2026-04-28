@@ -4,6 +4,39 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] — 2026-04-28
+
+The first eval-gate-driven release. Adding `OPENAI_API_KEY` as a CI secret enabled the eval harness to run against `gpt-4o-mini` on every push — within minutes, the gate surfaced four real issues, three of which were latent bugs nobody had hit because the default Ollama setup happens to side-step them.
+
+### Fixed
+
+- **Memory store hardcoded vec table to 768 dimensions** ([#2](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/2)). Pre-1.5.2, the sqlite-vec virtual table was created as `embeddings_768` with column `vec float[768]` regardless of the configured `EMBED_DIMENSION`. Anyone using OpenAI `text-embedding-3-small` (1536), Voyage `voyage-3` (1024), Cohere `embed-english-v3.0` (1024), or any non-768 model would hit `Dimension mismatch for query vector for the "vec" column. Expected 768 dimensions but received N` on the first `memory_search` or `load_knowledge_pack` call. The store now derives the table name from `embedder.dimension` and creates a dim-specific table (`embeddings_1536`, `embeddings_1024`, etc.) at boot. Existing 768-dim installs are fully back-compat — migration 1 still creates `embeddings_768`, and the additional table only spawns when a non-768 dim is configured.
+- **Eval harness crashed on MCP error responses.** When an MCP tool handler threw, the SDK wrapped `error.message` in `content[0].text` as plain text (not JSON). The harness's `callTool` did `JSON.parse(text)` unconditionally and the whole eval run died with `SyntaxError: Unexpected token...`. Now wraps non-JSON responses in `{error: text, _isError: true}` and per-fixture errors no longer tank the run.
+
+### Added
+
+- **`LLM_TIMEOUT_MS` env-var override** on the LLM client. Default stays at 30s; users on slow hosted models or doing bulk prompts can bump it without code edits. The CI eval workflow sets `LLM_TIMEOUT_MS=120000` because `gpt-4o-mini` occasionally takes >30s on long prompts.
+- **`evals.yml` GitHub Actions workflow** (split out of `ci.yml`) so it can be addressed by a dedicated `evals` badge. Cross-workflow gate in `ci.yml#publish` ensures eval failures still block npm publish on tag pushes.
+- **`evals: passing` badge** on the README, pointing at the `evals.yml` workflow's last run on `main`.
+
+### Notes for integrators
+
+- **No env-var surface changes.** `LLM_TIMEOUT_MS` is purely additive and optional.
+- **No MCP tool surface changes.** Still 20 tools, 1 resource.
+- **Existing 768-dim installs require no action.** Their memory.db is fully forward-compatible.
+- **Anyone running with a non-768 embedding model should upgrade.** Pre-1.5.2 their persistent-memory pipeline was silently broken at the first `memory_search` call.
+
+### How this release got made (process note)
+
+The four issues 1.5.2 fixes were caught by the eval gate the same hour we wired up the `OPENAI_API_KEY` secret. Three iterations of CI uncovered exactly one bug each, each one fixed and pushed before the next iteration ran:
+
+1. Run 1: harness crash → fixed JSON.parse safety → run 2
+2. Run 2: dimension mismatch → fixed memory store to support any dim → run 3
+3. Run 3: brittle fixture content-check → reframed assertion to be deterministic → run 4
+4. Run 4: ✅ 20 passed / 0 failed / 3 skipped / 100% avg
+
+That's exactly the behavior the eval gate was built for: real-LLM regressions caught in CI rather than production. Total cost across the four CI runs: ~$0.10 against the configured $5/mo budget cap.
+
 ## [1.5.1] — 2026-04-26
 
 A patch release on top of 1.5.0. **Runtime behavior unchanged.** Pure docs + ship-process: refreshes the README's marketing surfaces (which shipped stale on 1.5.0) and adds two new ship-check audits so future releases can't repeat the mistake.
