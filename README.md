@@ -1,6 +1,7 @@
 # ClarifyPrompt MCP
 
 [![npm version](https://img.shields.io/npm/v/clarifyprompt-mcp.svg)](https://www.npmjs.com/package/clarifyprompt-mcp)
+[![evals](https://github.com/LumabyteCo/clarifyprompt-mcp/actions/workflows/evals.yml/badge.svg?branch=main)](https://github.com/LumabyteCo/clarifyprompt-mcp/actions/workflows/evals.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 <a href="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp"><img width="380" height="200" src="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp/badge" alt="ClarifyPrompt MCP server" /></a>
