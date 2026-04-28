@@ -75,11 +75,17 @@ export class LLMClient {
       || process.env.LLM_MODEL
       || DEFAULT_CONFIG.defaultModel!;
 
+    // Allow CI / users to bump the per-call timeout for slower hosted models
+    // (gpt-4o-mini occasionally takes >30s on long prompts; the default 30s
+    // would surface as a timeout error rather than a real assertion failure).
+    const envTimeoutMs = Number(process.env.LLM_TIMEOUT_MS);
+    const envTimeoutValid = Number.isFinite(envTimeoutMs) && envTimeoutMs > 0;
+
     this.config = {
       apiUrl,
       apiKey,
       defaultModel,
-      timeout: config.timeout || DEFAULT_CONFIG.timeout,
+      timeout: config.timeout || (envTimeoutValid ? envTimeoutMs : DEFAULT_CONFIG.timeout),
     };
 
     this.isAnthropic = apiUrl.includes('anthropic.com');

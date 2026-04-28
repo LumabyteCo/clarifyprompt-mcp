@@ -25,11 +25,34 @@ export class MemoryStore {
   private db: Database.Database;
   private vectors: boolean;
   private embedder: Embedder;
+  /** Vector table name for the configured embedder dim, e.g. `embeddings_1536`. */
+  private vecTable: string;
 
   constructor(db?: Database.Database, embedder?: Embedder) {
     this.db = db || getDb();
     this.vectors = hasVectorSupport(this.db);
     this.embedder = embedder || getEmbedder();
+    this.vecTable = `embeddings_${this.embedder.dimension}`;
+
+    // Migration 1 only created embeddings_768 (the nomic-embed-text default).
+    // For any other configured dim (text-embedding-3-small=1536, voyage-3=1024,
+    // etc.), create the dim-specific table on the fly. Idempotent — IF NOT
+    // EXISTS protects existing tables.
+    if (this.vectors && this.embedder.dimension !== 768) {
+      try {
+        this.db.exec(
+          `CREATE VIRTUAL TABLE IF NOT EXISTS ${this.vecTable} USING vec0(
+             kind TEXT PARTITION KEY,
+             source_id INTEGER,
+             vec float[${this.embedder.dimension}]
+           );`,
+        );
+      } catch (err) {
+        // sqlite-vec missing or vec0 unsupported; degrade to no-vector mode.
+        this.vectors = false;
+        process.stderr.write(`[clarifyprompt] failed to ensure vec table for dim=${this.embedder.dimension}: ${(err as Error).message}\n`);
+      }
+    }
   }
 
   isHealthy(): boolean {
@@ -185,7 +208,7 @@ export class MemoryStore {
     // binds JS numbers as REAL by default; vec0 metadata columns are strict.
     const sidInt = typeof sourceId === 'string' ? hashToInt(sourceId) : sourceId;
     this.db.prepare(
-      `INSERT INTO embeddings_768(kind, source_id, vec) VALUES (?, CAST(? AS INTEGER), vec_f32(?))`,
+      `INSERT INTO ${this.vecTable}(kind, source_id, vec) VALUES (?, CAST(? AS INTEGER), vec_f32(?))`,
     ).run(kind, BigInt(sidInt), vecToJson(vec));
   }
 
@@ -206,7 +229,7 @@ export class MemoryStore {
     // LIMIT must be an integer too — use k= in the MATCH constraint, which
     // sqlite-vec understands for KNN queries, OR plain LIMIT with an int.
     const rows: any[] = this.db.prepare(`
-      SELECT source_id, distance FROM embeddings_768
+      SELECT source_id, distance FROM ${this.vecTable}
       WHERE kind = ? AND vec MATCH vec_f32(?)
       ORDER BY distance LIMIT ?
     `).all(kind, vecToJson(qVec), BigInt(limit));

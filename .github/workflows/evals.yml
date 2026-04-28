@@ -67,6 +67,10 @@ jobs:
           LLM_API_URL: https://api.openai.com/v1
           LLM_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LLM_MODEL: gpt-4o-mini
+          # gpt-4o-mini occasionally takes >30s for long prompts; the default
+          # 30s LLM client timeout would surface those as eval errors rather
+          # than real assertion failures. 120s is generous headroom.
+          LLM_TIMEOUT_MS: 120000
           EMBED_API_URL: https://api.openai.com/v1
           EMBED_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           EMBED_MODEL: text-embedding-3-small

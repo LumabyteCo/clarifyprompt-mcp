@@ -16,6 +16,15 @@ input:
   mode: concise
   skip_intent_resolution: true
 expected:
-  must_contain: ['CTA']  # the rule must show up
+  # Deterministic checks: grounding.sources must include project-rules
+  # (proves the workspace CLAUDE.md was loaded and selected by the curator),
+  # and the system prompt must contain the literal rule text (proves the
+  # rule was injected into the prompt the LLM saw).
+  #
+  # We deliberately do NOT assert the OUTPUT contains "CTA" — that's an
+  # LLM-choice assertion that flakes across models because they often
+  # paraphrase ("Get started today" is a CTA, just not the literal string).
+  # The model getting the rule is what we can deterministically verify.
   grounding_sources_must_include: ['project-rules']
+  system_prompt_must_contain: ['Always include a clear CTA']
   no_error: true
