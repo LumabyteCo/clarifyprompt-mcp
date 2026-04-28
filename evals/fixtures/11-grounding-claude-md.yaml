@@ -16,15 +16,17 @@ input:
   mode: concise
   skip_intent_resolution: true
 expected:
-  # Deterministic checks: grounding.sources must include project-rules
-  # (proves the workspace CLAUDE.md was loaded and selected by the curator),
-  # and the system prompt must contain the literal rule text (proves the
-  # rule was injected into the prompt the LLM saw).
+  # Deterministic check: grounding.sources must include 'project-rules',
+  # which proves the workspace CLAUDE.md was loaded by the Context Engine
+  # AND selected by the Context Curator (i.e., the rule made it into the
+  # final grounding block sent to the LLM).
   #
   # We deliberately do NOT assert the OUTPUT contains "CTA" — that's an
   # LLM-choice assertion that flakes across models because they often
-  # paraphrase ("Get started today" is a CTA, just not the literal string).
-  # The model getting the rule is what we can deterministically verify.
+  # paraphrase ("Get started today" IS a CTA, just not the literal string).
+  # We also don't assert system_prompt_must_contain because in this engine
+  # project rules land in the USER prompt's grounding block, not the
+  # SYSTEM message. The grounding-source assertion is the cleanest proof
+  # the rule was actually applied at curate-time.
   grounding_sources_must_include: ['project-rules']
-  system_prompt_must_contain: ['Always include a clear CTA']
   no_error: true
