@@ -105,7 +105,20 @@ function startServer(env = {}) {
   }
   async function callTool(name, args) {
     const res = await rpc('tools/call', { name, arguments: args });
-    return JSON.parse(res.content[0].text);
+    const text = res?.content?.[0]?.text ?? '';
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      // MCP servers return plain-text content when a tool handler THROWS
+      // (the SDK wraps the error.message in content[0].text without
+      // JSON.stringify-ing). Don't crash the whole harness on one bad
+      // tool call — wrap as a synthetic error object so the fixture
+      // can still report a useful failure.
+      parsed = { error: text };
+    }
+    if (res?.isError) parsed._isError = true;
+    return parsed;
   }
   return { proc, rpc, callTool, stderr: () => stderrBuf.join('') };
 }
@@ -512,7 +525,10 @@ async function runFixture(fixture) {
         }
         const setupArgs = { ...(step.args || {}) };
         if (ws && setupArgs.cwd === undefined) setupArgs.cwd = ws;
-        await srv.callTool(step.tool, setupArgs);
+        const setupResult = await srv.callTool(step.tool, setupArgs);
+        if (setupResult?._isError) {
+          throw new Error(`fixture ${fixture.name}: setup[${i}] (${step.tool}) failed: ${(setupResult.error || JSON.stringify(setupResult)).toString().slice(0, 240)}`);
+        }
       }
     }
 
@@ -568,10 +584,24 @@ async function main() {
 
   const runs = [];
   for (const fixture of fixtures) {
-    const run = await runFixture(fixture);
+    let run;
+    try {
+      run = await runFixture(fixture);
+    } catch (err) {
+      // One fixture crashing shouldn't tank the whole run. Synthesize an
+      // 'errored' status so the summary reflects the error and the harness
+      // moves on. The exit code at the end will still be non-zero.
+      run = {
+        fixture, status: 'errored',
+        error: { message: (err && err.message) || String(err) },
+        latencyMs: 0,
+      };
+    }
     runs.push(run);
     if (run.status === 'skipped') {
       log(C.dim(`  ⊘ ${fixture.name.padEnd(48)} skipped — ${run.skipReason}`));
+    } else if (run.status === 'errored') {
+      log(C.red(`  ⚠ ${fixture.name.padEnd(48)} ERRORED — ${run.error.message.slice(0, 200)}`));
     } else if (run.status === 'filtered') {
       // suppress
     } else {
@@ -591,6 +621,7 @@ async function main() {
   const ran      = runs.filter((r) => r.status === 'ran');
   const passed   = ran.filter((r) => r.evaluation.passed).length;
   const failed   = ran.length - passed;
+  const errored  = runs.filter((r) => r.status === 'errored').length;
   const skipped  = runs.filter((r) => r.status === 'skipped').length;
   const filtered = runs.filter((r) => r.status === 'filtered').length;
   const totalScore = ran.length ? ran.reduce((a, r) => a + r.evaluation.score, 0) / ran.length : 0;
@@ -598,16 +629,17 @@ async function main() {
 
   log('');
   log(C.bold(`╠═ summary ═══════════════════════════════════════════════════════════════╣`));
-  log(`  ${C.green(`${passed} passed`)} · ${failed > 0 ? C.red(`${failed} failed`) : C.dim('0 failed')} · ${C.dim(`${skipped} skipped`)}${filtered > 0 ? C.dim(` · ${filtered} filtered`) : ''}`);
+  log(`  ${C.green(`${passed} passed`)} · ${failed > 0 ? C.red(`${failed} failed`) : C.dim('0 failed')}${errored > 0 ? ` · ${C.red(`${errored} errored`)}` : ''} · ${C.dim(`${skipped} skipped`)}${filtered > 0 ? C.dim(` · ${filtered} filtered`) : ''}`);
   log(`  Average score: ${(totalScore * 100).toFixed(0)}% · Average latency: ${avgLatency}ms`);
   log(C.bold(`╚═════════════════════════════════════════════════════════════════════════╝`));
 
   if (!NO_HTML) {
-    await writeHtmlReport({ runs, model: MODEL, ran, passed, failed, skipped, filtered, totalScore, avgLatency });
+    await writeHtmlReport({ runs, model: MODEL, ran, passed, failed, errored, skipped, filtered, totalScore, avgLatency });
     log(C.dim(`\n  HTML report: ${REPORT_PATH}`));
   }
 
-  process.exit(failed > 0 ? 1 : 0);
+  // Exit non-zero on either scoring failures OR fixture errors — both block the gate.
+  process.exit((failed > 0 || errored > 0) ? 1 : 0);
 }
 
 // ───── HTML report ─────
