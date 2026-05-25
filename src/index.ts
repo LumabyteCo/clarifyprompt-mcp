@@ -20,7 +20,7 @@ import { composePrompt } from "./engine/composition/compose.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.5.2",
+  version: "1.6.0",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
@@ -448,6 +448,110 @@ server.tool(
 );
 
 server.tool(
+  "memory_remember",
+  "Explicitly add a fact to persistent memory. Use when the user says something the engine should remember across sessions (preferences, conventions, project facts). Complements `save_outcome` reflection, which extracts facts implicitly — this is the explicit, user-driven path. Returns the new fact id, which can be passed to `memory_forget` later.",
+  {
+    subject: z.string().describe("Who/what the fact is about. Examples: 'user', 'project', 'this codebase', a person's name."),
+    predicate: z.string().describe("Short verb phrase. Examples: 'prefers', 'uses', 'avoids', 'requires', 'is'."),
+    object: z.string().describe("The concrete value. Example: 'TypeScript with strict mode'."),
+    scope: z.string().optional().default('user').describe("Memory scope. Default 'user' (cross-session, cross-project). Use 'project:<name>' for project-local memory, 'session:<id>' for ephemeral session-only memory."),
+    confidence: z.number().min(0).max(1).optional().default(1.0).describe("0-1 confidence. Default 1.0 for explicit user remember. Reflection-extracted facts use 0.6-0.8."),
+  },
+  async ({ subject, predicate, object, scope, confidence }) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: 'memory store not healthy',
+      }) }], isError: true };
+    }
+    const factId = store.insertFact({
+      scope: scope ?? 'user',
+      subjectText: subject,
+      predicate,
+      objectText: object,
+      confidence: confidence ?? 1.0,
+      source: 'user:explicit',
+    });
+    // Embed for future semantic retrieval. Non-fatal if embeddings unavailable.
+    if (store.hasVectors()) {
+      try {
+        await store.embedAndStore('fact', factId, `${subject} ${predicate} ${object}`);
+      } catch { /* embeddings can fail without breaking the remember */ }
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      success: true,
+      id: factId,
+      scope: scope ?? 'user',
+      subject, predicate, object,
+      confidence: confidence ?? 1.0,
+      message: `Remembered fact #${factId} in scope '${scope ?? 'user'}'. It will surface in future memory_search and grounding calls.`,
+    }, null, 2) }] };
+  }
+);
+
+server.tool(
+  "memory_forget",
+  "Invalidate (soft-delete) a fact by its id. The fact is marked invalidated_at = now and won't appear in future memory_search or grounding, but its history is preserved (bi-temporal soft-delete). Use `memory_list_facts` first to find the id you want to forget.",
+  {
+    id: z.number().int().positive().describe("Fact id (from memory_remember response, memory_search result, or memory_list_facts row)."),
+  },
+  async ({ id }) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: 'memory store not healthy',
+      }) }], isError: true };
+    }
+    const invalidated = store.invalidateFact(id);
+    if (!invalidated) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        success: false,
+        id,
+        message: `Fact #${id} not found, or was already invalidated. No change.`,
+      }, null, 2) }] };
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      success: true,
+      id,
+      message: `Fact #${id} invalidated. It won't surface in future memory_search or grounding.`,
+    }, null, 2) }] };
+  }
+);
+
+server.tool(
+  "memory_list_facts",
+  "List live (non-invalidated) facts in persistent memory, optionally filtered by scope and predicate. Sorted by most-recently-observed first. Useful for inspecting what the engine knows, or finding fact ids to forget.",
+  {
+    scope: z.string().optional().default('user').describe("Memory scope to filter by. Default 'user'. Examples: 'user', 'project:myapp', 'session:abc'."),
+    predicate: z.string().optional().describe("Optional predicate filter (e.g., only 'prefers' facts)."),
+    limit: z.number().int().positive().max(100).optional().default(50).describe("Max facts to return. Default 50, hard max 100."),
+  },
+  async ({ scope, predicate, limit }) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        error: 'memory store not healthy',
+      }) }], isError: true };
+    }
+    const facts = store.listLiveFacts(scope ?? 'user', predicate, limit ?? 50);
+    return { content: [{ type: "text" as const, text: JSON.stringify({
+      scope: scope ?? 'user',
+      predicate: predicate ?? null,
+      count: facts.length,
+      facts: facts.map(f => ({
+        id: f.id,
+        subject: f.subjectText,
+        predicate: f.predicate,
+        object: f.objectText,
+        confidence: f.confidence,
+        source: f.source,
+        observedAt: new Date(f.observedAt).toISOString(),
+      })),
+    }, null, 2) }] };
+  }
+);
+
+server.tool(
   "explain_last_curation",
   "Render a human-readable explanation of the Context Curator's decisions for the most recent (or a specified) optimization. Shows every candidate that was considered, whether it was selected or rejected, why, and how many tokens it used against the budget. Use this when an output felt off and you want to understand which grounding sources the engine chose.",
   {
@@ -737,6 +841,14 @@ server.tool(
     })).optional().describe("Override the default 5 critique criteria."),
     auto_revise: z.boolean().optional().default(false)
       .describe("When true AND post_critique is true AND verdict !== 'accept' AND there's an improvedPrompt: `final_prompt` becomes the rewritten version instead of the raw optimization."),
+    max_iterations: z.number().int().min(1).max(5).optional().default(1)
+      .describe("Max revise-loop iterations. With `auto_revise: true` AND `post_critique: true`, the engine can feed each iteration's improvedPrompt back through optimize+critique up to this cap. Stops early at verdict=accept or when there's no improvedPrompt. Default 1 (single-shot, no loop). Hard max 5 to prevent cost runaways."),
+    clarify_model: z.string().optional()
+      .describe("Override the LLM model for the clarify pre-stage. Default: env LLM_MODEL. Useful for per-stage cost/quality routing — e.g. run clarify on a cheap model while critique runs on a frontier one."),
+    optimize_model: z.string().optional()
+      .describe("Override the LLM model for the optimize/ground core stage."),
+    critique_model: z.string().optional()
+      .describe("Override the LLM model for the critique judge AND rewrite."),
     category: CATEGORY_ENUM.optional(),
     platform: z.string().optional(),
     mode: MODE_ENUM.optional(),
@@ -761,6 +873,10 @@ server.tool(
       reviseThreshold: args.revise_threshold,
       critiqueCriteria: args.critique_criteria,
       autoRevise: args.auto_revise,
+      maxIterations: args.max_iterations,
+      clarifyModel: args.clarify_model,
+      optimizeModel: args.optimize_model,
+      critiqueModel: args.critique_model,
       category: args.category,
       platform: args.platform,
       mode: args.mode,

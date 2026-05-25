@@ -4,6 +4,49 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] — 2026-04-28
+
+Four targeted additions, one across each engine pillar — memory, agentic, models, context. **3 new MCP tools** (20 → 23). **6 new eval fixtures** (23 → 29). Fully back-compat with 1.5.x.
+
+### Added
+
+**Memory pillar — explicit CRUD (Me1).** Three new tools that complement reflection-on-`save_outcome`:
+
+- **`memory_remember`** — explicitly insert a `(subject, predicate, object)` triple. Source tagged `user:explicit`. Auto-embedded for future semantic retrieval. Returns the new fact id.
+- **`memory_forget`** — bi-temporal soft-delete by id (sets `invalidated_at`). Idempotent; returns `success: false` cleanly for non-existent or already-invalidated ids.
+- **`memory_list_facts`** — list live facts in a scope (default `user`), optionally filtered by predicate, sorted by recency.
+
+Closes the obvious UX gap where the engine could only learn from outcomes — users can now say "remember I prefer X" directly.
+
+**Agentic pillar — `compose_prompt` revise loop (A1).** New `max_iterations` field (default 1, hard max 5). With `auto_revise: true` AND `post_critique: true`, the engine feeds each iteration's `improvedPrompt` back through optimize+critique until verdict=accept, no improvedPrompt is available, or the cap is reached. Pre-clarify only runs once. Response includes new `iterations` field.
+
+**Models pillar — per-stage routing in `compose_prompt` (M1).** Three new fields: `clarify_model`, `optimize_model`, `critique_model`. Each overrides the env `LLM_MODEL` for that stage. Lets users route clarify→cheap-local, optimize→frontier-hosted, critique→cheap-judge. `optimization.metadata.model` and `critique.judgeModel` in the response now reflect the actual model that ran each stage.
+
+**Context pillar — git-state + environment signals (C1 + C4).** Two new bundle fields populated automatically:
+- **`bundle.git`** — current branch, short SHA, dirty flag, last 5 commit titles. Detected via `git rev-parse` / `git status` / `git log`; fails soft when cwd isn't a repo (returns `undefined`).
+- **`bundle.environment`** — `nowIso` / `weekday` / `timezone` (IANA). Pure JS, never fails.
+
+Both feed the Context Curator as low-base-utility candidates (`source: 'git-state'`, `source: 'environment'`); won't dominate budget but surface when relevant.
+
+### Eval coverage
+
+29 fixtures total (was 23). New: `memory-remember-persists`, `memory-forget-invalidates`, `compose-loop-iterates`, `compose-per-stage-models-honored`, `context-includes-git-state`, `context-includes-environment-time`.
+
+Local baseline (qwen2.5-coder:7b-instruct-q4_K_M): **25 passed / 1 failed / 3 skipped / 97% avg**. The lone failure remains the persistent `analyzer-creative-media` model-class signal.
+
+New harness check types: `iterations_min`, `iterations_max`, `optimization_model_eq`, `critique_model_eq`, `bundle_has_git`, `bundle_has_environment`, `git_branch_present`.
+
+### Changed
+
+- `MemoryStore.invalidateFact()` now returns `boolean` (was `void`) — true when an actual invalidation happened. Backward-compat: existing caller in `reflection.ts` ignored the return value, unaffected.
+
+### Notes for integrators
+
+- **No env-var surface changes.** All new fields are additive.
+- **23 MCP tools, 1 resource.** No tools removed.
+- **Same tarball anatomy.** Just slightly larger source.
+- **Existing memory.db files** are fully forward-compat. The dimension fix from 1.5.2 still applies; if you switched embedders mid-flight, you might already have multiple `embeddings_<dim>` tables. That's fine.
+
 ## [1.5.2] — 2026-04-28
 
 The first eval-gate-driven release. Adding `OPENAI_API_KEY` as a CI secret enabled the eval harness to run against `gpt-4o-mini` on every push — within minutes, the gate surfaced four real issues, three of which were latent bugs nobody had hit because the default Ollama setup happens to side-step them.

@@ -52,6 +52,11 @@ export interface CritiqueInputs {
   reviseThreshold?: number;
   /** Skip the "improved" rewrite pass even if the score is below threshold. */
   skipRewrite?: boolean;
+  /**
+   * Override the LLM model for the judge AND rewrite calls. When omitted,
+   * uses LLM_MODEL from env. Per-stage routing in compose_prompt sets this.
+   */
+  model?: string;
 }
 
 export interface CritiqueDimensionResult {
@@ -112,7 +117,8 @@ interface RawRewrite {
 export async function critiquePrompt(inputs: CritiqueInputs): Promise<CritiqueResult> {
   const startedAt = Date.now();
   const llm = getLLMClient();
-  const judgeModel = llm.getModelName();
+  // Reflect the per-call override if set, else fall back to the env default.
+  const judgeModel = inputs.model ?? llm.getModelName();
   const reviseThreshold = inputs.reviseThreshold ?? DEFAULT_REVISE_THRESHOLD;
   const criteria = (inputs.criteria && inputs.criteria.length) ? inputs.criteria : DEFAULT_CRITERIA;
 
@@ -168,6 +174,7 @@ Rules:
     const judgeRes = await llm.simpleGenerate(judgeSystem, judgeUser, {
       temperature: 0.1,
       maxTokens: 1024,
+      model: inputs.model,
     });
     const parsed = parseJudge(judgeRes.content);
     dimensions = normalizeDimensions(parsed.dimensions, criteria);
@@ -229,6 +236,7 @@ Rules:
       const rewriteRes = await llm.simpleGenerate(rewriteSystem, rewriteUser, {
         temperature: rewriteShape.temperature,
         maxTokens: Math.max(rewriteShape.maxTokens, 1024),
+        model: inputs.model,
       });
       const rw = parseRewrite(rewriteRes.content);
       const candidate = (rw.improved ?? '').toString().trim();

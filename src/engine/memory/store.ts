@@ -152,12 +152,19 @@ export class MemoryStore {
     return Number(result.lastInsertRowid);
   }
 
-  /** Soft-delete via bi-temporal invalidation, Graphiti-style. */
-  invalidateFact(id: number, supersededBy?: number, atMs?: number): void {
+  /**
+   * Soft-delete via bi-temporal invalidation, Graphiti-style.
+   * Returns true when an actual invalidation happened (i.e. the row
+   * existed and was still live). Returns false when the id doesn't
+   * exist OR the fact was already invalidated. Lets MCP tool handlers
+   * report a clean "not found" without an extra read.
+   */
+  invalidateFact(id: number, supersededBy?: number, atMs?: number): boolean {
     const ts = atMs ?? Date.now();
-    this.db.prepare(
+    const result = this.db.prepare(
       `UPDATE facts SET invalidated_at = ?, invalidated_by = ? WHERE id = ? AND invalidated_at IS NULL`,
     ).run(ts, supersededBy ?? null, id);
+    return result.changes > 0;
   }
 
   listLiveFacts(scope: MemoryScope, predicate?: string, limit = 100): Fact[] {

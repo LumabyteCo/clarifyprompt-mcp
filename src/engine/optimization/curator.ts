@@ -356,6 +356,49 @@ export function buildCandidates(args: {
     }
   }
 
+  // 1.6.0 — Git state. Low base utility (most prompts don't care what branch
+  // you're on), but high when the prompt mentions the codebase, commits, or
+  // ongoing work. The curator decides whether to include it.
+  if (bundle?.git) {
+    const g = bundle.git;
+    const lines: string[] = [];
+    if (g.branch) lines.push(`branch: ${g.branch}${g.dirty ? ' (dirty)' : ''}`);
+    if (g.headShort) lines.push(`HEAD: ${g.headShort}`);
+    if (g.recentCommits.length) {
+      lines.push('recent commits:');
+      for (const c of g.recentCommits.slice(0, 5)) lines.push(`  - ${c}`);
+    }
+    if (lines.length) {
+      const body = lines.join('\n');
+      candidates.push({
+        source: 'git-state',
+        label: 'Git State',
+        body,
+        tokens: approxTokens(body),
+        baseUtility: 0.4,
+        authority: 0.6,
+        intentMatch: 0.5,
+      });
+    }
+  }
+
+  // 1.6.0 — Environment (now / weekday / timezone). Very low utility for most
+  // prompts; the curator usually drops it unless there's leftover budget. Cheap
+  // safety net for time-sensitive prompts ("send this email tomorrow").
+  if (bundle?.environment) {
+    const e = bundle.environment;
+    const body = `now: ${e.nowIso} (${e.weekday}, ${e.timezone})`;
+    candidates.push({
+      source: 'environment',
+      label: 'Environment',
+      body,
+      tokens: approxTokens(body),
+      baseUtility: 0.2,
+      authority: 0.5,
+      intentMatch: 0.3,
+    });
+  }
+
   if (bundle?.targetModel?.family) {
     const caps: string[] = [];
     const tm = bundle.targetModel;

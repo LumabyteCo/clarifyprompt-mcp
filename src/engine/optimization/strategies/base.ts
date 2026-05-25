@@ -251,6 +251,7 @@ Ground the optimization in the Grounding Context above when relevant. Respect pr
     const result = await this.llmClient.simpleGenerate(systemPrompt, userPrompt, {
       temperature: shape.temperature,
       maxTokens: shape.maxTokens,
+      model: context.model,
     });
 
     return result.content.trim();

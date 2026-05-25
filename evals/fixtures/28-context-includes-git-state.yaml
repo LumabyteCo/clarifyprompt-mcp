@@ -1,0 +1,11 @@
+name: context-includes-git-state
+description: 'When inspect_context runs in a directory that IS a git repo (the harness runs from the clarifyprompt-mcp repo root by default — no requires_workspace override), the returned ContextBundle must have a populated bundle.git with branch + recent commits. Proves C1 (git-state signal) is collected and surfaced.'
+tags: [context, git, c1, regression]
+input:
+  tool: inspect_context
+  prompt: 'what changed recently in this codebase?'
+  skip_intent_resolution: true
+expected:
+  bundle_has_git: true
+  git_branch_present: true
+  no_error: true

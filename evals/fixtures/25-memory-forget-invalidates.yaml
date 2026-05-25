@@ -1,0 +1,21 @@
+name: memory-forget-invalidates
+description: 'After memory_remember + memory_forget(id=1), memory_list_facts must NOT include the forgotten fact. The first fact inserted in a fresh memory.db gets id=1 (deterministic because each fixture gets a fresh CLARIFYPROMPT_HOME).'
+tags: [memory, crud, regression]
+setup:
+  - tool: memory_remember
+    args:
+      subject: user
+      predicate: prefers
+      object: pineapple on pizza
+      scope: user
+      confidence: 1.0
+  - tool: memory_forget
+    args:
+      id: 1
+input:
+  tool: memory_list_facts
+  scope: user
+  limit: 10
+expected:
+  count_max: 0
+  no_error: true

@@ -40,6 +40,13 @@ export interface OptimizeRequest {
    * Each becomes a pinned, top-priority section in the curated grounding.
    */
   userProvidedSources?: UserProvidedSource[];
+  /**
+   * Override the LLM model for THIS optimize call. When omitted, uses the
+   * env-default LLM_MODEL. Per-stage routing in compose_prompt sets this.
+   * Note: this overrides only the rewrite-step model; the analyzer and
+   * memory-retrieval embedder are unaffected.
+   */
+  model?: string;
 }
 
 export class OptimizationEngine {
@@ -49,7 +56,10 @@ export class OptimizationEngine {
     const startTime = Date.now();
     const id = this.generateId();
     const sessionId = request.sessionId || generateSessionId();
-    const modelName = getLLMClient().getModelName();
+    // Per-call model override (M1: per-stage routing in compose_prompt) wins
+    // over the env-default. The trace, persisted optimization record, and
+    // result metadata all reflect whichever model actually ran the rewrite.
+    const modelName = request.model ?? getLLMClient().getModelName();
 
     // Build the bundle FIRST. The analyzer inside it decides category + intent
     // + recommended mode together, so downstream flow is coherent.
@@ -138,6 +148,7 @@ export class OptimizationEngine {
       acceptedExamples,
       memoryMatches,
       userProvidedSources: request.userProvidedSources,
+      model: request.model,
     };
 
     // Everything upstream has a graceful fallback; the LLM call itself can

@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.5.2:** First eval-gate-driven release. CI now runs `npm run eval` against `gpt-4o-mini` on every push (when `OPENAI_API_KEY` is configured as a repo secret), and the live runs surfaced four real issues — three of which were latent bugs no one had hit because the default Ollama setup happens to side-step them. The headline fix: **the persistent memory store now supports any embedding dimension** (was hardcoded to 768 / nomic-embed-text). [#2](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/2). Plus `LLM_TIMEOUT_MS` env override + harness hardening. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.0:** Four high-leverage additions across all four engine pillars — **explicit memory CRUD** (`memory_remember` / `memory_forget` / `memory_list_facts`), **agentic revise-loop** (`compose_prompt`'s new `max_iterations`), **per-stage model routing** in `compose_prompt` (`clarify_model` / `optimize_model` / `critique_model`), and **git-state + environment grounding** added to the Context Engine. 23 → 29 eval fixtures. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,64 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.0
+
+Four targeted additions across the engine's four pillars (memory / agentic / models / context), each shipped behind real eval fixtures. **3 new MCP tools** (23 total). Fully back-compat with 1.5.x — no removed tools, no removed fields, no required env-var changes.
+
+### Memory — explicit fact CRUD (`memory_remember`, `memory_forget`, `memory_list_facts`)
+
+Before 1.6, facts only entered persistent memory via *reflection on `save_outcome`* — implicit, LLM-extracted, after-the-fact. 1.6 adds the explicit path:
+
+- **`memory_remember`** — directly insert a `(subject, predicate, object)` triple with explicit confidence. Source tagged `user:explicit`. Auto-embedded for future semantic retrieval.
+- **`memory_forget`** — soft-delete (bi-temporal `invalidated_at`) a fact by id. Idempotent: re-forgetting an already-invalidated fact is a no-op and returns `success: false` cleanly.
+- **`memory_list_facts`** — list live facts in a scope (default `user`), optionally filtered by predicate. Sorted by most-recently-observed.
+
+This closes the obvious UX gap where the engine could only learn from *outcomes* — now users can say "remember I prefer X" directly.
+
+### Agentic — `compose_prompt`'s new `max_iterations` revise loop
+
+`compose_prompt` used to revise *once* (the critique's `improvedPrompt` replaced the optimization, if the verdict wasn't `accept`). 1.6 adds a loop:
+
+```json
+{ "prompt": "...", "post_critique": true, "auto_revise": true, "max_iterations": 3 }
+```
+
+Each iteration after the first re-runs `optimize` + `critique` on the previous iteration's improved prompt. Stops at `verdict=accept`, no improvedPrompt to feed back, or the cap. `pre_clarify` only runs once (no point re-asking on a rewrite). The response includes a new `iterations` field showing how many fired. Hard cap of 5 to prevent cost runaways.
+
+### Models — per-stage model routing
+
+Each compose stage can now target a different model:
+
+```json
+{
+  "prompt": "...",
+  "clarify_model": "qwen2.5-coder:7b-instruct-q4_K_M",
+  "optimize_model": "claude-sonnet-4-20250514",
+  "critique_model": "gpt-4o-mini"
+}
+```
+
+Run clarify on a cheap local model, optimize on the big-budget frontier model, critique on the cheap judge. The override flows through every layer — `optimization.metadata.model` and `critique.judgeModel` in the response reflect the actual model that ran each stage.
+
+### Context — git-state + environment signals
+
+Two new signal collectors feed the Context Curator:
+
+- **`bundle.git`** — current branch, short SHA, dirty flag, last 5 commit titles. Lets the engine ground prompts in "what you're iterating on" without you spelling it out. Detected via `git rev-parse` / `git status` / `git log`; fails soft when cwd isn't a repo.
+- **`bundle.environment`** — `nowIso` / `weekday` / `timezone` (IANA from `Intl.DateTimeFormat`). Helps with time-sensitive prompts ("send this email tomorrow"). Pure JS, never fails.
+
+Both are low-utility candidates in the curator (won't dominate budget) but surface as grounding sources when relevant.
+
+### Eval coverage
+
+23 → **29 fixtures** (6 new):
+- 24 `memory-remember-persists` / 25 `memory-forget-invalidates` — Me1 CRUD round-trip
+- 26 `compose-loop-iterates` — A1 loop infrastructure (new `iterations_min` / `iterations_max` checks)
+- 27 `compose-per-stage-models-honored` — M1 per-stage routing (new `optimization_model_eq` / `critique_model_eq` checks)
+- 28 `context-includes-git-state` / 29 `context-includes-environment-time` — C1 + C4 signals (new `bundle_has_git` / `bundle_has_environment` / `git_branch_present` checks)
+
+Local baseline on `qwen2.5-coder:7b`: **25 passed / 1 failed / 3 skipped / 97% avg**. The lone failure remains the persistent `analyzer-creative-media` model-class signal (untouched).
 
 ## What's new in 1.5.2
 
@@ -93,7 +151,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.5.2)
+## What's in the box (cumulative through 1.6.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -164,7 +222,7 @@ Add to your `.cursor/mcp.json`:
 [AI Butler](https://github.com/LumabyteCo/aibutler) is a self-hosted
 personal AI agent runtime — single Go binary, multi-channel chat, MCP
 ecosystem hub. Drop ClarifyPrompt into its `mcp.servers` config and
-the agent picks up all 20 tools as native capabilities, callable from
+the agent picks up all 23 tools as native capabilities, callable from
 any channel (web chat, terminal, Telegram, Slack, etc.). AI Butler
 discovers tools dynamically via MCP's `tools/list`, so adding /
 removing tools in ClarifyPrompt updates the agent's surface

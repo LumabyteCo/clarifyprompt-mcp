@@ -35,6 +35,12 @@ export interface OptimizationContext {
    * pinned, highest-priority section in the curated grounding context.
    */
   userProvidedSources?: UserProvidedSource[];
+  /**
+   * Per-call LLM model override (from request.model). Strategies pass this
+   * to simpleGenerate so a single compose call can route optimize to a
+   * different model than the env default.
+   */
+  model?: string;
 }
 
 export interface OptimizationResult {

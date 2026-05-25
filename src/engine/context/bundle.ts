@@ -4,6 +4,8 @@ import { collectProjectSignal } from './projectSignals.js';
 import { collectTargetModelSignal } from './targetModelSignals.js';
 import { getSessionStore, generateSessionId } from './sessionSignals.js';
 import { analyzePrompt } from './promptAnalyzer.js';
+import { collectGitSignal } from './gitSignals.js';
+import { collectEnvironmentSignal } from './environmentSignals.js';
 import type { ContextBundle, ContextBundleInputs, AnalysisSignal } from './types.js';
 
 export async function buildContextBundle(inputs: ContextBundleInputs): Promise<ContextBundle> {
@@ -19,6 +21,11 @@ export async function buildContextBundle(inputs: ContextBundleInputs): Promise<C
       excerpt: inputs.fileExcerpt,
     })),
   ]);
+
+  // 1.6.0 — lightweight git + environment signals. Both fail-soft:
+  // git returns undefined when cwd isn't a repo; environment always populates.
+  const git = collectGitSignal(cwd);
+  const environment = collectEnvironmentSignal();
 
   const modelName = inputs.modelName || getLLMClient().getModelName();
   const targetModel = collectTargetModelSignal(modelName, inputs.modelProvider);
@@ -49,6 +56,8 @@ export async function buildContextBundle(inputs: ContextBundleInputs): Promise<C
     file: fileSig,
     targetModel,
     analysis,
+    git,
+    environment,
     // Keep intent populated for code-path back-compat with anything
     // that reads bundle.intent directly.
     intent: analysis

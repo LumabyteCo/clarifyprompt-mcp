@@ -63,6 +63,25 @@ export interface ComposeInputs {
    * `finalPrompt` becomes the improved version instead of the raw optimization.
    */
   autoRevise?: boolean;
+  /**
+   * Max revise-loop iterations. Each iteration re-runs ground/optimize + critique
+   * on the previously-improved prompt. Stops at verdict=accept, no improvedPrompt
+   * to feed back, or this cap. Default 1 (single-shot, current behavior). Hard
+   * max 5 to prevent cost runaways on pathological prompts.
+   *
+   * Only meaningful with `postCritique: true` AND `autoRevise: true`. Without
+   * autoRevise there's no rewritten prompt to feed back; the loop short-circuits
+   * after iteration 1.
+   */
+  maxIterations?: number;
+
+  // ── Per-stage model routing (M1) ──────────────────────────────
+  /** Override the LLM model for the clarify pre-stage. Default: env LLM_MODEL. */
+  clarifyModel?: string;
+  /** Override the LLM model for the optimize/ground core stage. */
+  optimizeModel?: string;
+  /** Override the LLM model for the critique judge + rewrite. */
+  critiqueModel?: string;
 
   // ── Passthroughs to optimize/ground ──────────────────────────
   category?: Category;
@@ -112,6 +131,12 @@ export interface ComposeResult {
   critique?: CritiqueResult;
   /** Whether finalPrompt was replaced by critique.improvedPrompt. */
   revised?: boolean;
+  /**
+   * How many optimize+critique iterations ran. Equals 1 for the default
+   * single-shot flow; only >1 when maxIterations > 1 AND the engine actually
+   * fed the rewrite back through another iteration.
+   */
+  iterations?: number;
 }
 
 export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResult> {
@@ -142,6 +167,7 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
       userLocale: inputs.userLocale,
       maxQuestions: inputs.maxQuestions,
       force: clarifyMode === 'always',
+      model: inputs.clarifyModel,
     });
     recordStage(
       'clarify',
@@ -162,66 +188,89 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
     }
   }
 
-  // ── 2. ground OR optimize (always) ─────────────────────────────
-  let optimization: OptimizationResult | undefined;
-  let grounding: GroundResult | undefined;
-  let optimizedText: string;
-
+  // ── 2-4. loop: ground OR optimize → critique → revise ─────────
+  // When inputs.maxIterations > 1 AND auto_revise is on AND the critique
+  // didn't accept, we feed the rewritten prompt back through optimize+critique
+  // for another pass. Stops at: verdict=accept, no improvedPrompt to feed
+  // back, or max iterations reached.
+  //
+  // Clarify only runs once (at the top), since the question "what does the
+  // user want?" doesn't get re-asked on a rewritten prompt.
+  const maxIter = Math.max(1, Math.min(5, inputs.maxIterations ?? 1));
   const useGround = Array.isArray(inputs.sources) && inputs.sources.length > 0;
 
-  if (useGround) {
-    const startedAt = Date.now();
-    grounding = await groundPrompt({
-      prompt: inputs.prompt,
-      sources: inputs.sources!,
-      category: inputs.category,
-      platform: inputs.platform,
-      mode: inputs.mode,
-      modeExplicit: inputs.modeExplicit,
-      cwd: inputs.cwd,
-      filePath: inputs.filePath,
-      fileLanguage: inputs.fileLanguage,
-      fileExcerpt: inputs.fileExcerpt,
-      sessionId: inputs.sessionId,
-      userLocale: inputs.userLocale,
-      userPinnedInstructions: inputs.userPinnedInstructions,
-      enrichContext: inputs.enrichContext,
-      skipIntentResolution: inputs.skipIntentResolution,
-      includeBundle: inputs.includeBundle,
-    });
-    optimizedText = grounding.optimizedPrompt;
-    recordStage('ground', startedAt, `${grounding.usedSources.length} source(s) pinned, ${grounding.droppedSources.length} dropped`);
-  } else {
-    const startedAt = Date.now();
-    optimization = await getOptimizationEngine().optimize({
-      prompt: inputs.prompt,
-      category: inputs.category,
-      platform: inputs.platform,
-      mode: inputs.mode,
-      modeExplicit: inputs.modeExplicit,
-      enrichContext: inputs.enrichContext,
-      sessionId: inputs.sessionId,
-      filePath: inputs.filePath,
-      fileLanguage: inputs.fileLanguage,
-      fileExcerpt: inputs.fileExcerpt,
-      cwd: inputs.cwd,
-      userLocale: inputs.userLocale,
-      userPinnedInstructions: inputs.userPinnedInstructions,
-      includeBundle: inputs.includeBundle,
-      skipIntentResolution: inputs.skipIntentResolution,
-    });
-    optimizedText = optimization.optimizedPrompt;
-    recordStage('optimize', startedAt, `${optimization.grounding?.sources.length ?? 0} grounding source(s) selected`);
-  }
-
-  // ── 3. critique (optional) ─────────────────────────────────────
+  let optimization: OptimizationResult | undefined;
+  let grounding: GroundResult | undefined;
   let critique: CritiqueResult | undefined;
+  let optimizedText: string = inputs.prompt; // safety default
+  let currentPrompt = inputs.prompt;
+  let finalPrompt = inputs.prompt;
   let revised = false;
-  let finalPrompt = optimizedText;
+  let iterations = 0;
 
-  if (inputs.postCritique) {
-    const startedAt = Date.now();
+  for (let iter = 0; iter < maxIter; iter++) {
+    iterations++;
+    const iterTag = maxIter > 1 ? ` [iter ${iter + 1}/${maxIter}]` : '';
+
+    // ── ground OR optimize ──
+    if (useGround) {
+      const startedAt = Date.now();
+      grounding = await groundPrompt({
+        prompt: currentPrompt,
+        sources: inputs.sources!,
+        category: inputs.category,
+        platform: inputs.platform,
+        mode: inputs.mode,
+        modeExplicit: inputs.modeExplicit,
+        cwd: inputs.cwd,
+        filePath: inputs.filePath,
+        fileLanguage: inputs.fileLanguage,
+        fileExcerpt: inputs.fileExcerpt,
+        sessionId: inputs.sessionId,
+        userLocale: inputs.userLocale,
+        userPinnedInstructions: inputs.userPinnedInstructions,
+        enrichContext: inputs.enrichContext,
+        skipIntentResolution: inputs.skipIntentResolution,
+        includeBundle: inputs.includeBundle,
+        model: inputs.optimizeModel,
+      });
+      optimizedText = grounding.optimizedPrompt;
+      recordStage('ground', startedAt, `${grounding.usedSources.length} source(s) pinned, ${grounding.droppedSources.length} dropped${iterTag}`);
+    } else {
+      const startedAt = Date.now();
+      optimization = await getOptimizationEngine().optimize({
+        prompt: currentPrompt,
+        category: inputs.category,
+        platform: inputs.platform,
+        mode: inputs.mode,
+        modeExplicit: inputs.modeExplicit,
+        enrichContext: inputs.enrichContext,
+        sessionId: inputs.sessionId,
+        filePath: inputs.filePath,
+        fileLanguage: inputs.fileLanguage,
+        fileExcerpt: inputs.fileExcerpt,
+        cwd: inputs.cwd,
+        userLocale: inputs.userLocale,
+        userPinnedInstructions: inputs.userPinnedInstructions,
+        includeBundle: inputs.includeBundle,
+        skipIntentResolution: inputs.skipIntentResolution,
+        model: inputs.optimizeModel,
+      });
+      optimizedText = optimization.optimizedPrompt;
+      recordStage('optimize', startedAt, `${optimization.grounding?.sources.length ?? 0} grounding source(s) selected${iterTag}`);
+    }
+
+    // Default finalPrompt to whatever the latest optimize/ground produced.
+    finalPrompt = optimizedText;
+
+    // ── critique (optional) ──
+    if (!inputs.postCritique) break; // no critique → no revise → no loop value
+
+    const cStart = Date.now();
     critique = await critiquePrompt({
+      // Always compare the LATEST optimized output, but reference the
+      // ORIGINAL user prompt for intent_alignment so paraphrasing across
+      // iterations doesn't make the engine forget what was asked.
       prompt: optimizedText,
       originalPrompt: inputs.prompt,
       category: inputs.category,
@@ -232,18 +281,28 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
       userLocale: inputs.userLocale,
       criteria: inputs.critiqueCriteria,
       reviseThreshold: inputs.reviseThreshold,
-      // critique runs its own rewrite; auto_revise just decides whether
-      // to surface that rewrite as the final prompt.
       skipRewrite: !inputs.autoRevise,
+      model: inputs.critiqueModel,
     });
-    recordStage('critique', startedAt, `verdict=${critique.verdict}, score=${critique.overallScore}`);
+    recordStage('critique', cStart, `verdict=${critique.verdict}, score=${critique.overallScore}${iterTag}`);
 
+    // ── revise (optional) ──
     if (inputs.autoRevise && critique.verdict !== 'accept' && critique.improvedPrompt) {
-      const startedAt2 = Date.now();
+      const rStart = Date.now();
       finalPrompt = critique.improvedPrompt;
       revised = true;
-      recordStage('revise', startedAt2, `replaced finalPrompt with critique.improvedPrompt (verdict=${critique.verdict})`);
+      recordStage('revise', rStart, `replaced finalPrompt with critique.improvedPrompt (verdict=${critique.verdict})${iterTag}`);
+
+      // Loop continuation: feed the rewrite back through optimize+critique
+      // on the next iteration. Bail early if we're already at the cap.
+      if (iter + 1 < maxIter) {
+        currentPrompt = critique.improvedPrompt;
+        continue;
+      }
     }
+
+    // Either accepted, no rewrite available, or autoRevise off → done.
+    break;
   }
 
   return {
@@ -254,5 +313,6 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
     optimization,
     critique,
     revised: revised || undefined,
+    iterations,
   };
 }

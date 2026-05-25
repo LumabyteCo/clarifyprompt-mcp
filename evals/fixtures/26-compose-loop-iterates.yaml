@@ -1,0 +1,16 @@
+name: compose-loop-iterates
+description: 'A weak prompt (likely to trigger revise) called with max_iterations=2 and auto_revise=true should report iterations >= 1 in the response. The exact iteration count varies by model — qwen-coder-7b may accept on iter 1, gpt-4o-mini might run 2 — but the field MUST be populated and >= 1, proving the loop infrastructure is wired through compose_prompt.'
+tags: [compose, loop, agentic, regression]
+input:
+  tool: compose_prompt
+  prompt: 'help me write something'
+  pre_clarify: never
+  post_critique: true
+  auto_revise: true
+  max_iterations: 2
+  revise_threshold: 9.0  # bias toward revising at least once
+expected:
+  stages_must_include: ['optimize', 'critique']
+  iterations_min: 1
+  iterations_max: 2  # the cap we set; engine must not exceed
+  no_error: true

@@ -1,0 +1,10 @@
+name: context-includes-environment-time
+description: 'inspect_context must always return bundle.environment populated with nowIso + weekday + timezone. Pure JS, no I/O dependencies — should never fail to populate. Proves C4 (environment signal) is wired.'
+tags: [context, environment, c4, regression]
+input:
+  tool: inspect_context
+  prompt: 'send this email tomorrow'
+  skip_intent_resolution: true
+expected:
+  bundle_has_environment: true
+  no_error: true

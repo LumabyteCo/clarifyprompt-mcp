@@ -1,0 +1,18 @@
+name: memory-remember-persists
+description: 'After memory_remember inserts a fact, memory_list_facts in the same scope must include it. Proves the explicit-CRUD path (Me1) wires through to the same persistence layer reflection uses.'
+tags: [memory, crud, regression]
+setup:
+  - tool: memory_remember
+    args:
+      subject: user
+      predicate: prefers
+      object: TypeScript with strict mode and explicit return types
+      scope: user
+      confidence: 1.0
+input:
+  tool: memory_list_facts
+  scope: user
+  limit: 10
+expected:
+  count_min: 1
+  no_error: true

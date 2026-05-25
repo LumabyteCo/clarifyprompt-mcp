@@ -1,0 +1,16 @@
+name: compose-per-stage-models-honored
+description: 'When compose_prompt is called with explicit per-stage model overrides (optimize_model, critique_model), the response surfaces (optimization.metadata.model + critique.judgeModel) must reflect those exact overrides. This proves the per-stage routing plumbing actually flows through every layer (compose → grounding/engine → strategy → simpleGenerate AND compose → critique → simpleGenerate). The override values intentionally match the env-default model so the test is single-model robust — the assertion is "the field equals what we passed", not "we ran against a different model".'
+tags: [compose, models, routing, regression]
+input:
+  tool: compose_prompt
+  prompt: 'write a TypeScript function that returns the current ISO timestamp'
+  pre_clarify: never
+  post_critique: true
+  auto_revise: false
+  optimize_model: qwen2.5-coder:7b-instruct-q4_K_M
+  critique_model: qwen2.5-coder:7b-instruct-q4_K_M
+skip_unless_model_matches: 'qwen2\.5-coder:7b'
+expected:
+  optimization_model_eq: qwen2.5-coder:7b-instruct-q4_K_M
+  critique_model_eq: qwen2.5-coder:7b-instruct-q4_K_M
+  no_error: true

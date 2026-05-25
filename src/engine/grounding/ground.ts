@@ -36,6 +36,8 @@ export interface GroundInputs {
   enrichContext?: boolean;
   skipIntentResolution?: boolean;
   includeBundle?: boolean;
+  /** Per-call LLM model override (forwarded to the underlying optimize call). */
+  model?: string;
 }
 
 export interface GroundResult extends OptimizationResult {
@@ -95,6 +97,7 @@ export async function groundPrompt(inputs: GroundInputs): Promise<GroundResult> 
     skipIntentResolution: inputs.skipIntentResolution,
     includeBundle: inputs.includeBundle,
     userProvidedSources: cleaned,
+    model: inputs.model,
   });
 
   // Cross-check: which sources made it into the curated grounding? Each

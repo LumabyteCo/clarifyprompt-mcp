@@ -101,6 +101,19 @@ export interface UserSignal {
   pinnedInstructions?: string;
 }
 
+export interface GitSignal {
+  branch?: string;
+  headShort?: string;
+  dirty: boolean;
+  recentCommits: string[];
+}
+
+export interface EnvironmentSignal {
+  nowIso: string;
+  weekday: string;
+  timezone: string;
+}
+
 export interface ContextBundle {
   schemaVersion: 1;
   user: UserSignal;
@@ -110,6 +123,10 @@ export interface ContextBundle {
   targetModel?: TargetModelSignal;
   intent?: IntentSignal;
   analysis?: AnalysisSignal;
+  /** Git-state (1.6.0). Only present when cwd is inside a git repo. */
+  git?: GitSignal;
+  /** Now-ish context (1.6.0). Always present. */
+  environment?: EnvironmentSignal;
 }
 
 export interface ContextBundleInputs {

@@ -212,6 +212,15 @@ const CHECK_WEIGHTS = {
   stages_must_exclude: 1.5,
   clarification_required: 2.0,
   revised: 1.5,
+  iterations_min: 1.5,
+  iterations_max: 1.0,
+  // M1 per-stage model verification
+  optimization_model_eq: 1.5,
+  critique_model_eq: 1.5,
+  // C1 + C4 context-signal checks
+  bundle_has_git: 1.5,
+  bundle_has_environment: 1.5,
+  git_branch_present: 1.5,
   final_prompt_must_contain: 2.0,
   final_prompt_must_not_contain: 1.5,
   // memory_search checks
@@ -380,6 +389,35 @@ function scoreCheck(name, expected, actual, opts = {}) {
       const pass = !!actual === !!expected;
       return { passed: pass, detail: pass ? `revised=${!!actual}` : `expected ${expected}, got ${!!actual}` };
     }
+    case 'iterations_min': {
+      const n = typeof actual === 'number' ? actual : 0;
+      const pass = n >= expected;
+      return { passed: pass, detail: pass ? `iterations=${n} ≥ ${expected}` : `expected iterations ≥${expected}, got ${n}` };
+    }
+    case 'iterations_max': {
+      const n = typeof actual === 'number' ? actual : 0;
+      const pass = n <= expected;
+      return { passed: pass, detail: pass ? `iterations=${n} ≤ ${expected}` : `expected iterations ≤${expected}, got ${n}` };
+    }
+    case 'optimization_model_eq':
+    case 'critique_model_eq': {
+      const pass = actual === expected;
+      return { passed: pass, detail: pass ? `model=${actual}` : `expected model='${expected}', got '${actual}'` };
+    }
+    case 'bundle_has_git':
+    case 'bundle_has_environment': {
+      const present = actual != null && (typeof actual === 'object');
+      const want = !!expected;
+      const pass = want ? present : !present;
+      return { passed: pass, detail: pass ? `present=${present}` : `expected present=${want}, got present=${present}` };
+    }
+    case 'git_branch_present': {
+      const v = actual?.branch;
+      const present = typeof v === 'string' && v.length > 0;
+      const want = !!expected;
+      const pass = want ? present : !present;
+      return { passed: pass, detail: pass ? `branch='${v}'` : `expected branch present=${want}; got '${v}'` };
+    }
     case 'final_prompt_must_contain': {
       const haystack = (actual || '').toLowerCase();
       const missing = expected.filter((needle) => !haystack.includes(String(needle).toLowerCase()));
@@ -473,6 +511,13 @@ function evaluateFixture(fixture, result, systemPrompt, tool) {
       case 'stages_must_exclude':            actual = result.stages || []; break;
       case 'clarification_required':         actual = result.clarificationRequired; break;
       case 'revised':                        actual = result.revised; break;
+      case 'iterations_min':
+      case 'iterations_max':                 actual = result.iterations; break;
+      case 'optimization_model_eq':          actual = result.optimization?.metadata?.model; break;
+      case 'critique_model_eq':              actual = result.critique?.judgeModel; break;
+      case 'bundle_has_git':                 actual = result.git; break;
+      case 'bundle_has_environment':         actual = result.environment; break;
+      case 'git_branch_present':             actual = result.git; break;
       case 'final_prompt_must_contain':
       case 'final_prompt_must_not_contain':  actual = result.finalPrompt; break;
       // memory_search

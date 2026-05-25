@@ -36,6 +36,12 @@ export interface ClarifyInputs {
   force?: boolean;
   /** Cap on returned questions. Default 3, hard max 5. */
   maxQuestions?: number;
+  /**
+   * Override the LLM model for this clarify call. When omitted, uses LLM_MODEL
+   * from env. Useful with per-stage routing in compose_prompt — e.g. run
+   * clarify on a cheap model and optimize on a frontier model.
+   */
+  model?: string;
 }
 
 export interface ClarifyQuestion {
@@ -172,6 +178,7 @@ Rules:
     const result = await llm.simpleGenerate(system, userPrompt, {
       temperature: 0.3,
       maxTokens: 768,
+      model: inputs.model,
     });
     const parsed = parseQuestions(result.content);
     if (!parsed.length) {
