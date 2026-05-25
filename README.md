@@ -164,8 +164,11 @@ Add to your `.cursor/mcp.json`:
 [AI Butler](https://github.com/LumabyteCo/aibutler) is a self-hosted
 personal AI agent runtime — single Go binary, multi-channel chat, MCP
 ecosystem hub. Drop ClarifyPrompt into its `mcp.servers` config and
-the agent picks up all 11 tools as native capabilities, callable from
-any channel (web chat, terminal, Telegram, Slack, etc.).
+the agent picks up all 20 tools as native capabilities, callable from
+any channel (web chat, terminal, Telegram, Slack, etc.). AI Butler
+discovers tools dynamically via MCP's `tools/list`, so adding /
+removing tools in ClarifyPrompt updates the agent's surface
+automatically — no config edits needed on the butler side.
 
 Edit `~/.aibutler/config.yaml`:
 
@@ -180,14 +183,21 @@ configurations:
           LLM_MODEL: "qwen3-vl:8b"
 ```
 
-Restart AI Butler. The boot log confirms all 11 tools are wired in:
+Restart AI Butler. The boot log confirms the tools are wired in:
 
-![AI Butler boot log: mcp: connected to clarifyprompt (11 tools), 1/1 servers connected, then "Ready. Press Ctrl+C to stop." Verified live integration.](docs/screenshots/aibutler/01-boot-log.png)
+![AI Butler boot log: mcp: connected to clarifyprompt, 1/1 servers connected, then "Ready. Press Ctrl+C to stop." Verified live integration.](docs/screenshots/aibutler/01-boot-log.png)
 
 The agent enumerates the full surface on request — every tool prefixed
 with `clarifyprompt.`:
 
-![AI Butler webchat showing the agent listing all 11 clarifyprompt tools (optimize_prompt, inspect_context, list_categories, list_platforms, list_modes, register_platform, update_platform, unregister_platform, list_traces, get_trace, save_outcome) with one-line descriptions](docs/screenshots/aibutler/02-tool-listing.png)
+![AI Butler webchat showing the agent listing the clarifyprompt tools with one-line descriptions](docs/screenshots/aibutler/02-tool-listing.png)
+
+> 📸 **Screenshots above are from a 1.2-era integration (11 tools).**
+> Current `1.5.x` exposes 20 tools — `optimize_prompt`,
+> `clarify_with_user`, `ground_prompt`, `critique_prompt`,
+> `compose_prompt`, plus all the management / inspection /
+> memory tools. AI Butler picks them up automatically via the
+> MCP `tools/list` discovery; no config changes needed.
 
 #### Drive the Context Engine end-to-end
 
