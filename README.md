@@ -251,10 +251,12 @@ with `clarifyprompt.`:
 ![AI Butler webchat showing the agent listing the clarifyprompt tools with one-line descriptions](docs/screenshots/aibutler/02-tool-listing.png)
 
 > 📸 **Screenshots above are from a 1.2-era integration (11 tools).**
-> Current `1.5.x` exposes 20 tools — `optimize_prompt`,
+> Current `1.6.x` exposes **23 tools** — `optimize_prompt`,
 > `clarify_with_user`, `ground_prompt`, `critique_prompt`,
-> `compose_prompt`, plus all the management / inspection /
-> memory tools. AI Butler picks them up automatically via the
+> `compose_prompt`, plus the management / inspection / memory
+> tools (`memory_search`, `memory_remember`, `memory_forget`,
+> `memory_list_facts`, knowledge-pack tools, traces, custom
+> platforms, etc.). AI Butler picks them up automatically via the
 > MCP `tools/list` discovery; no config changes needed.
 
 #### Drive the Context Engine end-to-end
@@ -532,6 +534,23 @@ The canonical pipeline. One call runs clarify → ground/optimize → critique �
 | `auto_revise: true` (with `post_critique: true`) | when verdict !== `accept` and there's an `improvedPrompt`, replace `finalPrompt` |
 
 **Hard stop:** if clarify surfaces questions (only happens when `pre_clarify: "always"`, or `auto` on a low-confidence prompt), the chain stops and returns `clarificationRequired: true`. Caller answers the questions, edits the prompt to incorporate the answers, and re-calls (typically with `pre_clarify: "never"` to skip the second clarify pass).
+
+#### 1.6.0 additions
+
+- **`max_iterations` (1–5, default 1)** — agentic revise loop. With `auto_revise: true` AND `post_critique: true`, each iteration's `improvedPrompt` feeds back through optimize+critique until verdict=accept, no improvedPrompt is available, or the cap is reached. Pre-clarify only fires once. Response includes `iterations` showing how many ran.
+- **`clarify_model` / `optimize_model` / `critique_model`** — per-stage model routing. Each overrides the env `LLM_MODEL` for that stage. Use it to route compose across cost/quality tiers — e.g. cheap-local clarify, frontier-hosted optimize, cheap critique:
+
+  ```json
+  {
+    "prompt": "...",
+    "post_critique": true,
+    "clarify_model":  "qwen2.5-coder:7b-instruct-q4_K_M",
+    "optimize_model": "claude-sonnet-4-20250514",
+    "critique_model": "gpt-4o-mini"
+  }
+  ```
+
+  `optimization.metadata.model` and `critique.judgeModel` in the response reflect the actual model that ran each stage.
 
 ### `inspect_context` *(new in 1.2.0)*
 
@@ -919,7 +938,7 @@ Supported as a first-class case. The engine auto-detects reasoners at family lev
 ```
 clarifyprompt-mcp/
   src/
-    index.ts                           MCP server entry point (20 tools, 1 resource)
+    index.ts                           MCP server entry point (23 tools, 1 resource)
     engine/
       config/
         categories.ts                  CategoryConfig type + CATEGORIES const (loaded from YAML in 1.5.0)
@@ -934,6 +953,8 @@ clarifyprompt-mcp/
         sessionSignals.ts              In-memory per-session ring buffer + outcome retrieval
         targetModelSignals.ts          Model → capabilities mapping
         promptAnalyzer.ts              Unified analyzer: category + intent + recommendedMode
+        gitSignals.ts                  (1.6.0) branch + HEAD + dirty + recent commits
+        environmentSignals.ts          (1.6.0) nowIso + weekday + timezone
         bundle.ts                      Bundle orchestrator
       trace/                           Local tracing (1.2.0)
         types.ts                       TraceEntry schema (shape, groundingSources, error)
