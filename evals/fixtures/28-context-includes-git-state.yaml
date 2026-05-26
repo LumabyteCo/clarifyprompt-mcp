@@ -1,11 +1,12 @@
 name: context-includes-git-state
-description: 'When inspect_context runs in a directory that IS a git repo (the harness runs from the clarifyprompt-mcp repo root by default — no requires_workspace override), the returned ContextBundle must have a populated bundle.git with branch + recent commits. Proves C1 (git-state signal) is collected and surfaced.'
+description: 'When inspect_context runs in a directory that IS a git repo, the ContextBundle must have a populated bundle.git. We deliberately do NOT assert branch presence specifically — GitHub Actions checks out in detached-HEAD mode (no branch, just a SHA), which our gitSignals.ts correctly maps to `branch: undefined`. The signal IS populated (headShort + recentCommits are always present in a repo); branch is a project-local nicety, not a CI invariant.'
 tags: [context, git, c1, regression]
 input:
   tool: inspect_context
   prompt: 'what changed recently in this codebase?'
   skip_intent_resolution: true
 expected:
+  # bundle.git must exist (headShort + recentCommits populate in any
+  # readable repo, including detached-HEAD CI checkouts).
   bundle_has_git: true
-  git_branch_present: true
   no_error: true
