@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.1:** [Higgsfield](https://higgsfield.ai/mcp) added as a multi-model platform in both `image` and `video` categories — one platform target routes to Soul 2.0 / Cinema Studio / Sora 2 / Veo 3.1 / Kling 3.0 / WAN 2.6 / Seedance 2.0 / Flux 2 / Seedream 5 / Nano Banana Pro / GPT Image 2 via Higgsfield's hosted MCP server. Pairs naturally with their `https://mcp.higgsfield.ai/mcp` endpoint — install both MCP servers in your client and the compiled prompt flows straight to generation. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.2:** **Higgsfield creative-handbook knowledge pack** ships in `packs/` — Soul ID workflow, camera-move vocabulary, model-selection rules, Marketing Studio modes. Load it with `load_knowledge_pack` and the Context Curator grounds Higgsfield-targeted prompts in it automatically. **Multi-model eval matrix runner** (`npm run matrix --models a,b,c`) produces a side-by-side HTML showing how the engine performs across model classes — lights up the model-class-gated fixtures that single-model runs skip. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,41 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.2
+
+Patch. Two additive ships, both no-code-changes from the engine's perspective:
+
+### Higgsfield creative-handbook knowledge pack
+
+`packs/higgsfield-creative-handbook.md` — a community-style markdown pack documenting Higgsfield's actual conventions: model-selection rules (which of the 13 models for which use case), Soul ID character-training workflow, camera-move vocabulary, prompt-structure pattern (long-form prose, not keyword tags), multi-reference editing, Marketing Studio modes, common pitfalls (don't translate Midjourney flags verbatim), output specs.
+
+Load it explicitly:
+
+```
+load_knowledge_pack source="https://raw.githubusercontent.com/.../packs/higgsfield-creative-handbook.md"
+```
+
+…or, since it ships in the npm tarball, point at the installed copy. The Context Curator grounds Higgsfield-targeted prompts in this pack's chunks automatically via semantic retrieval.
+
+### `npm run matrix` — multi-model eval matrix runner
+
+`evals/matrix.mjs` runs `npm run eval` sequentially against N models and stitches the results into one side-by-side HTML (`evals/matrix.html` by default). Lights up the model-class-gated fixtures (`shape-small-local-model` / `shape-mid-tier-model` / `shape-reasoning-model`) that single-model runs skip, and exposes deltas like "qwen-7b fails analyzer-creative-media but gpt-4o-mini passes it" in a glance.
+
+```bash
+npm run matrix -- --models llama3.2:3b,qwen2.5-coder:7b-instruct-q4_K_M,qwen2.5:14b-instruct-q4_K_M
+```
+
+Outputs a dark-themed table — rows = fixtures, columns = models, cells = pass / fail / skip / errored with tooltips showing which checks failed.
+
+Companion fix: `evals/run.mjs` gains a `--json-out <path>` flag that writes structured per-model results (matrix.mjs uses it; CI agents can use it too).
+
+### Numbers
+
+- **No tool surface change.** Still 23 MCP tools.
+- **No platform count change.** 60+ platforms (`packs/platforms/*.yaml` unchanged).
+- **30 → 30 fixtures** (no new fixtures; matrix is tooling, not coverage).
+- **Tarball grows ~10 KB** for the knowledge pack. `evals/matrix.mjs` is NOT in the tarball — it's a maintainer/contributor tool, not a runtime artifact.
 
 ## What's new in 1.6.1
 
@@ -167,7 +202,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.1)
+## What's in the box (cumulative through 1.6.2)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

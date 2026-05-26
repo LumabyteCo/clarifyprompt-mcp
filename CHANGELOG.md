@@ -4,6 +4,23 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] — 2026-04-28
+
+Patch release. Two additive ships — one user-facing (Higgsfield knowledge pack), one maintainer-facing (multi-model eval matrix runner). No engine code changes, no MCP tool surface changes, no env-var changes.
+
+### Added
+
+- **`packs/higgsfield-creative-handbook.md`** — knowledge pack with model-selection rules, Soul ID workflow, camera-move vocabulary, prompt-structure pattern, multi-reference editing, Marketing Studio modes, common pitfalls, output specs. Pairs with the `higgsfield` platform entries from 1.6.1. 9 H2-chunked sections; Context Curator pulls relevant chunks via semantic retrieval when targeting Higgsfield.
+- **`evals/matrix.mjs` — multi-model eval matrix runner.** New `npm run matrix` script. Runs the eval harness sequentially against N models, produces a side-by-side HTML (`evals/matrix.html`). Lights up the model-class-gated fixtures (`shape-small-local-model` / `shape-mid-tier-model` / `shape-reasoning-model`) that single-model runs skip. Usage: `npm run matrix -- --models a,b,c`. Optional `--filter`, `--output`, `--quiet` flags.
+- **`evals/run.mjs --json-out <path>`** — new flag that writes structured per-model results to JSON. Used internally by `matrix.mjs`; also useful for CI agents that want machine-readable run data.
+
+### Notes for integrators
+
+- **npm tarball grows ~10 KB** for the knowledge pack file. `evals/matrix.mjs` is NOT in `package.json#files` — it's a maintainer/contributor tool that runs from a cloned repo, not a runtime artifact.
+- **No env-var changes.** `--json-out` is opt-in.
+- **No MCP tool surface changes.** Still 23 tools.
+- **Existing CI eval gate behavior unchanged** — it doesn't pass `--json-out`, so output is identical to 1.6.1.
+
 ## [1.6.1] — 2026-04-28
 
 Patch. Adds **[Higgsfield](https://higgsfield.ai)** as a multi-model platform in both `image` and `video` categories. Pure YAML platform-pack additions; no code changes; no MCP tool surface changes.

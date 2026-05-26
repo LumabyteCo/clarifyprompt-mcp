@@ -43,6 +43,7 @@ const flag = (k, def) => {
 const FILTER       = flag('--filter', null);
 const NO_HTML      = !!flag('--no-html', false);
 const REPORT_PATH  = flag('--report-path', path.join(REPO_ROOT, 'evals', 'report.html'));
+const JSON_OUT     = flag('--json-out', null);
 const QUIET        = !!flag('--quiet', false);
 
 const MODEL = process.env.LLM_MODEL || 'qwen2.5-coder:7b-instruct-q4_K_M';
@@ -681,6 +682,33 @@ async function main() {
   if (!NO_HTML) {
     await writeHtmlReport({ runs, model: MODEL, ran, passed, failed, errored, skipped, filtered, totalScore, avgLatency });
     log(C.dim(`\n  HTML report: ${REPORT_PATH}`));
+  }
+
+  // Optional structured-JSON dump for tooling (matrix.mjs uses this to
+  // aggregate across multiple model runs into one side-by-side report).
+  if (JSON_OUT && typeof JSON_OUT === 'string') {
+    const summary = {
+      model: MODEL,
+      ranAt: new Date().toISOString(),
+      counts: { passed, failed, errored, skipped, filtered, total: runs.length },
+      totalScore,
+      avgLatencyMs: avgLatency,
+      fixtures: runs.map((r) => ({
+        name: r.fixture?.name,
+        tags: r.fixture?.tags ?? [],
+        status: r.status,
+        ...(r.status === 'ran' && {
+          score: r.evaluation.score,
+          passed: r.evaluation.passed,
+          latencyMs: r.latencyMs,
+          failingChecks: r.evaluation.checks.filter((c) => !c.passed).map((c) => ({ key: c.key, detail: c.detail })),
+        }),
+        ...(r.status === 'skipped' && { skipReason: r.skipReason }),
+        ...(r.status === 'errored' && { error: r.error?.message }),
+      })),
+    };
+    await fs.writeFile(JSON_OUT, JSON.stringify(summary, null, 2), 'utf-8');
+    log(C.dim(`  JSON report: ${JSON_OUT}`));
   }
 
   // Exit non-zero on either scoring failures OR fixture errors — both block the gate.
