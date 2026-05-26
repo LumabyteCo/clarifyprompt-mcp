@@ -100,3 +100,14 @@ platforms:
       - vector output
       - brand colors
       - SVG export
+
+  - id: higgsfield
+    label: Higgsfield (multi-model platform)
+    description: Multi-model creative platform via MCP / CLI / Skills. Routes one natural-language prompt to Soul 2.0, Soul Cinema, Soul Cast, Flux 2, Seedream 5, Nano Banana Pro, or GPT Image 2. Soul ID for face-faithful character reuse. No API key — auth via Higgsfield account.
+    syntaxHints:
+      - "models: soul-2.0 | soul-cinema | soul-cast | flux-2 | seedream-5 | nano-banana-pro | gpt-image-2"
+      - long-form natural-language prose (composition + lighting + textures + mood)
+      - Soul ID for face-faithful identity reuse
+      - multi-reference compositing for edits
+      - output up to 4K
+      - "modes: Marketing Studio, Fashion Factory, Photodump Studio"

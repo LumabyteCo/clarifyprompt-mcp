@@ -4,6 +4,27 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] — 2026-04-28
+
+Patch. Adds **[Higgsfield](https://higgsfield.ai)** as a multi-model platform in both `image` and `video` categories. Pure YAML platform-pack additions; no code changes; no MCP tool surface changes.
+
+### Added
+
+- **`higgsfield` platform in `packs/platforms/image.yaml`** — exposes the 7 image models Higgsfield routes to (Soul 2.0, Soul Cinema, Soul Cast, Flux 2, Seedream 5, Nano Banana Pro, GPT Image 2) plus Soul ID (face-faithful character reuse) and multi-reference compositing as syntax hints.
+- **`higgsfield` platform in `packs/platforms/video.yaml`** — exposes the 6 video models (Cinema Studio, Sora 2, Veo 3.1, Kling 3.0, WAN 2.6, Seedance 2.0) plus Lipsync Studio / UGC Factory / Cinema Studio mode hints.
+- **`evals/fixtures/30-higgsfield-platform-loaded.yaml`** — regression check that the new YAML entries load and the curator selects `platform-hints` for `higgsfield` targets.
+
+### Pairing pattern
+
+Higgsfield exposes its own hosted MCP server at `https://mcp.higgsfield.ai/mcp` (`generate_image`, `generate_video`, `show_characters`, `virality_predictor`, etc., authenticated by Higgsfield account; no API key). The intended composition pattern: install BOTH `clarifyprompt-mcp` AND Higgsfield's MCP in your client. Use ClarifyPrompt's `optimize_prompt(platform: 'higgsfield', ...)` or `compose_prompt(platform: 'higgsfield', ...)` to compile the natural-language prompt with Higgsfield's syntax conventions, then pass the compiled prompt to Higgsfield's MCP for actual generation. MCPs compose at the client; ClarifyPrompt stays at the "compile" layer.
+
+### Notes for integrators
+
+- Platform counts: 58+ → 60+ across the README. **Image: 10 → 11, Video: 11 → 12.**
+- 29 → 30 eval fixtures.
+- No env-var changes. No MCP tool surface changes (still 23 tools).
+- Same publish surface; tarball grows by ~2 KB for the YAML additions.
+
 ## [1.6.0] — 2026-04-28
 
 Four targeted additions, one across each engine pillar — memory, agentic, models, context. **3 new MCP tools** (20 → 23). **6 new eval fixtures** (23 → 29). Fully back-compat with 1.5.x.

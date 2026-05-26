@@ -6,11 +6,11 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 <a href="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp"><img width="380" height="200" src="https://glama.ai/mcp/servers/LumabyteCo/clarifyprompt-mcp/badge" alt="ClarifyPrompt MCP server" /></a>
 
-A **context-aware MCP prompt compiler** that transforms vague prompts into platform-optimized prompts for 58+ AI platforms across 7 categories — grounded in your workspace signals (CLAUDE.md, AGENTS.md, .cursorrules, package.json), resolved intent, and the capabilities of the target model.
+A **context-aware MCP prompt compiler** that transforms vague prompts into platform-optimized prompts for 60+ AI platforms across 7 categories — grounded in your workspace signals (CLAUDE.md, AGENTS.md, .cursorrules, package.json), resolved intent, and the capabilities of the target model.
 
-Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 58+ supported platforms — with the right syntax, parameters, structure, and grounding.
+Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.0:** Four high-leverage additions across all four engine pillars — **explicit memory CRUD** (`memory_remember` / `memory_forget` / `memory_list_facts`), **agentic revise-loop** (`compose_prompt`'s new `max_iterations`), **per-stage model routing** in `compose_prompt` (`clarify_model` / `optimize_model` / `critique_model`), and **git-state + environment grounding** added to the Context Engine. 23 → 29 eval fixtures. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.1:** [Higgsfield](https://higgsfield.ai/mcp) added as a multi-model platform in both `image` and `video` categories — one platform target routes to Soul 2.0 / Cinema Studio / Sora 2 / Veo 3.1 / Kling 3.0 / WAN 2.6 / Seedance 2.0 / Flux 2 / Seedream 5 / Nano Banana Pro / GPT Image 2 via Higgsfield's hosted MCP server. Pairs naturally with their `https://mcp.higgsfield.ai/mcp` endpoint — install both MCP servers in your client and the compiled prompt flows straight to generation. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,22 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.1
+
+Patch release. Adds **[Higgsfield](https://higgsfield.ai)** as a target platform in both `image` and `video` categories. No code changes — pure YAML platform-pack additions and one eval fixture.
+
+Higgsfield is a multi-model creative platform that exposes its own MCP server at `https://mcp.higgsfield.ai/mcp`. Inside one connection you get:
+
+- **Image**: Soul 2.0, Soul Cinema, Soul Cast (character-consistent), Flux 2, Seedream 5, Nano Banana Pro, GPT Image 2
+- **Video**: Cinema Studio, Sora 2, Veo 3.1, Kling 3.0, WAN 2.6, Seedance 2.0
+- **Workflows**: Soul ID character training, Lipsync Studio, UGC Factory, Marketing Studio, virality_predictor
+
+The 1.6.1 ClarifyPrompt platform entries surface Higgsfield's model identifiers and prompt-style conventions (long-form natural-language prose; composition + lighting + textures + mood; up to 4K images / 15 s video / Soul ID for character consistency) as syntax hints to the curator.
+
+**Recommended pattern:** install both `clarifyprompt-mcp` AND Higgsfield's MCP in your client (Claude Desktop / Cursor / AI Butler / Claude Code). Use `optimize_prompt(platform: 'higgsfield', ...)` or `compose_prompt(platform: 'higgsfield', ...)` to compile, then pass the compiled prompt to Higgsfield's `generate_image` / `generate_video` tool. MCPs compose at the client; ClarifyPrompt stays at the "compile" layer.
+
+29 → 30 eval fixtures. Same MCP tool surface as 1.6.0 (23 tools, 1 resource). No env-var changes.
 
 ## What's new in 1.6.0
 
@@ -151,7 +167,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.0)
+## What's in the box (cumulative through 1.6.1)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -160,7 +176,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 - **Session retrieval (save_outcome)** — the caller reports `accepted | edited | rejected` per optimization; similar accepted outputs in the same session get injected as few-shot examples into future similar prompts. Persistent memory lands in 1.3.
 - **Local JSONL tracing** — every optimization writes a structured trace line (now with `shape`, `groundingSources`, `error` fields) to `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl`. **Nothing is uploaded.** Toggle via `CLARIFYPROMPT_TRACE=off`.
 - **Unified `$CLARIFYPROMPT_HOME`** — one env var for everything ClarifyPrompt writes. Legacy `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` still work (deprecation hint, silenceable).
-- **58+ platforms, 7 categories, custom platforms** — the original core is unchanged and fully backward-compatible.
+- **60+ platforms, 7 categories, custom platforms** — the original core is unchanged and fully backward-compatible.
 - **Any LLM, any provider.** One code path works with **any OpenAI-compatible API** — Ollama (local + cloud), LM Studio, vLLM, OpenAI, Google Gemini, xAI Grok, Groq, Mistral, DeepSeek, Cohere, Perplexity, Together, Fireworks, OpenRouter — plus **Anthropic Claude** directly. Reasoning models (`o1/o3/o4`, `deepseek-reasoner`, `gpt-oss`, `*-thinking`) are auto-detected and given a larger token budget so they actually produce content. [See 15+ pre-configured provider examples below](#provider-examples).
 - **Apache-2.0, forever.** Open-source core, no relicensing.
 
@@ -266,7 +282,7 @@ optimization) using `inspect_context`:
 
 ![Context Engine preview — analyzer output (Category=code, Intent=production-code, Recommended Mode=detailed, Confidence=Medium), session history, and the priority-ordered grounding stack the engine would merge into the system prompt. Closing takeaway about a language mismatch the engine detected between workspace (JS) and prompt (TypeScript).](docs/screenshots/aibutler/03-inspect-context.png)
 
-Then run the actual optimizer for any of the 58+ supported platforms:
+Then run the actual optimizer for any of the 60+ supported platforms:
 
 ![optimize_prompt response — Midjourney-shaped optimized prompt for "a dragon flying over a castle at sunset" with --ar 16:9 and --v 6 parameters, plus the analysis section showing Resolved Intent="creative-media", Mode Source, and the grounding sources used](docs/screenshots/aibutler/04-optimize-image.png)
 
@@ -286,8 +302,8 @@ is in the AI Butler docs:
 
 | Category | Platforms | Default |
 |----------|-----------|---------|
-| **Image** (10) | Midjourney, DALL-E 3, Stable Diffusion, Flux, Ideogram, Leonardo AI, Adobe Firefly, Grok Aurora, Google Imagen 3, Recraft | Midjourney |
-| **Video** (11) | Sora, Runway Gen-3, Pika Labs, Kling AI, Luma, Minimax/Hailuo, Google Veo 2, Wan, HeyGen, Synthesia, CogVideoX | Runway |
+| **Image** (11) | Midjourney, DALL-E 3, Stable Diffusion, Flux, Ideogram, Leonardo AI, Adobe Firefly, Grok Aurora, Google Imagen 3, Recraft, **Higgsfield** | Midjourney |
+| **Video** (12) | Sora, Runway Gen-3, Pika Labs, Kling AI, Luma, Minimax/Hailuo, Google Veo 2, Wan, HeyGen, Synthesia, CogVideoX, **Higgsfield** | Runway |
 | **Chat** (9) | Claude, ChatGPT, Gemini, Llama, DeepSeek, Qwen, Kimi, GLM, Minimax | Claude |
 | **Code** (9) | Claude, ChatGPT, Cursor, GitHub Copilot, Windsurf, DeepSeek Coder, Qwen Coder, Codestral, Gemini | Claude |
 | **Document** (8) | Claude, ChatGPT, Gemini, Jasper, Copy.ai, Notion AI, Grammarly, Writesonic | Claude |

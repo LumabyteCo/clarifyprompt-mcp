@@ -1,0 +1,17 @@
+name: higgsfield-platform-loaded
+description: 'Higgsfield (added in 1.6.1) is a multi-model platform exposed in BOTH image and video categories. This fixture targets the video category; the existence + curator-selection of `platform-hints` for `higgsfield` proves the YAML loader picked up the entry AND the curator can route to it. Mirrors fixture 21 (yaml-platform-pack-loaded for Midjourney) but for the newer platform.'
+tags: [pass-6, yaml-platform-packs, higgsfield, regression]
+input:
+  prompt: 'a cinematic 4K wide shot of a neon-lit Tokyo alley at midnight, rain on the asphalt, a lone figure walking away from camera'
+  category: video
+  platform: higgsfield
+  mode: detailed
+  skip_intent_resolution: true
+expected:
+  category: video
+  platform: higgsfield
+  # The curator must select 'platform-hints' for Higgsfield to surface its
+  # syntax hints (model identifiers + cinematic prose conventions). If the
+  # platform entry didn't load, this source wouldn't exist.
+  grounding_sources_must_include: ['platform-hints']
+  no_error: true

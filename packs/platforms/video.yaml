@@ -104,3 +104,14 @@ platforms:
       - text-to-video
       - image-to-video
       - detailed descriptions
+
+  - id: higgsfield
+    label: Higgsfield (multi-model platform)
+    description: Multi-model video platform via MCP / CLI / Skills. Routes one natural-language prompt to Cinema Studio (Higgsfield-original), Sora 2, Veo 3.1, Kling 3.0, WAN 2.6, or Seedance 2.0. No API key — auth via Higgsfield account.
+    syntaxHints:
+      - "models: cinema-studio | sora-2 | veo-3.1 | kling-3.0 | wan-2.6 | seedance-2.0"
+      - long-form natural-language prose (camera move + composition + lighting + mood)
+      - duration up to 15s
+      - image-to-video from uploaded UUID
+      - Soul ID for character consistency across clips
+      - "modes: Cinema Studio, UGC Factory, Lipsync Studio"

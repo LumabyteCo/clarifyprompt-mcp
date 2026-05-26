@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>ClarifyPrompt evals — 2026-05-25T17:00:16.745Z</title>
+<title>ClarifyPrompt evals — 2026-05-26T16:08:10.863Z</title>
 <style>
   :root { color-scheme: dark; }
   body { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #0d1117; color: #c9d1d9; max-width: 1100px; margin: 24px auto; padding: 0 16px; }
@@ -35,14 +35,14 @@
 </head>
 <body>
   <h1>ClarifyPrompt evals</h1>
-  <div class="meta">2026-05-25T17:00:16.745Z · model <b>qwen2.5-coder:7b-instruct-q4_K_M</b> · pass threshold 0.85</div>
+  <div class="meta">2026-05-26T16:08:10.863Z · model <b>qwen2.5-coder:7b-instruct-q4_K_M</b> · pass threshold 0.85</div>
   <div class="summary">
-    <div class="card pass"><div class="label">passed</div><div class="value">25</div></div>
+    <div class="card pass"><div class="label">passed</div><div class="value">26</div></div>
     <div class="card fail"><div class="label">failed</div><div class="value">1</div></div>
     <div class="card"><div class="label">skipped</div><div class="value">3</div></div>
     <div class="card"><div class="label">avg score</div><div class="value">97%</div></div>
-    <div class="card"><div class="label">avg latency</div><div class="value">2337ms</div></div>
-    <div class="card"><div class="label">fixtures total</div><div class="value">29</div></div>
+    <div class="card"><div class="label">avg latency</div><div class="value">2582ms</div></div>
+    <div class="card"><div class="label">fixtures total</div><div class="value">30</div></div>
   </div>
   <table>
     <thead><tr><th></th><th>fixture</th><th>score</th><th>lat</th><th>checks</th></tr></thead>
@@ -55,26 +55,23 @@
           <div><span class="tag">analyzer</span> <span class="tag">regression</span> <span class="tag">critical</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">4662ms</td>
+        <td class="latency">2840ms</td>
         <td class="checks">
-          <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>recommended_mode</b>: technical</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>no_error</b>: no error</li><li class="ok"><b>min_output_length</b>: len=1477</li></ul>
+          <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>recommended_mode</b>: technical</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>no_error</b>: no error</li><li class="ok"><b>min_output_length</b>: len=748</li></ul>
           <details><summary>output preview</summary><pre>```typescript
 /**
  * Function to validate email addresses.
- *
+ * 
  * Requirements:
- * - Language: TypeScript
- * - Version: ES2019+
- * - APIs: None
- * - Error Handling: Throw an error if the email is invalid
- * - Edge Cases: Handle empty strings, non-string inputs, and special characters in local part and domain
- * - Tests: Provide unit tests to cover all cases including valid and invalid emails
- *
- * @param email - The email address to validate
- * @returns true if the email is valid, false otherwise
- */
-function validateEmail(email: string): boolean {
-  // Regular expression for validating an Emai</pre></details>
+ * - Must be written in TypeScript.
+ * - Should handle different email formats, including international ones.
+ * - Must use named types and explicit interfaces for better readability and maintainability.
+ * - Should include robust error handling for invalid input.
+ * - Must consider edge cases such as empty strings, null, undefined, and strings with only spaces.
+ * - Must write unit tests to validate the function&#39;s correctness across various scenarios.
+ * 
+ * @param email - The email address to validate.
+ * @return</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -85,12 +82,10 @@ function validateEmail(email: string): boolean {
           <div><span class="tag">analyzer</span> <span class="tag">ambiguity</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1454ms</td>
+        <td class="latency">1416ms</td>
         <td class="checks">
           <ul><li class="ok"><b>intent</b>: unknown</li><li class="ok"><b>intent_confidence</b>: low</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>&quot;&quot;&quot;
-improve the clarity and effectiveness of this chat prompt for Claude, ensuring it is well-structured, explicit, and formatted for optimal AI comprehension.
-&quot;&quot;&quot;</pre></details>
+          <details><summary>output preview</summary><pre>&quot;Make this prompt better for a chat category targeting Claude, while preserving intent and adding clarity.&quot;</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -101,10 +96,11 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">analyzer</span> <span class="tag">stakeholder</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1862ms</td>
+        <td class="latency">1753ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: document</li><li class="ok"><b>intent</b>: stakeholder-comm</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>recommended_mode</b>: detailed</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Write a concise note to Finance explaining the Q2 variance and requesting a 2-week extension due to unforeseen circumstances impacting our financial projections. Use a professional tone suitable for a business context. Ensure the note is clear, well-structured, and free of jargon. Deadline: [Insert Deadline Date].</pre></details>
+          <details><summary>output preview</summary><pre>**Optimized Prompt:**  
+&quot;Compose a concise note to the finance team explaining the Q2 variance and requesting a 14-day extension for approval. Use a professional tone and ensure all details are clearly articulated.&quot;</pre></details>
         </td>
       </tr>
       <tr class="fail">
@@ -115,10 +111,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">analyzer</span> <span class="tag">creative</span> <span class="tag">image</span></div>
         </td>
         <td class="score">32%</td>
-        <td class="latency">1818ms</td>
+        <td class="latency">1986ms</td>
         <td class="checks">
           <ul><li class="fail"><b>category</b>: expected image, got chat</li><li class="fail"><b>intent</b>: expected creative-media, got exploration</li><li class="fail"><b>platform</b>: expected midjourney, got claude</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="fail"><b>must_contain</b>: missing: --ar, --v</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>A cinematic dragon flying over a medieval castle at sunset, with dramatic lighting and dynamic camera movements to emphasize the majestic scene. Include trade-offs such as time of day, weather conditions, and the emotional impact on viewers. What would you need to know to decide on the best angle for this shot?</pre></details>
+          <details><summary>output preview</summary><pre>A dragon flying over a medieval castle at sunset, cinematic. Please provide an analysis of the scene from different angles, considering historical and mythical elements. What would be the cultural implications of such a sight? How might the dragon&#39;s presence impact the castle&#39;s defense? What kind of atmosphere does this create, and what emotions does it evoke?</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -129,10 +125,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">analyzer</span> <span class="tag">mode</span> <span class="tag">arbitration</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1673ms</td>
+        <td class="latency">2044ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>mode</b>: concise</li><li class="ok"><b>mode_source</b>: user</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Refactor the auth middleware to support refresh tokens and include comprehensive tests for both the middleware and edge cases. Ensure the code uses named types, explicit interfaces, and avoids magic constants. Document any obvious failure modes in the code comments.</pre></details>
+          <details><summary>output preview</summary><pre>Refactor the auth middleware to support refresh tokens and include comprehensive tests for both functionality and edge cases. Use TypeScript with strict type checking, named types, and explicit interfaces. Ensure proper error handling for all possible failure modes, including token expiration, invalid tokens, and network errors. Write unit tests and integration tests to cover all functionalities and edge cases in detail.</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -143,10 +139,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">analyzer</span> <span class="tag">mode</span> <span class="tag">arbitration</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1767ms</td>
+        <td class="latency">1826ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>mode_source</b>: analyzer</li><li class="ok"><b>mode</b>: technical</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Refactor the auth middleware to support refresh tokens and add tests using TypeScript/JavaScript for a ClarifyPrompt MCP Server application. Ensure the refactored code includes named types, explicit interfaces, and no magic constants. Handle potential failure modes explicitly and thoroughly test the implementation.</pre></details>
+          <details><summary>output preview</summary><pre>Refactor the `auth` middleware to support refresh tokens and add comprehensive tests for all scenarios, including edge cases. Ensure the implementation uses named types, explicit interfaces, and avoids magic constants. Call out any obvious failure modes in the code and document them appropriately.</pre></details>
         </td>
       </tr><tr class="skipped"><td>⊘</td><td>shape-small-local-model</td><td colspan="3">skipped — skip_unless_model_matches=/(llama3\.2:3b|phi-3:mini|gemma:2b)/ vs LLM_MODEL=qwen2.5-coder:7b-instruct-q4_K_M</td></tr><tr class="skipped"><td>⊘</td><td>shape-mid-tier-model</td><td colspan="3">skipped — skip_unless_model_matches=/(qwen2\.5:14b|qwen.*14b|aya:35b)/ vs LLM_MODEL=qwen2.5-coder:7b-instruct-q4_K_M</td></tr><tr class="skipped"><td>⊘</td><td>shape-reasoning-model</td><td colspan="3">skipped — skip_unless_model_matches=/(gpt-oss|deepseek[-_]?r|.*thinking|o[1-4](-mini)?)/ vs LLM_MODEL=qwen2.5-coder:7b-instruct-q4_K_M</td></tr>
       <tr class="pass">
@@ -157,7 +153,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">intent</span> <span class="tag">overlay</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1469ms</td>
+        <td class="latency">1530ms</td>
         <td class="checks">
           <ul><li class="ok"><b>intent</b>: data-extract</li><li class="ok"><b>system_prompt_must_contain</b>: all 2 found</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre>```json
@@ -175,10 +171,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">grounding</span> <span class="tag">project-rules</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1073ms</td>
+        <td class="latency">803ms</td>
         <td class="checks">
           <ul><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Write a compelling hero headline for our new AI copilot, designed to captivate users and encourage them to sign up now. Ensure the tone is confident, warm, and concise, using second-person active voice. Include a clear call-to-action (CTA) in your headline.</pre></details>
+          <details><summary>output preview</summary><pre>&quot;Write a confident and warm hero headline for our new AI copilot, using TypeScript/JavaScript and structured output for optimal readability.&quot;</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -189,10 +185,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">grounding</span> <span class="tag">project-rules</span> <span class="tag">control</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">640ms</td>
+        <td class="latency">748ms</td>
         <td class="checks">
           <ul><li class="ok"><b>grounding_sources_must_exclude</b>: clean</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Write a compelling hero headline for our new AI copilot that highlights its innovative features and benefits.</pre></details>
+          <details><summary>output preview</summary><pre>&quot;Craft a compelling hero headline for our new AI copilot, designed to captivate and inform potential passengers about its advanced features and benefits.&quot;</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -203,7 +199,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">clarify</span> <span class="tag">short-circuit</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">597ms</td>
+        <td class="latency">630ms</td>
         <td class="checks">
           <ul><li class="ok"><b>clarification_needed</b>: clarificationNeeded=false</li><li class="ok"><b>max_questions</b>: 0 ≤ 0 questions</li><li class="ok"><b>intent</b>: production-code</li><li class="ok"><b>intent_confidence_min</b>: high ≥ medium</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -217,7 +213,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">clarify</span> <span class="tag">ambiguity</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">3069ms</td>
+        <td class="latency">3044ms</td>
         <td class="checks">
           <ul><li class="ok"><b>clarification_needed</b>: clarificationNeeded=true</li><li class="ok"><b>min_questions</b>: 3 ≥ 1 questions</li><li class="ok"><b>max_questions</b>: 3 ≤ 3 questions</li><li class="ok"><b>questions_must_have_suggested_answer</b>: all 3 questions have a suggestedAnswer</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -231,10 +227,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">ground</span> <span class="tag">grounding</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1435ms</td>
+        <td class="latency">1303ms</td>
         <td class="checks">
           <ul><li class="ok"><b>used_sources_min</b>: 2 ≥ 2 usedSources</li><li class="ok"><b>dropped_sources_max</b>: 0 ≤ 0 droppedSources</li><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>category</b>: document</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>Rewrite the launch announcement for FlowSync Pro to match our warm, plain-spoken brand voice and adhere to our maximum sentence length of 18 words. Include the benefits of powerful integrations and enterprise-grade security while avoiding jargon like &quot;leverage&quot; or &quot;robust.&quot;</pre></details>
+          <details><summary>output preview</summary><pre>Rewrite the launch announcement for FlowSync Pro to match our warm, plain-spoken brand voice. Emphasize user benefits and avoid jargon. Keep sentences under 18 words each.</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -245,7 +241,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">ground</span> <span class="tag">error-paths</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">110ms</td>
+        <td class="latency">119ms</td>
         <td class="checks">
           <ul><li class="ok"><b>no_error</b>: error present (as expected): ground_prompt: all 2 provided source(s) were empty. Provide at least one non-empty body.</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -259,7 +255,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">critique</span> <span class="tag">judge</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">4093ms</td>
+        <td class="latency">4282ms</td>
         <td class="checks">
           <ul><li class="ok"><b>verdict</b>: verdict=accept</li><li class="ok"><b>overall_score_min</b>: 8 ≥ 7</li><li class="ok"><b>dimensions_min</b>: 5 ≥ 5 dimensions</li><li class="ok"><b>dimension_must_include</b>: dims present: clarity,specificity,intent_alignment,format_fitness,length_appropriateness</li><li class="ok"><b>improved_prompt_absent</b>: improvedPrompt absent</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -273,9 +269,9 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">critique</span> <span class="tag">judge</span> <span class="tag">rewrite</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">5536ms</td>
+        <td class="latency">5576ms</td>
         <td class="checks">
-          <ul><li class="ok"><b>overall_score_max</b>: 4 ≤ 6</li><li class="ok"><b>dimensions_min</b>: 5 ≥ 5 dimensions</li><li class="ok"><b>improved_prompt_present</b>: improvedPrompt present</li><li class="ok"><b>no_error</b>: no error</li></ul>
+          <ul><li class="ok"><b>overall_score_max</b>: 3 ≤ 6</li><li class="ok"><b>dimensions_min</b>: 5 ≥ 5 dimensions</li><li class="ok"><b>improved_prompt_present</b>: improvedPrompt present</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
         </td>
       </tr>
@@ -287,7 +283,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">compose</span> <span class="tag">pipeline</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">5884ms</td>
+        <td class="latency">14764ms</td>
         <td class="checks">
           <ul><li class="ok"><b>stages_must_include</b>: stages: clarify→optimize→critique</li><li class="ok"><b>stages_must_exclude</b>: clean: clarify→optimize→critique</li><li class="ok"><b>clarification_required</b>: clarificationRequired=false</li><li class="ok"><b>revised</b>: revised=false</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -301,7 +297,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">compose</span> <span class="tag">ground</span> <span class="tag">branch-routing</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1264ms</td>
+        <td class="latency">1330ms</td>
         <td class="checks">
           <ul><li class="ok"><b>stages_must_include</b>: stages: ground</li><li class="ok"><b>stages_must_exclude</b>: clean: ground</li><li class="ok"><b>clarification_required</b>: clarificationRequired=false</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -315,7 +311,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">pass-6</span> <span class="tag">yaml-platform-packs</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">932ms</td>
+        <td class="latency">1009ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: image</li><li class="ok"><b>platform</b>: midjourney</li><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre>A tabby cat sitting on a sunlit windowsill, --ar 16:9, --v 6.1, --style raw</pre></details>
@@ -329,10 +325,10 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">memory</span> <span class="tag">knowledge-packs</span> <span class="tag">retrieval</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">1682ms</td>
+        <td class="latency">1804ms</td>
         <td class="checks">
           <ul><li class="ok"><b>category</b>: code</li><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>no_error</b>: no error</li></ul>
-          <details><summary>output preview</summary><pre>How should I write tests for the new `validateEmail` function in TypeScript using our team conventions, ensuring coverage targets are met?</pre></details>
+          <details><summary>output preview</summary><pre>How should I write tests for the new `validateEmail` function in TypeScript using our team conventions, ensuring comprehensive coverage including edge cases and error handling?</pre></details>
         </td>
       </tr>
       <tr class="pass">
@@ -343,7 +339,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">memory</span> <span class="tag">memory-search</span> <span class="tag">vector-ranking</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">314ms</td>
+        <td class="latency">339ms</td>
         <td class="checks">
           <ul><li class="ok"><b>count_min</b>: count=3 ≥ 1</li><li class="ok"><b>top_result_kind</b>: top result kind=pack_chunk</li><li class="ok"><b>top_result_must_contain</b>: top result contains all 2</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -371,7 +367,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">memory</span> <span class="tag">crud</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">167ms</td>
+        <td class="latency">198ms</td>
         <td class="checks">
           <ul><li class="ok"><b>count_max</b>: count=0 ≤ 0</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -385,7 +381,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">compose</span> <span class="tag">loop</span> <span class="tag">agentic</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">13381ms</td>
+        <td class="latency">12477ms</td>
         <td class="checks">
           <ul><li class="ok"><b>stages_must_include</b>: stages: optimize→critique→revise→optimize→critique→revise</li><li class="ok"><b>iterations_min</b>: iterations=2 ≥ 1</li><li class="ok"><b>iterations_max</b>: iterations=2 ≤ 2</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -399,7 +395,7 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">compose</span> <span class="tag">models</span> <span class="tag">routing</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">5416ms</td>
+        <td class="latency">6074ms</td>
         <td class="checks">
           <ul><li class="ok"><b>optimization_model_eq</b>: model=qwen2.5-coder:7b-instruct-q4_K_M</li><li class="ok"><b>critique_model_eq</b>: model=qwen2.5-coder:7b-instruct-q4_K_M</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
@@ -427,10 +423,24 @@ improve the clarity and effectiveness of this chat prompt for Claude, ensuring i
           <div><span class="tag">context</span> <span class="tag">environment</span> <span class="tag">c4</span> <span class="tag">regression</span></div>
         </td>
         <td class="score">100%</td>
-        <td class="latency">139ms</td>
+        <td class="latency">152ms</td>
         <td class="checks">
           <ul><li class="ok"><b>bundle_has_environment</b>: present=true</li><li class="ok"><b>no_error</b>: no error</li></ul>
           <details><summary>output preview</summary><pre></pre></details>
+        </td>
+      </tr>
+      <tr class="pass">
+        <td class="status">✓</td>
+        <td>
+          <div class="name">higgsfield-platform-loaded</div>
+          <div class="desc">Higgsfield (added in 1.6.1) is a multi-model platform exposed in BOTH image and video categories. This fixture targets the video category; the existence + curator-selection of `platform-hints` for `higgsfield` proves the YAML loader picked up the entry AND the curator can route to it. Mirrors fixture 21 (yaml-platform-pack-loaded for Midjourney) but for the newer platform.</div>
+          <div><span class="tag">pass-6</span> <span class="tag">yaml-platform-packs</span> <span class="tag">higgsfield</span> <span class="tag">regression</span></div>
+        </td>
+        <td class="score">100%</td>
+        <td class="latency">1338ms</td>
+        <td class="checks">
+          <ul><li class="ok"><b>category</b>: video</li><li class="ok"><b>platform</b>: higgsfield</li><li class="ok"><b>grounding_sources_must_include</b>: all 1 present</li><li class="ok"><b>no_error</b>: no error</li></ul>
+          <details><summary>output preview</summary><pre>A cinematic 4K wide shot of a neon-lit Tokyo alley at midnight, rain on the asphalt, a lone figure walking away from the camera, using the Cinema Studio model with a duration of 15 seconds.</pre></details>
         </td>
       </tr></tbody>
   </table>
