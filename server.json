@@ -6,12 +6,12 @@
     "url": "https://github.com/LumabyteCo/clarifyprompt-mcp",
     "source": "github"
   },
-  "version": "1.6.3",
+  "version": "1.6.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "clarifyprompt-mcp",
-      "version": "1.6.3",
+      "version": "1.6.4",
       "transport": {
         "type": "stdio"
       },

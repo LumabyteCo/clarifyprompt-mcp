@@ -4,6 +4,34 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] — 2026-05-27
+
+Docs + process patch. **No engine code changes; no MCP tool surface changes; no platform changes; no env-var changes.**
+
+This release resolves a long-standing architectural inconsistency: from `1.3` onward there were two homes for knowledge packs — `clarifyprompt-mcp/packs/*.md` (which actually shipped in every npm tarball and is what the engine's `load_knowledge_pack` and platformLoader code reads) and the standalone `LumabyteCo/clarifyprompt-packs` registry repo (which the engine never touched but whose README told users to fetch packs from there). The drift caught up: the `higgsfield-creative-handbook` pack shipped in `1.6.2` directly to the engine repo and never made it to the registry.
+
+### Changed
+
+- **Pack distribution consolidated into a single repo.** `LumabyteCo/clarifyprompt-packs` has been archived on GitHub with a tombstone README that redirects to this repo. All four bundled knowledge packs (`anthropic-brand-voice`, `higgsfield-creative-handbook`, `nextjs-14-best-practices`, `sox-compliance`) plus all platform configs (`packs/platforms/*.yaml`) now have a single source of truth: this repo.
+- **New `packs/README.md`** — pack-authoring guide lifted from the archived registry's README + `CONTRIBUTING.md`. Documents the YAML frontmatter schema, H2 chunk-boundary rules, the quality bar that gets PRs merged, and the directory's two-content-types model (knowledge packs in `packs/*.md`, platform configs in `packs/platforms/*.yaml`).
+- **New `## Knowledge packs` section in this README** — explains what packs are, the four bundled starter packs, how to call `load_knowledge_pack` against either GitHub raw URLs or local paths, the `user` / `project` / `session` scope semantics, how to contribute new packs, and the rationale for keeping packs in the engine repo at current scale.
+- **Architecture tree updated** — `packs/` is no longer labeled `(1.3.0)` since the 1.3.0 timeframe was when packs briefly moved external. The single-source-of-truth model is `1.6.4+`.
+- **Fixed placeholder URL** in the 1.6.2 release notes — previously `https://raw.githubusercontent.com/.../packs/higgsfield-creative-handbook.md`, now the canonical `https://raw.githubusercontent.com/LumabyteCo/clarifyprompt-mcp/main/packs/higgsfield-creative-handbook.md`.
+
+### Why now, and why this direction
+
+At current scale (~10 users, 4 packs, all authored by the maintainer, zero external pack PRs, registry repo at 1 commit in a month), the cost of keeping two repos in sync was paying for a community-contribution surface that hadn't materialized. The split-repo approach makes structural sense once there's a forcing function — a real PR queue, pack count >20, or divergent licensing/governance. Until then the single-repo model keeps the source of truth singular, removes drift risk by construction, and lowers the barrier for the few users who do exist (one repo to star, one CHANGELOG to follow, one place to PR).
+
+### Migration
+
+None. Any code that was loading packs via either `https://raw.githubusercontent.com/LumabyteCo/clarifyprompt-packs/main/packs/<name>.md` or the bundled `packs/<name>.md` path still works:
+
+- The old registry URL still resolves to the archived repo content (the three starter packs remain at their historical paths there as well).
+- The engine repo's `packs/<name>.md` paths are unchanged.
+- The npm tarball ships the same `packs/` contents as 1.6.2 / 1.6.3.
+
+The recommended URL going forward is `https://raw.githubusercontent.com/LumabyteCo/clarifyprompt-mcp/main/packs/<name>.md` (canonical, version-tracked alongside the engine).
+
 ## [1.6.3] — 2026-05-26
 
 Patch. CI hardening + one cosmetic README fix. No engine code changes; no MCP tool surface changes; no platform changes; no env-var changes.

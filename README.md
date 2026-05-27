@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.3:** CI hardening — two eval fixtures relaxed so the gpt-4o-mini CI gate stays green across model-judgment calibration variance and CI's detached-HEAD checkouts. Plus the Glama badge swapped from fragile `<img>` to a shields.io text-link badge. No engine, MCP tool, or platform changes. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.4:** Documentation and process cleanup — the separate `clarifyprompt-packs` registry was archived and its content consolidated back into this repo under [`packs/`](./packs/README.md), now the single source of truth for both knowledge packs and platform packs. New top-level [Knowledge packs](#knowledge-packs) section in the README explains the loading + authoring model. No engine code, MCP tool, or platform changes. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,33 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.4
+
+Docs + process patch. **No engine, MCP tool, or platform changes** — but a meaningful cleanup of the pack-distribution model.
+
+### Pack registry consolidated back into the engine repo
+
+`LumabyteCo/clarifyprompt-packs` (the separate community-pack registry created in `1.3` with the right principle but at the wrong scale) has been **archived**. Its three starter packs already lived in this repo's [`packs/`](./packs/) folder; the registry was meant to be the canonical home but in practice everything always shipped from here via the npm tarball. The drift caught up: `higgsfield-creative-handbook` shipped in `1.6.2` and never made it to the registry, even though the registry's own README told users to fetch packs from there.
+
+Net result of 1.6.4:
+
+- **Single source of truth.** `packs/*.md` knowledge packs + `packs/platforms/*.yaml` platform configs all live in `clarifyprompt-mcp` and ship in the npm tarball.
+- **New top-level [Knowledge packs](#knowledge-packs) section** in this README explains the loading model (`load_knowledge_pack({source: "<url-or-path>", scope: ...})`), the three starter packs + Higgsfield, the scope semantics, and how to contribute.
+- **New [`packs/README.md`](./packs/README.md)** — pack authoring guide (frontmatter schema, chunk boundaries, quality bar). Lifted from the archived registry so the content isn't lost.
+- **Tombstone redirect on the archived repo.** Anyone visiting `clarifyprompt-packs` lands on a banner pointing here.
+
+### When does the split come back?
+
+When there's a forcing function: a community PR queue on packs alone, pack count >20, or divergent licensing/governance. Until then the maintenance cost of keeping two repos in sync wasn't paying for an audience that hadn't materialized.
+
+### Numbers
+
+- **Tools:** 23 (unchanged).
+- **Platforms:** 60+ (unchanged).
+- **Bundled knowledge packs:** 4 (`anthropic-brand-voice`, `higgsfield-creative-handbook`, `nextjs-14-best-practices`, `sox-compliance`) — same as 1.6.2/1.6.3, just newly canonical.
+- **Eval fixtures:** 30 (unchanged).
+- **Tarball size:** unchanged from 1.6.3.
 
 ## What's new in 1.6.3
 
@@ -54,10 +81,10 @@ Patch. Two additive ships, both no-code-changes from the engine's perspective:
 Load it explicitly:
 
 ```
-load_knowledge_pack source="https://raw.githubusercontent.com/.../packs/higgsfield-creative-handbook.md"
+load_knowledge_pack source="https://raw.githubusercontent.com/LumabyteCo/clarifyprompt-mcp/main/packs/higgsfield-creative-handbook.md"
 ```
 
-…or, since it ships in the npm tarball, point at the installed copy. The Context Curator grounds Higgsfield-targeted prompts in this pack's chunks automatically via semantic retrieval.
+…or, since it ships in the npm tarball, point at the installed copy. The Context Curator grounds Higgsfield-targeted prompts in this pack's chunks automatically via semantic retrieval. See the [Knowledge packs](#knowledge-packs) section for the full loading + scoping model.
 
 ### `npm run matrix` — multi-model eval matrix runner
 
@@ -218,7 +245,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.3)
+## What's in the box (cumulative through 1.6.4)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -780,6 +807,53 @@ You can add custom instructions to any of the 58 built-in platforms using `updat
 
 The config directory defaults to `~/.clarifyprompt/` and can be changed via the `CLARIFYPROMPT_CONFIG_DIR` environment variable. Custom platforms and overrides persist across server restarts.
 
+## Knowledge packs
+
+A **knowledge pack** is a markdown document with optional YAML frontmatter that teaches ClarifyPrompt something durable — a brand voice, a coding convention, a compliance regime, a domain-specific prompting pattern. Packs get chunked at H2 boundaries, embedded, and made available for semantic retrieval in every subsequent `optimize_prompt` / `compose_prompt` call. The [Context Curator](#context-engine-120) scores their chunks alongside workspace signals, instruction files, and grounding sources, then fits the highest-utility selection into the target model's remaining token window.
+
+### Bundled starter packs
+
+Four packs ship in every npm tarball under `packs/`:
+
+| Pack | What it teaches |
+|---|---|
+| [`anthropic-brand-voice`](./packs/anthropic-brand-voice.md) | Anthropic's public-facing tone, register, and word choices |
+| [`higgsfield-creative-handbook`](./packs/higgsfield-creative-handbook.md) | Higgsfield model selection, prompt structure, camera moves, Soul ID workflow |
+| [`nextjs-14-best-practices`](./packs/nextjs-14-best-practices.md) | Server-first Next.js 14 App Router conventions |
+| [`sox-compliance`](./packs/sox-compliance.md) | Sarbanes-Oxley 404 guardrails for AI-assisted financial work |
+
+### Loading a pack
+
+```
+load_knowledge_pack({
+  source: "https://raw.githubusercontent.com/LumabyteCo/clarifyprompt-mcp/main/packs/nextjs-14-best-practices.md",
+  scope: "user"
+})
+```
+
+Or load locally — by absolute path, or relative to the installed package:
+
+```
+load_knowledge_pack({ source: "/path/to/my-team-style-guide.md", scope: "project" })
+load_knowledge_pack({ source: "./node_modules/clarifyprompt-mcp/packs/sox-compliance.md", scope: "session" })
+```
+
+### Scopes
+
+- **`user`** — persisted in `$CLARIFYPROMPT_HOME` and available across every project on this machine.
+- **`project`** — persisted, but scoped to the current working tree's identity (project-id derived from `cwd` + git remote when present).
+- **`session`** — in-memory only, gone when the MCP server restarts.
+
+Packs of all three scopes are scored together at retrieval time; the curator decides which chunks survive the token budget.
+
+### Authoring + contributing
+
+Pack authoring rules (frontmatter schema, chunk-boundary guidance, the quality bar that gets PRs merged) live in [`packs/README.md`](./packs/README.md). Contributions land via PR against this repo. Apache-2.0 unless dual-licensed in frontmatter.
+
+### Why packs live in the engine repo (and not a separate registry)
+
+Briefly: they used to. From `1.3` through `1.6.3` there was a separate `LumabyteCo/clarifyprompt-packs` registry. In `1.6.4` it was archived and consolidated back into `clarifyprompt-mcp/packs/` because the dual-repo discipline was paying maintenance cost for an external-contributor audience that hadn't materialized — and the `higgsfield-creative-handbook` pack shipped in `1.6.2` without ever making it to the registry, exhibit A of the drift. The split makes sense once there's a real forcing function (community PR queue, pack count >20, divergent licensing/governance). Until then the single-repo model keeps the source of truth singular and unambiguous.
+
 ## LLM Configuration
 
 ClarifyPrompt uses an LLM to optimize prompts. It works with **any OpenAI-compatible API** and with the **Anthropic API** directly.
@@ -1054,8 +1128,9 @@ clarifyprompt-mcp/
     run.mjs                            YAML fixtures → MCP server → scored HTML report
     fixtures/*.yaml                    23 deterministic fixtures
     schema.json                        Fixture schema
-  packs/                                (1.3.0) knowledge packs + (1.5.0) platform packs
-    *.md                               Knowledge packs (community-contributable)
+  packs/                                Knowledge packs + platform packs (single source of truth, 1.6.4+)
+    README.md                          Pack authoring guide (frontmatter, chunks, quality bar)
+    *.md                               Knowledge packs — 4 bundled, community-contributable via PR
     platforms/*.yaml                   (1.5.0) built-in AI platform declarations — 7 files, 58 platforms
   docs/adoption/                        (1.5.0) launch-post drafts + catalog submission specs
 ```
