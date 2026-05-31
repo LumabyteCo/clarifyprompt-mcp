@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.4:** Documentation and process cleanup — the separate `clarifyprompt-packs` registry was archived and its content consolidated back into this repo under [`packs/`](./packs/README.md), now the single source of truth for both knowledge packs and platform packs. New top-level [Knowledge packs](#knowledge-packs) section in the README explains the loading + authoring model. No engine code, MCP tool, or platform changes. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.5:** Security patch. Bumps the `@modelcontextprotocol/sdk` floor from `^1.12.1` to `^1.29.0` and `zod` floor from `^3.24.0` to `^3.25.76`, clearing **CVE-2026-0621** (SDK ReDoS in `UriTemplate`, patched in 1.25.2), **GHSA-345p-7cg4-v4c7** (cross-client response leak, patched in 1.26.0), and 7 transitive vulnerabilities in the SDK's HTTP-transport substack. `npm audit --production` now reports **0 vulnerabilities**. No engine code changes, no MCP tool changes, no platform changes. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,27 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.5
+
+Security patch. **No engine code changes, no MCP tool surface changes, no platform changes, no env-var changes.**
+
+### Fixed
+
+- **CVE-2026-0621** — ReDoS in `@modelcontextprotocol/sdk`'s `UriTemplate` regex (patched in SDK `1.25.2`). The previous `^1.12.1` floor *allowed* vulnerable resolutions on stale npm caches; bumped to `^1.29.0` so the floor itself is patched.
+- **GHSA-345p-7cg4-v4c7** — Shared server/transport instances leak cross-client response data (patched in SDK `1.26.0`). Not exploitable in practice for ClarifyPrompt (one host = one server instance) but the vulnerable code is now out of the dependency graph entirely.
+- **7 transitive vulnerabilities** (2 moderate, 5 high) in the SDK's bundled HTTP-transport substack (`hono`, `express-rate-limit`, `fast-uri`, `ip-address`, `path-to-regexp`, `qs`, `@hono/node-server`). Cleared via `npm audit fix`. Never affected runtime — ClarifyPrompt is stdio-only and doesn't load the HTTP transport — but they were noise in users' `npm audit` reports and made the install look unsafe.
+
+### Numbers
+
+- `npm audit --production` → **0 vulnerabilities** (was 2 SDK CVEs + 7 transitive).
+- `package-lock.json`: **net −336 lines** (the old caret was pulling in heavy unused HTTP-transport ancillaries; the fix swapped them for slimmer alternates).
+- Tools: 23 (unchanged). Platforms: 60+ (unchanged). Eval fixtures: 30 (unchanged).
+- Wire test + integration battery + day2 + reasoning + 29/30 evals pass against the new floor on local Ollama. The one eval fail (`analyzer-creative-media`) is a pre-existing qwen-coder-7b classifier flake — verified SDK-independent by stash-reverting and re-running.
+
+### Why the floor bump matters
+
+`^1.12.1` was misleading documentation — caret resolution was actually pulling SDK `1.27.1` for any fresh `npm install` since early 2026. The floor bump aligns the declared baseline with what `npm` was already doing for most users while guaranteeing the floor for users on stale caches. It also positions us for the eventual `2.0.0-alpha` migration when that line stabilizes (the modern SDK deprecates `.tool()` / `.prompt()` / `.resource()` shorthand registration in favor of `registerTool()` / `registerPrompt()` / `registerResource()` with title + outputSchema + annotations).
 
 ## What's new in 1.6.4
 
@@ -245,7 +266,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.4)
+## What's in the box (cumulative through 1.6.5)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

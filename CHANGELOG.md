@@ -4,6 +4,34 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.5] — 2026-05-27
+
+Security patch. Bumps `@modelcontextprotocol/sdk` floor from `^1.12.1` to `^1.29.0` and `zod` floor from `^3.24.0` to `^3.25.76`. **No engine code changes, no MCP tool surface changes, no platform changes, no env-var changes.**
+
+### Security
+
+- **CVE-2026-0621** — ReDoS vulnerability in `UriTemplate` regex patterns. Fixed upstream in `@modelcontextprotocol/sdk@1.25.2`. ClarifyPrompt's previous `^1.12.1` declaration *allowed* caret-resolution to a vulnerable floor; users with `npm` caches pinning to `1.12.x` were exposed. The new `^1.29.0` floor guarantees the patched version.
+- **GHSA-345p-7cg4-v4c7** — Shared server/transport instances leak cross-client response data. Fixed upstream in `@modelcontextprotocol/sdk@1.26.0`. ClarifyPrompt is not multi-tenant in practice (one MCP host = one server instance), but the floor bump removes the vulnerable code path from the dependency graph entirely.
+- **7 transitive vulnerabilities** (2 moderate, 5 high) in the SDK's HTTP-transport substack (`hono`, `express-rate-limit`, `fast-uri`, `ip-address`, `path-to-regexp`, `qs`, `@hono/node-server`) — cleared via `npm audit fix`. These never affected runtime behavior (ClarifyPrompt is stdio-only and doesn't load the HTTP transport) but they showed up in users' `npm audit` and made the install look unsafe.
+
+`npm audit --production` now reports **0 vulnerabilities** against the new floor.
+
+### Why the bump matters beyond CVEs
+
+The previous `^1.12.1` declaration was misleading documentation — caret resolution was actually pulling SDK `1.27.1` in fresh installs. The floor bump aligns the declared baseline with what `npm` was already doing for most users, while guaranteeing the floor for users on stale caches. It also positions us for a clean migration when the SDK's `2.0.0-alpha` series stabilizes (it removes `.tool()` / `.prompt()` / `.resource()` shorthand registration in favor of `registerTool()` etc.).
+
+### Verification
+
+- `tsc` build: clean.
+- `npm run test:wire`: MCP stdio protocol verified end-to-end with `qwen2.5-coder:7b-instruct-q4_K_M`. All 7 wire stages green.
+- `npm run test:integration`: all 9 cases green.
+- `npm run test:day2` + `test:reasoning`: green.
+- `npm run eval`: 29/30 fixtures pass on local Ollama. The one fail (`analyzer-creative-media`) is a pre-existing qwen-coder-7b classifier flake — verified SDK-independent by stash-reverting and re-running against the previous SDK (identical failure mode, same misclassification). On CI against `gpt-4o-mini` the fixture passes as it has since 1.6.0.
+
+### Migration
+
+None. Anyone on `clarifyprompt-mcp@1.6.4` with a normal `npm install` was already getting SDK `1.27.1` via caret. Upgrading to `1.6.5` just makes the floor honest and clears the audit warnings.
+
 ## [1.6.4] — 2026-05-27
 
 Docs + process patch. **No engine code changes; no MCP tool surface changes; no platform changes; no env-var changes.**
