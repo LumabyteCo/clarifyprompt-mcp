@@ -4,6 +4,30 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.6] — 2026-05-27
+
+Lockfile + harness patch. **No engine code, MCP tool surface, platform, or env-var changes.** Ships the MCP-completeness audit doc that was promised in `docs/audits/`.
+
+### Fixed
+
+- **`package-lock.json` was missing 4 of 5 `sqlite-vec` platform binaries.** During the 1.6.5 SDK bump I regenerated the lockfile with `npm install --package-lock-only`, which silently dropped the optional `sqlite-vec-darwin-x64`, `sqlite-vec-linux-arm64`, `sqlite-vec-linux-x64`, and `sqlite-vec-windows-x64` entries — keeping only the `sqlite-vec-darwin-arm64` binary for my host platform. The 1.6.5 *npm tarball* was fine (end-user `npm install` resolves all platforms at install time), but **`npm ci` against the committed lockfile** — which is what GitHub Actions uses — could only find the macOS-ARM binary. On Ubuntu CI this surfaced as `no such module: vec0` errors in the memory-and-packs fixtures: 4 fixtures errored (`memory-pack-chunk-grounds-optimize`, `memory-search-ranks-pack-by-similarity`, `memory-remember-persists`, `memory-forget-invalidates`). Regenerated with a full `npm install` (not `--package-lock-only`) so all 5 platform binaries are back in the lock.
+- **`evals/run.mjs` HTML report writer crashed on ERRORED entries.** Line 729 assumed every non-skipped, non-filtered run had an `evaluation.checks` field, but errored runs (where the fixture setup or run itself threw) don't go through evaluation — they have an `error` field instead. Symptom on CI: even with the sqlite-vec issue forcing 4 errors, the harness's per-fixture summary printed correctly, but the final `writeHtmlReport` step crashed with `TypeError: Cannot read properties of undefined (reading 'checks')`, exiting the whole workflow at code 2 instead of cleanly reporting "22 passed, 4 errored." Added an explicit errored-status branch that emits a fail-styled row with the error message. The harness now degrades gracefully.
+
+### Why this matters
+
+The 1.6.5 release that just shipped to npm is **functionally correct for end users** — the npm tarball doesn't ship a lockfile, so users' `npm install` resolves all platforms freshly. But our CI publish gate was broken, which would have blocked every future tag-push from publishing. 1.6.6 restores the gate.
+
+### Verification
+
+- `npm install` (clean): all 5 sqlite-vec platforms back in `package-lock.json`.
+- `npm audit --production`: 0 vulnerabilities (unchanged from 1.6.5).
+- `tsc` build: clean.
+- `node evals/run.mjs --quiet` locally: exits 0, no harness crash even when fixtures error.
+
+### Bundled docs
+
+- New `docs/audits/mcp-completeness-2026-05.md` — full audit of the engine's MCP surface against the current SDK + spec. Tool-by-tool registration table, resource gap analysis, SDK feature delta (1.12 → 1.29 → 2.0-alpha), capability declarations, transport refactor sketch, A2A feasibility note, and a 7-step modernization roadmap. Diagnostic only — no engine code changes prescribed inline. This is the artifact behind the next-session planning around MCP modernization + A2A enablement.
+
 ## [1.6.5] — 2026-05-27
 
 Security patch. Bumps `@modelcontextprotocol/sdk` floor from `^1.12.1` to `^1.29.0` and `zod` floor from `^3.24.0` to `^3.25.76`. **No engine code changes, no MCP tool surface changes, no platform changes, no env-var changes.**

@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.5:** Security patch. Bumps the `@modelcontextprotocol/sdk` floor from `^1.12.1` to `^1.29.0` and `zod` floor from `^3.24.0` to `^3.25.76`, clearing **CVE-2026-0621** (SDK ReDoS in `UriTemplate`, patched in 1.25.2), **GHSA-345p-7cg4-v4c7** (cross-client response leak, patched in 1.26.0), and 7 transitive vulnerabilities in the SDK's HTTP-transport substack. `npm audit --production` now reports **0 vulnerabilities**. No engine code changes, no MCP tool changes, no platform changes. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.6:** Lockfile + harness patch following 1.6.5's security bump. The 1.6.5 lockfile regeneration silently dropped 4 of the 5 `sqlite-vec` platform binaries (kept only the maintainer's macOS-ARM), which broke `npm ci` on Linux CI. End-user `npm install` was unaffected (npm resolves platforms freshly), but our publish gate was blocked. 1.6.6 restores all 5 platforms + adds graceful handling for ERRORED entries in the eval harness report writer. Also bundles the new [`docs/audits/mcp-completeness-2026-05.md`](./docs/audits/mcp-completeness-2026-05.md) — full audit of the MCP surface with a 7-step modernization roadmap. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,23 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.6
+
+Lockfile + harness patch following 1.6.5. **No engine code, MCP tool surface, platform, or env-var changes.** Ships the MCP-completeness audit doc.
+
+### Fixed
+
+- **`package-lock.json` lost 4 of 5 `sqlite-vec` platform binaries during the 1.6.5 SDK bump.** My local `npm install --package-lock-only` retained only the maintainer's `sqlite-vec-darwin-arm64` binary. `npm ci` on CI's Ubuntu runners failed with `no such module: vec0` because `sqlite-vec-linux-x64` wasn't in the lock. End-user `npm install clarifyprompt-mcp@1.6.5` was **never affected** (the npm tarball doesn't ship a lockfile; users resolve platforms at install time). Regenerated with full `npm install` so all 5 platforms (`darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `windows-x64`) are back.
+- **Eval harness HTML report writer crashed on ERRORED entries** (`evals/run.mjs:729`). The pre-existing renderer assumed every non-skipped, non-filtered run had an `evaluation.checks` field, but errored runs carry an `error` field instead. Added an explicit errored-status branch — the harness now degrades gracefully and exits cleanly even when fixtures error.
+
+### Bundled docs
+
+- **[`docs/audits/mcp-completeness-2026-05.md`](./docs/audits/mcp-completeness-2026-05.md)** — diagnostic audit of the engine's MCP surface against the current SDK + spec. Tool-by-tool registration table, resource gap analysis, SDK feature delta (1.12 → 1.29 → 2.0-alpha), capability declarations, transport refactor sketch, A2A feasibility note, and a sequenced 7-step modernization roadmap. The artifact behind next-session planning. No engine changes prescribed inline.
+
+### Numbers
+
+- 5 sqlite-vec platforms in lockfile (was 1). `npm audit --production`: 0 vulnerabilities (unchanged). Tools: 23 (unchanged). Eval fixtures: 30 (unchanged).
 
 ## What's new in 1.6.5
 
@@ -266,7 +283,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.5)
+## What's in the box (cumulative through 1.6.6)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

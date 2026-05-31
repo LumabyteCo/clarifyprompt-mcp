@@ -725,6 +725,9 @@ async function writeHtmlReport({ runs, model, ran, passed, failed, skipped, filt
       return `<tr class="skipped"><td>⊘</td><td>${esc(r.fixture.name)}</td><td colspan="3">skipped — ${esc(r.skipReason)}</td></tr>`;
     }
     if (r.status === 'filtered') return '';
+    if (r.status === 'errored') {
+      return `<tr class="fail"><td class="status">⚠</td><td><div class="name">${esc(r.fixture.name)}</div><div class="desc">${esc(r.fixture.description || '')}</div></td><td class="score">errored</td><td class="latency">—</td><td class="checks"><ul><li class="fail"><b>error</b>: ${esc(r.error?.message || 'unknown error')}</li></ul></td></tr>`;
+    }
     const e = r.evaluation;
     const checksHtml = e.checks.map((c) =>
       `<li class="${c.passed ? 'ok' : 'fail'}"><b>${esc(c.key)}</b>: ${esc(c.detail)}</li>`
