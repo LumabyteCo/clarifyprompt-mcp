@@ -1,11 +1,15 @@
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
 # better-sqlite3 needs either prebuilt binaries (via prebuild-install, the default)
 # or a C++ toolchain to compile. prebuild-install covers linux-x64 / linux-arm64
-# on Node 20 — so we do NOT pass --ignore-scripts here; we let the package's
-# install script run, which fetches the prebuilt native binary.
+# on Node 22 (the current active LTS) — so we do NOT pass --ignore-scripts here;
+# we let the package's install script run, which fetches the prebuilt native
+# binary. Note: better-sqlite3@12.10.0 dropped prebuilds for Node 20 (which
+# reached EOL in April 2026); the Docker base must stay on a maintained LTS
+# line. Our CI test matrix validates against node 18/20/22; the runtime image
+# tracks current active LTS.
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -13,7 +17,7 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
-FROM node:20-slim
+FROM node:22-slim
 
 WORKDIR /app
 

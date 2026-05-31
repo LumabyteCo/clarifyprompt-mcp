@@ -20,7 +20,7 @@ import { composePrompt } from "./engine/composition/compose.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.6.6",
+  version: "1.6.7",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);

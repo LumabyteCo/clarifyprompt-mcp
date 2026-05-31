@@ -4,6 +4,31 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.7] — 2026-05-27
+
+Dockerfile patch — bump base image from `node:20-slim` to `node:22-slim`. **No engine code, MCP tool surface, platform, or env-var changes.**
+
+### Fixed
+
+- **`CI / docker build` failed on 1.6.6** with `npm error gyp ERR! find Python` — `better-sqlite3@12.10.0` (which my 1.6.6 lockfile regen happened to pull within the `^12.9.0` caret) [explicitly dropped prebuilds for Node.js v20 and v23](https://github.com/WiseLibs/better-sqlite3/releases/tag/v12.10.0) because Node 20 reached end-of-life in April 2026. Without a prebuilt binary, `npm ci` fell through to `node-gyp rebuild`, which needs Python + a C++ toolchain — neither are present in `node:20-slim`. The CI matrix's Node 18/20/22 jobs still pass because they install on macOS/Ubuntu with a working build environment as fallback. Only the slim Docker image hit the floor.
+- Bumped the Dockerfile's base image to `node:22-slim`, the current active LTS line where `better-sqlite3` still ships prebuilts. Verified locally: container builds clean, `require('better-sqlite3')` + `require('sqlite-vec')` both load in the runtime image.
+
+### Why now, not later
+
+Node 20 transitioned to EOL last month (April 2026). The ecosystem's first reaction (better-sqlite3 dropping Node 20 binaries in 12.10.0) just hit us via the caret resolution. The honest fix is to follow the ecosystem off Node 20, not pin around it.
+
+### Note on the CI test matrix
+
+`.github/workflows/ci.yml` still tests Node 18, 20, and 22 across macOS + Ubuntu. Node 18 reached EOL in April 2025 and Node 20 in April 2026, but both have working install paths (with prebuilts or fallback compile) in regular CI environments — only the slim Docker image stumbles because it lacks the toolchain. Whether to prune those matrix entries is a separate question; 1.6.7 doesn't touch them.
+
+### Verification
+
+- `docker build -t clarifyprompt-mcp:ci-test .` locally: clean, 13 layers, no errors.
+- `docker run ... node -e 'require("better-sqlite3"); require("sqlite-vec")'`: both native deps load.
+- All 5 `sqlite-vec` platform binaries still in `package-lock.json` (the 1.6.6 fix held).
+- `npm audit --production`: 0 vulnerabilities (unchanged).
+- `tsc` build: clean.
+
 ## [1.6.6] — 2026-05-27
 
 Lockfile + harness patch. **No engine code, MCP tool surface, platform, or env-var changes.** Ships the MCP-completeness audit doc that was promised in `docs/audits/`.

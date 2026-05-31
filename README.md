@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.6:** Lockfile + harness patch following 1.6.5's security bump. The 1.6.5 lockfile regeneration silently dropped 4 of the 5 `sqlite-vec` platform binaries (kept only the maintainer's macOS-ARM), which broke `npm ci` on Linux CI. End-user `npm install` was unaffected (npm resolves platforms freshly), but our publish gate was blocked. 1.6.6 restores all 5 platforms + adds graceful handling for ERRORED entries in the eval harness report writer. Also bundles the new [`docs/audits/mcp-completeness-2026-05.md`](./docs/audits/mcp-completeness-2026-05.md) — full audit of the MCP surface with a 7-step modernization roadmap. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.6.7:** Dockerfile bump to `node:22-slim` (current active LTS) following Node 20's EOL last month. `better-sqlite3@12.10.0` dropped Node 20 prebuilds, which broke `CI / docker build` on 1.6.6's lockfile regen. Engine, MCP surface, platforms, env vars all unchanged. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,19 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.6.7
+
+Dockerfile patch. **No engine code, MCP tool surface, platform, or env-var changes.**
+
+### Fixed
+
+- **`CI / docker build` failed on 1.6.6** with `npm error gyp ERR! find Python`. Root cause: `better-sqlite3@12.10.0` ([released 2026-05](https://github.com/WiseLibs/better-sqlite3/releases/tag/v12.10.0)) explicitly removed prebuilt binaries for Node.js v20 and v23 because Node 20 reached EOL in April 2026. The 1.6.6 lockfile regen pulled 12.10.0 within the `^12.9.0` caret, and `node:20-slim` doesn't have Python + a C++ toolchain to compile from source. Bumped the Dockerfile base to `node:22-slim` — current active LTS, still has working prebuilts.
+- The non-Docker CI build matrix (Node 18 / 20 / 22 across macOS + Ubuntu) still passes because regular runners can compile-from-source as fallback. Only the slim Docker image stumbles.
+
+### Verified locally
+
+`docker build` → green. Container can `require('better-sqlite3')` + `require('sqlite-vec')` cleanly. All 5 `sqlite-vec` platform binaries still in `package-lock.json` (1.6.6's fix held).
 
 ## What's new in 1.6.6
 
@@ -283,7 +296,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.6)
+## What's in the box (cumulative through 1.6.7)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
