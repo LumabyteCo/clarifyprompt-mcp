@@ -1,6 +1,6 @@
 {
   "name": "clarifyprompt-mcp",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "mcpName": "io.github.LumabyteCo/clarifyprompt",
   "description": "Context-aware MCP prompt compiler with a composable pipeline: clarify_with_user → ground_prompt OR optimize_prompt → critique_prompt, all in one call via compose_prompt. Persistent memory, knowledge packs, explicit token-budget curation, reflective learning, 58+ AI platforms, workspace signals (CLAUDE.md / AGENTS.md / .cursorrules), reasoning-model support. Deterministic eval harness ships with the package.",
   "type": "module",

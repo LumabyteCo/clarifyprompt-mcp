@@ -4,6 +4,31 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.8] — 2026-06-01
+
+Housekeeping release closing the two loops the 1.6.5 → 1.6.7 cascade opened. **No engine code, MCP tool surface, platform, or env-var changes.**
+
+### Changed
+
+- **CI build matrix now tests Node 24** (the current active LTS, EOL Apr 2028) in addition to 18, 20, and 22 — `node: [18, 20, 22, 24]` across Ubuntu + macOS. Before this, the matrix tested two EOL versions (18, EOL Apr 2025; 20, EOL Apr 2026) but **not the current LTS at all**. Verified before merge that `better-sqlite3@12.10.0` + `sqlite-vec@0.1.9` load and `vec_version()` returns cleanly on Node 24.16.0 in a toolchain-free `node:24-slim` container — which guarantees the toolchain-equipped matrix runners pass. `engines` stays `>=18` (maximum compatibility; we test what we claim).
+- **Publish-job runner bumped Node 20 → 22.** The release-critical `npm publish` step was running on Node 20 (now EOL); moved it to Node 22 to match the Dockerfile base and keep an EOL runtime off the publish path. Not a user-facing support change — purely internal CI hygiene.
+
+### Process
+
+- **New ship-check `CP-13 — lockfile regeneration safety`** (`.claude/skills/ship-check/SKILL.md`). Encodes the hard lesson from the 1.6.5 → 1.6.6 → 1.6.7 cascade so it can't recur: never use `npm install --package-lock-only` when deps may change (it silently drops non-host platform binaries); always diff the lockfile for dropped platform/optional deps and unexpected native-dep version jumps before committing; verify all 5 `sqlite-vec` platforms survive; gate release lockfile changes on a local slim-Docker load test. Flagged as a strong promotion candidate to the user-scoped ship-check skill (the failure modes are general to any project with native or platform-gated deps). **Dogfooded on this very release** — the 1.6.8 lockfile bump went through a full `npm install` (not `--package-lock-only`), verified all 5 platforms intact with zero native-dep drift.
+
+### Why this is a separate release
+
+1.6.5 cleared two CVEs but its lockfile regen silently broke CI twice (1.6.6 restored dropped sqlite-vec platforms; 1.6.7 bumped the Docker base off EOL Node 20). 1.6.8 closes the underlying drift — tests the current LTS, removes EOL Node from the publish path, and writes down the lesson — so the same class of mistake is caught at ship-check next time rather than discovered in CI.
+
+### Verification
+
+- Node 24 native-dep load: ✓ (`node:24-slim`, `vec_version()=v0.1.9`)
+- `tsc` build: clean
+- All 5 `sqlite-vec` platforms in `package-lock.json`: ✓
+- `npm audit --production`: 0 vulnerabilities (unchanged)
+- CP-13 self-check on the 1.6.8 lockfile bump: ✓ (no dropped platforms, no native-dep version drift)
+
 ## [1.6.7] — 2026-05-27
 
 Dockerfile patch — bump base image from `node:20-slim` to `node:22-slim`. **No engine code, MCP tool surface, platform, or env-var changes.**

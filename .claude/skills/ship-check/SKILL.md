@@ -160,6 +160,33 @@ Tags for this repo follow `v<major>.<minor>.<patch>` strictly (e.g. `v1.3.1`). N
 
 ---
 
+## ADD: CP-13 — lockfile regeneration safety (1.6.8+)
+
+The single most expensive class of mistake this repo has hit: a `package-lock.json` regeneration that silently changed more than intended. When a release touches the lockfile (dependency bump, SDK upgrade, `npm audit fix`, or a `rm -rf node_modules package-lock.json` clean install):
+
+1. **Never regenerate with `npm install --package-lock-only` when dependency versions may have changed.** That flag rewrites the lockfile but resolves optional / platform-specific (`os`/`cpu`-gated) dependencies **only for the current host platform** — silently dropping every other platform's binary from the lock. A version-only bump (no dep change) is the one safe use; anything touching deps must use a **full `npm install`** so all platform variants get recorded, then commit the resulting lock.
+
+2. **After any lockfile change, `git diff package-lock.json` BEFORE committing** and scan for two failure modes:
+   - **Dropped platform / optional deps:**
+     ```bash
+     git diff --cached package-lock.json | grep -E '^-.*"(node_modules/)?[a-z0-9@/._-]+-(darwin|linux|win32|windows)-(arm64|x64|ia32)"' && echo "::error::CP-13: a platform-specific binary was removed from the lock"
+     ```
+     A deletion of any `<pkg>-<platform>-<arch>` entry means a platform binary vanished. **This broke 1.6.5 → forced 1.6.6**: 4 of 5 `sqlite-vec` platforms dropped, breaking `npm ci` on Linux CI (the npm *tarball* was fine — no lockfile ships — but the publish gate uses `npm ci` against the committed lock).
+   - **Unexpected native-dep version jumps:** a caret-range native/build-sensitive dep can silently jump within range to a version that drops support for something. **This broke 1.6.6 → forced 1.6.7**: `better-sqlite3` 12.9.0 → 12.10.0 dropped Node 20 prebuilds (Node 20 EOL'd Apr 2026), and `node:20-slim` has no toolchain to compile from source. After a lockfile change, diff the resolved version of every dep with an install script or native binary (`better-sqlite3`, `sqlite-vec`, and anything else with `hasInstallScript`) and confirm each still supports **both** the Dockerfile base Node version **and** the CI matrix's lowest Node version.
+
+3. **Verify all expected platforms survived:**
+   ```bash
+   grep -oE '"sqlite-vec-[a-z0-9-]+"' package-lock.json | sort -u    # must list all 5: darwin-arm64, darwin-x64, linux-arm64, linux-x64, windows-x64
+   ```
+
+4. **If the lockfile change is part of a release, the local Docker build is a required pre-push gate** (not just CI): `docker build -t cp:precheck . && docker run --rm --entrypoint sh cp:precheck -c 'node -e "require(\"better-sqlite3\");require(\"sqlite-vec\")"'`. The slim image has no compile fallback, so it catches dropped-prebuilt regressions that the toolchain-equipped CI matrix runners would silently paper over.
+
+**History:** direct lesson from the 1.6.5 → 1.6.6 → 1.6.7 cascade on 2026-05-27. A single `npm install --package-lock-only` after a `rm -rf node_modules package-lock.json` caused two distinct CI failures across two follow-up releases — first a dropped-platform-binary break, then a within-caret native-dep version jump that dropped an EOL Node line. Both were CI-only (end-user `npm install` resolves fresh and was never affected), but both blocked the publish gate.
+
+**Generalization hint:** **strong promotion candidate** — this is a fully general npm lesson. Any project with native deps (`better-sqlite3`, `esbuild`, `sharp`, `swc`, `@napi-rs/*`, etc.) or platform-gated optional deps is exposed to both failure modes. The specific package names are project-specific; the *checks* (diff for dropped platform deps, diff native-dep versions against the Docker/CI Node floor, slim-image load gate) generalize directly. Promote with the native-dep list and the platform-binary glob parameterized.
+
+---
+
 ## Promotion log
 
 Track which project-scoped checks have been **promoted** to the user-scoped skill, with the date. Once promoted, the project-scoped entry is removed (or shrunk to project-only specifics) — running ship-check then picks up the general version automatically.
