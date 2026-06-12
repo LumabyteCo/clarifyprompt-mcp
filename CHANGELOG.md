@@ -4,6 +4,34 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] — 2026-06-12
+
+Minor release: **the full MCP tool surface modernized to the SDK's `registerTool` API** — every tool now declares a human-readable `title`, the four behavior-hint `annotations`, and a validated `outputSchema` with `structuredContent` on every response. This is step #2 of the modernization roadmap in [`docs/audits/mcp-completeness-2026-05.md`](./docs/audits/mcp-completeness-2026-05.md) (step #1, the SDK floor bump, shipped in 1.6.5). **No engine behavior changes; full back-compat for existing consumers.**
+
+### Changed
+
+- **All 23 tools migrated from the deprecated `server.tool()` shorthand to `server.registerTool()`** (the legacy registration API is removed in SDK 2.0 — this clears the migration before the ecosystem forces it).
+- **Every tool now declares `title`** — hosts render "Forget a fact" instead of `memory_forget`.
+- **Every tool now declares the four annotation hints** (`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`). Hosts can now distinguish the three destructive tools (`memory_forget`, `unload_pack`, `unregister_platform` — confirmation-worthy) from the seven read-only+idempotent inspectors (`list_*`, `memory_search`, `get_trace`, `explain_last_curation` — safe to call freely), and see which tools reach outside the machine (`openWorldHint: true` on the seven LLM/embedding/web-calling tools).
+- **Every tool now declares an `outputSchema` and returns `structuredContent`** alongside the text content. Hosts that understand structured output get typed, field-named responses for all 23 tools. Schemas are deliberately permissive (all fields optional, objects passthrough, variable leaves `unknown`) — they document the shape without ever rejecting real engine output; the engine's TypeScript types remain the source of truth.
+- **The `categories` resource migrated to `registerResource`** with a `title`.
+- **Stale registry link fixed** in `load_knowledge_pack`'s description — it still pointed at the archived `clarifyprompt-packs` repo; now points at the canonical [`packs/`](./packs/) home (a surface the 1.6.4 consolidation missed).
+
+### Back-compat (verified, not assumed)
+
+- **Text content is byte-identical for every tool.** Object payloads serialize exactly as before; the three array-returning tools (`list_categories`, `list_platforms`, `list_modes`) keep their bare-array text while `structuredContent` wraps the array in an object (the MCP spec requires object-typed structured output). The wire test — which `JSON.parse`s the text and indexes it as an array — passes unchanged.
+- **Error returns are unchanged** (`isError: true` + JSON text). Error responses skip output-schema validation by SDK design, so no error path gained new failure modes.
+- **Verification:** wire 7/7, integration 9/9, day2 ✅, evals 26/27 with **zero output-validation errors** across all fixtures (the one fail is the known `analyzer-creative-media` qwen-coder-7b classifier flake, pre-existing since 1.6.x and passing on CI's gpt-4o-mini).
+
+### Found during verification (not caused by this release)
+
+- **[#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3)** — cloud `gpt-oss:20b-cloud` now returns its entire completion in the thinking channel with empty `content`, and `client.ts` reads only the legacy `reasoning` field name (missing `thinking` / `reasoning_content`), so affected users silently get an empty `optimizedPrompt`. Deterministic 3/3 in the maintainer reasoning battery; the identical engine code passed on 2026-05-31, so this is a remote model/API-side change exposing a pre-existing parsing gap. Root cause + fix sketch in the issue; targeted for 1.7.1.
+
+### Numbers
+
+- Tools: 23 (unchanged count, modernized registration). Resources: 1 (modernized). Platforms: 60+ (unchanged). Eval fixtures: 30 (unchanged).
+- `npm audit --production`: 0 vulnerabilities (unchanged).
+
 ## [1.6.8] — 2026-06-01
 
 Housekeeping release closing the two loops the 1.6.5 → 1.6.7 cascade opened. **No engine code, MCP tool surface, platform, or env-var changes.**

@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.6.8:** Housekeeping. CI build matrix now tests Node 24 (current active LTS) alongside 18/20/22; publish runner moved off EOL Node 20 → 22; new ship-check `CP-13` encodes the lockfile-safety lesson from the 1.6.5→1.6.7 cascade so it can't recur. Engine, MCP surface, platforms, env vars all unchanged. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.7.0:** The full MCP tool surface modernized to the SDK's `registerTool` API — all 23 tools now declare a human-readable `title`, the four behavior-hint `annotations` (`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`), and a validated `outputSchema` with `structuredContent` on every response. Hosts can render typed results, gate the destructive tools behind confirmations, and call the read-only inspectors freely. Text content stays byte-identical — full back-compat. No engine behavior changes. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,24 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.7.0
+
+Step #2 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md): the entire tool surface migrated off the deprecated `server.tool()` shorthand (removed in SDK 2.0) onto `server.registerTool()`. **No engine behavior changes; full back-compat.**
+
+### What hosts get
+
+- **Titles** — every tool has a human-readable display name ("Forget a fact", not `memory_forget`).
+- **Behavior annotations** — all 23 tools declare `readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`. The three destructive tools (`memory_forget`, `unload_pack`, `unregister_platform`) are flagged for confirmation UIs; the seven read-only inspectors are flagged safe-to-call-freely; the seven tools that reach the network (LLM / embeddings / web search) carry `openWorldHint: true`.
+- **Structured output** — every tool declares an `outputSchema` and returns `structuredContent` alongside the JSON text. Schemas are permissive by design (all-optional, passthrough) — they document the shape without ever rejecting engine output.
+
+### Back-compat
+
+Text content is byte-identical for every tool — including the three array-returning `list_*` tools, whose text stays a bare array while `structuredContent` wraps it in an object per the MCP spec. Error returns unchanged. Verified: wire 7/7, integration 9/9, day2, 26/27 evals with zero output-validation errors.
+
+### Found during verification
+
+[#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — cloud `gpt-oss` thinking-channel responses can yield an empty `optimizedPrompt` (remote API change exposing a pre-existing field-name gap in `client.ts`; fix targeted for 1.7.1).
 
 ## What's new in 1.6.8
 
@@ -309,7 +327,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.6.8)
+## What's in the box (cumulative through 1.7.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

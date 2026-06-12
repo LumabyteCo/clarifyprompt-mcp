@@ -9,3 +9,6 @@ dist/
 .smithery/
 .mcpregistry_*
 mcp-publisher
+
+# Marketing assets — maintainer-local, not part of the OSS repo
+docs/marketing/
