@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.7.0:** The full MCP tool surface modernized to the SDK's `registerTool` API — all 23 tools now declare a human-readable `title`, the four behavior-hint `annotations` (`readOnlyHint` / `destructiveHint` / `idempotentHint` / `openWorldHint`), and a validated `outputSchema` with `structuredContent` on every response. Hosts can render typed results, gate the destructive tools behind confirmations, and call the read-only inspectors freely. Text content stays byte-identical — full back-compat. No engine behavior changes. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.7.1:** Fixes [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — some models (notably gpt-oss over Ollama's `/v1` shim, and thinking-channel models) could return a **silent empty** optimized prompt. `simpleGenerate` now reads all three thinking-channel field names, retries once on empty content, and fails loudly with a diagnostic if still empty — the engine degrades to the original prompt + a surfaced error instead of returning blank. Locked by a new deterministic `test:thinking` battery. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,17 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.7.1
+
+Patch fixing [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3): a **silent empty optimized prompt** from models whose answer didn't land in `content`.
+
+- **Reads all three thinking-channel field names** (`reasoning` / `thinking` / `reasoning_content`) — fixes DeepSeek / qwen-thinking and similar.
+- **Retries once, then fails loudly** when content is empty regardless of any thinking field. This covers the real issue #3 case: gpt-oss harmony output over Ollama's `/v1` shim generates tokens (`completion_tokens > 0`) but returns `content: ""` with no thinking field. The engine now degrades to the original prompt + a surfaced `error` instead of returning blank.
+- **Genuinely recovering** gpt-oss harmony output (via Ollama's native `/api/chat`) is a tracked follow-up — out of scope for a patch. The silent-failure harm is resolved now.
+- **New deterministic `npm run test:thinking`** battery locks the regression with mocked responses (no live cloud dependency).
+
+Verified: `test:thinking`, reasoning battery (gpt-oss degrades loudly; the genuine reasoner `kimi-k2-thinking:cloud` still returns real content), integration, day2, evals, wire.
 
 ## What's new in 1.7.0
 
@@ -327,7 +338,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.7.0)
+## What's in the box (cumulative through 1.7.1)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

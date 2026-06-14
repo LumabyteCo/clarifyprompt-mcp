@@ -4,6 +4,30 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] — 2026-06-13
+
+Patch: fixes [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — some models returned a **silent empty `optimizedPrompt`**. No MCP tool surface changes.
+
+### Fixed
+
+- **`optimize`/`critique`/`clarify` could silently return empty text** when the LLM produced no `content`. Two distinct causes, now handled uniformly in `src/engine/llm/client.ts`:
+  1. **Thinking-channel models** (DeepSeek, qwen-thinking, some gateways) return the chain-of-thought under a field name `simpleGenerate` wasn't reading. It read only `message.reasoning`; it now reads `reasoning` / `thinking` / `reasoning_content` via a new pure, exported `extractAssistantContent()`.
+  2. **gpt-oss harmony format over Ollama's `/v1` shim** (the actual issue #3 case, confirmed from the raw response): the model *generates* tokens (`completion_tokens > 0`) but the OpenAI-compatible endpoint returns `content: ""` with **no** thinking field — the harmony `final` channel is never mapped into `content`. There's no field to recover, so this can't be silently papered over.
+- **New recovery + fail-loud path:** when `content` is empty (regardless of any thinking field), `simpleGenerate` now retries once with a final-answer-only directive and a larger token budget. If the answer is still empty, it throws `LLMError` (with a `completion_tokens` diagnostic). The optimization engine catches the throw, **degrades to the original prompt** (non-empty), and surfaces a structured `error` in the result and trace. Callers never again receive a silent empty optimized prompt — they get either a recovered answer or a clear, actionable error.
+
+### Not fixed (out of scope, tracked)
+
+Genuinely *recovering* gpt-oss harmony output would require switching that provider to Ollama's native `/api/chat` endpoint — fragile, provider-specific, and the wrong size for a patch. Filed as a follow-up on #3. The user-facing harm (silent failure) is fully resolved; affected users now get the original prompt back plus a diagnostic pointing at non-reasoning models or `/api/chat`.
+
+### Tests
+
+- **New `npm run test:thinking`** (`tests/llm-thinking-channel.mjs`) — a deterministic, mock-based battery (no live cloud model) that locks the regression: all three thinking-field names extract correctly; thinking-only responses recover via retry; the harmony shape (empty content + no thinking field + `completion_tokens: 306`) retries then throws with the diagnostic; and normal responses are passed through untouched in a single call. Added to `test:all`.
+- The live reasoning battery's R3 now asserts the real invariant — "produced real output **OR** degraded loudly (non-empty fallback + surfaced error), never silent-empty" — instead of demanding content a broken upstream endpoint can't deliver.
+
+### Verified
+
+- `test:thinking` ✅ · reasoning battery ✅ (R3 degrades loudly, R4 non-reasoning works, R5 genuine thinking-model `kimi-k2-thinking:cloud` returns real content — proving working reasoners are untouched) · integration · day2 · evals · wire · `tsc`.
+
 ## [1.7.0] — 2026-06-12
 
 Minor release: **the full MCP tool surface modernized to the SDK's `registerTool` API** — every tool now declares a human-readable `title`, the four behavior-hint `annotations`, and a validated `outputSchema` with `structuredContent` on every response. This is step #2 of the modernization roadmap in [`docs/audits/mcp-completeness-2026-05.md`](./docs/audits/mcp-completeness-2026-05.md) (step #1, the SDK floor bump, shipped in 1.6.5). **No engine behavior changes; full back-compat for existing consumers.**

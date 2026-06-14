@@ -14,8 +14,30 @@ export interface ChatMessage {
    * itself) return the chain-of-thought separately from the final content.
    * ClarifyPrompt never returns this as the optimized prompt — it's thinking,
    * not answer — but it's useful for diagnostics when `content` is empty.
+   *
+   * Providers disagree on the field name. We read all three:
+   *   - `reasoning`         — legacy / several OpenAI-compatible gateways
+   *   - `thinking`          — Ollama (gpt-oss, qwen3-thinking, …)
+   *   - `reasoning_content` — DeepSeek and some gateways
    */
   reasoning?: string;
+  thinking?: string;
+  reasoning_content?: string;
+}
+
+/**
+ * Recover the assistant's final answer and its (optional) chain-of-thought from
+ * a completion message, tolerant of the three field names providers use for the
+ * thinking channel. The thinking trace is NEVER returned as content — it's
+ * diagnostics only (see the gpt-oss empty-content failure mode, issue #3).
+ */
+export function extractAssistantContent(
+  message: ChatMessage | undefined,
+): { content: string; reasoning: string } {
+  return {
+    content: message?.content || '',
+    reasoning: message?.reasoning || message?.thinking || message?.reasoning_content || '',
+  };
 }
 
 export interface ChatCompletionRequest {
@@ -266,31 +288,70 @@ export class LLMClient {
     });
 
     const choice = response.choices[0];
-    const message = choice?.message;
-    const content = message?.content || '';
-    const reasoning = message?.reasoning || '';
+    let { content, reasoning } = extractAssistantContent(choice?.message);
+    let tokensUsed = response.usage?.total_tokens || 0;
     const finishReason = choice?.finish_reason;
+    const completionTokens = response.usage?.completion_tokens ?? 0;
 
-    // Reasoning-model safety net: empty content + present reasoning + truncated
-    // output almost always means the budget was too small. Log once per client
-    // so the user can see it and bump maxTokens (or upgrade the capability
-    // table entry to flag the model as reasoning).
-    if (!content && reasoning && finishReason === 'length' && !this.warnedReasoningTruncation) {
-      this.warnedReasoningTruncation = true;
-      process.stderr.write(
-        `[clarifyprompt] Model '${response.model}' returned reasoning but hit the token limit before producing content. ` +
-        `This usually means the model is a chain-of-thought reasoner running on a budget that's too small. ` +
-        `Try raising max_tokens, or flag the model as 'reasoningChainOfThought: true' in src/engine/context/targetModelSignals.ts.\n`,
-      );
+    // Empty-content recovery (issue #3). The final answer came back empty. Three
+    // real causes seen in the wild — handled uniformly because the user-facing
+    // harm (a silent empty optimized prompt) is identical:
+    //   (a) the model routed everything through a thinking channel
+    //       (`reasoning` / `thinking` / `reasoning_content`) and emitted no final
+    //       answer — recoverable by re-asking for the final answer only;
+    //   (b) it exhausted the token budget mid-thought (finish_reason='length');
+    //   (c) it generated tokens the OpenAI-compatible endpoint never surfaced as
+    //       `content` at all — gpt-oss harmony format over Ollama's /v1 shim:
+    //       completion_tokens>0, content=='', and NO thinking field populated.
+    // Retry ONCE with a final-answer-only directive + a larger budget. If the
+    // answer is still empty, THROW — the engine catches it, degrades to the
+    // original prompt, and records the error in the trace, so callers get a
+    // clear failure + usable text instead of a silent empty string.
+    if (!content) {
+      if (!this.warnedReasoningEmptyContent) {
+        this.warnedReasoningEmptyContent = true;
+        process.stderr.write(
+          `[clarifyprompt] Model '${response.model}' returned empty content ` +
+          `(finish_reason=${finishReason}, completion_tokens=${completionTokens}, ` +
+          `thinking_trace=${reasoning ? 'present' : 'absent'}). Retrying once with a final-answer-only ` +
+          `directive and a larger token budget. If this recurs with completion_tokens>0, the model's ` +
+          `output channel isn't being surfaced by this OpenAI-compatible endpoint (common with gpt-oss ` +
+          `harmony format via Ollama's /v1 shim) — try a non-reasoning model or Ollama's native /api/chat.\n`,
+        );
+      }
+      const retry = await this.chat({
+        model: options?.model,
+        messages: [
+          {
+            role: 'system',
+            content: `${systemPrompt}\n\nIMPORTANT: Respond with ONLY the final result. Do not include any reasoning, analysis, planning, or <think> blocks in your reply.`,
+          },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: options?.temperature,
+        max_tokens: Math.max(options?.maxTokens ?? 0, 16384),
+      });
+      const recovered = extractAssistantContent(retry.choices[0]?.message);
+      if (recovered.content) {
+        content = recovered.content;
+        tokensUsed += retry.usage?.total_tokens || 0;
+      } else {
+        const retryCompletion = retry.usage?.completion_tokens ?? 0;
+        throw new LLMError(
+          `Model '${response.model}' returned empty content even after a final-answer-only retry ` +
+          `(generated ${completionTokens}+${retryCompletion} token(s) the endpoint did not surface as ` +
+          `content). This is common with gpt-oss harmony output over Ollama's OpenAI-compatible /v1 ` +
+          `endpoint. Try a non-reasoning model, Ollama's native /api/chat, or raise max_tokens.`,
+          502,
+          reasoning.slice(0, 500),
+        );
+      }
     }
 
-    return {
-      content,
-      tokensUsed: response.usage?.total_tokens || 0,
-    };
+    return { content, tokensUsed };
   }
 
-  private warnedReasoningTruncation = false;
+  private warnedReasoningEmptyContent = false;
 }
 
 export class LLMError extends Error {

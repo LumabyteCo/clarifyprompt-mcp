@@ -134,10 +134,20 @@ sep('R3: LIVE — gpt-oss:20b-cloud returns non-empty optimized prompt');
   kv('optimizedPrompt length', result.optimizedPrompt?.length ?? 0);
   kv('optimized[0..240]', result.optimizedPrompt.replace(/\n/g, ' ⏎ ').slice(0, 240));
   kv('error', result.error?.message ?? '(none)');
-  if (result.optimizedPrompt && result.optimizedPrompt.length > 40 && !result.error) {
+  // Invariant under test (issue #3): optimize must NEVER silently return an empty
+  // optimized prompt. Two acceptable outcomes:
+  //   (1) the model produced a real optimized prompt (>40 chars, no error); or
+  //   (2) it couldn't — e.g. gpt-oss harmony output isn't surfaced by Ollama's /v1
+  //       shim (completion_tokens>0 but content=='') — in which case the engine
+  //       degrades to the original prompt AND surfaces a structured error.
+  // The only FAILURE is the old silent-empty bug: blank output with no error.
+  const outLen = result.optimizedPrompt?.length ?? 0;
+  if (outLen > 40 && !result.error) {
     pass('reasoning model produced a real optimized prompt');
+  } else if (outLen > 0 && result.error) {
+    pass('no usable output from this endpoint, but degraded LOUDLY — non-empty fallback + surfaced error (not a silent empty)');
   } else {
-    fail('empty/too-short output from reasoning model');
+    fail('SILENT empty/blank output with no surfaced error — issue #3 regression');
     log(`  stderr: ${_stderr.slice(0, 400)}`);
   }
 }
