@@ -4,6 +4,36 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] — 2026-06-14
+
+Minor release — **step #3 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: the engine's read surfaces become browseable MCP **resource templates** with **argument autocompletion**. Step #1 (SDK floor) shipped in 1.6.5, step #2 (registerTool) in 1.7.0. No engine behavior changes; no tool surface changes.
+
+### Added
+
+- **Four resource templates** (alongside the existing static `clarifyprompt://categories`), each with `list` + `complete` + `read` callbacks backed by existing engine getters:
+  - `clarifyprompt://platforms/{category}/{id}` — one platform's full config (label, description, syntax hints, instructions, custom/override status). `resources/list` now enumerates all 60+ platforms as individual browseable URIs.
+  - `clarifyprompt://traces/{date}` — the optimization-trace summary index for one UTC day (use the `get_trace` tool for a single full trace).
+  - `clarifyprompt://packs/{id}` — one loaded knowledge pack's metadata.
+  - `clarifyprompt://memory/facts/{scope}` — live (non-invalidated) remembered facts under a memory scope.
+- **Argument autocompletion** (`completion/complete`) on the template variables — the only place MCP completion applies for this server, since it registers no prompts. Hosts can complete `{category}` → the 7 category ids, `{id}` → platform ids (scoped by the already-chosen `{category}`), `{date}` → days that actually have traces, `{id}` → loaded pack ids, `{scope}` → known memory scopes.
+- **Capabilities:** the server now advertises `resources` (with templates) and `completions` at `initialize` — automatically derived by the SDK from the registrations above.
+
+### Why
+
+After 1.7.0 modernized the *tool* surface, the *resource* surface was still a single static blob. MCP hosts with a resource browser (Claude Desktop's resources panel, Cursor's MCP tree) now get a navigable tree — platforms by category, traces by day, loaded packs, remembered facts — each a stable URI they can read, link, or pin. Read-only and side-effect-free; the heavy lifting stays in the tools.
+
+### Note on scope
+
+MCP's `completion/complete` covers prompt arguments and resource-template variables only — **not** tool inputs (the spec has no tool-argument completion). Since ClarifyPrompt registers no prompts, autocomplete lives entirely on the resource-template variables above.
+
+### Tests
+
+- **New `npm run test:resources`** (`tests/mcp-resources.mjs`) — deterministic wire-level coverage (no LLM/embeddings): asserts `initialize` advertises `resources` + `completions`; all four templates list; the static `categories` resource survives; a pure-registry read returns the right platform config; completion resolves `"im"→image` and `"mid"`(category=image)`→midjourney`; and an empty-day trace read degrades to a clean `count: 0` shape. Added to `test:all`.
+
+### Verified
+
+`test:resources` ✅ · wire (tools) ✅ · integration ✅ · evals (on `gemma4:31b-cloud`) ✅ · `tsc`. Resource registrations are purely additive — no tool handler, engine path, or existing resource changed.
+
 ## [1.7.1] — 2026-06-13
 
 Patch: fixes [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — some models returned a **silent empty `optimizedPrompt`**. No MCP tool surface changes.

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { getOptimizationEngine } from "./engine/optimization/engine.js";
-import { CATEGORIES, MODES, getPlatformById } from "./engine/config/categories.js";
+import { CATEGORIES, MODES, getPlatformById, type Category } from "./engine/config/categories.js";
 import { getConfigStore } from "./engine/config/persistence.js";
 import { getPlatformRegistry } from "./engine/config/registry.js";
 import { buildContextBundle } from "./engine/context/bundle.js";
@@ -20,7 +20,7 @@ import { composePrompt } from "./engine/composition/compose.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.7.1",
+  version: "1.8.0",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
@@ -1192,8 +1192,37 @@ server.registerTool(
   }
 );
 
-// --- Resources ---
+// --- Resources (1.8.0) -------------------------------------------------------
+//
+// Beyond the static `categories` resource, the engine's natural read surfaces —
+// platforms, traces, loaded packs, and remembered facts — are exposed as
+// templated resources so MCP hosts can browse them as a tree and link to stable
+// URIs. Each template carries:
+//   - list:     enumerate the concrete resources that currently exist
+//   - complete: autocomplete a URI-template variable (the only place MCP
+//               completion applies for this server — we register no prompts)
+//   - read:     return one resource's JSON, given the matched variables
+//
+// Registering templates with `complete` callbacks makes the SDK advertise the
+// `resources` (with templates) and `completions` capabilities at initialize.
 
+const CAT_IDS = CATEGORIES.map(c => c.id);
+
+function jsonResource(uri: URL | string, payload: unknown) {
+  return {
+    contents: [{
+      uri: typeof uri === "string" ? uri : uri.href,
+      mimeType: "application/json",
+      text: JSON.stringify(payload, null, 2),
+    }],
+  };
+}
+
+const v = (x: string | string[] | undefined) => (Array.isArray(x) ? x[0] : x) ?? "";
+const byPrefix = (xs: string[], value: string) =>
+  (value ? xs.filter(x => x.toLowerCase().startsWith(value.toLowerCase())) : xs).slice(0, 100);
+
+// Static: full category configuration.
 server.registerResource(
   "categories",
   "clarifyprompt://categories",
@@ -1202,13 +1231,177 @@ server.registerResource(
     description: "Full category configuration with all platforms and modes",
     mimeType: "application/json",
   },
-  async () => ({
-    contents: [{
-      uri: "clarifyprompt://categories",
-      mimeType: "application/json",
-      text: JSON.stringify(CATEGORIES, null, 2),
-    }],
-  })
+  async () => jsonResource("clarifyprompt://categories", CATEGORIES)
+);
+
+// Template: one platform's full config — clarifyprompt://platforms/{category}/{id}
+server.registerResource(
+  "platform",
+  new ResourceTemplate("clarifyprompt://platforms/{category}/{id}", {
+    list: async () => {
+      const registry = getPlatformRegistry();
+      const resources: { uri: string; name: string; description?: string; mimeType: string }[] = [];
+      for (const c of CATEGORIES) {
+        const platforms = await registry.getPlatformsForCategory(c.id);
+        for (const p of platforms) {
+          resources.push({
+            uri: `clarifyprompt://platforms/${c.id}/${p.id}`,
+            name: `${c.id}/${p.id}`,
+            description: p.description,
+            mimeType: "application/json",
+          });
+        }
+      }
+      return { resources };
+    },
+    complete: {
+      category: (value) => byPrefix(CAT_IDS, value),
+      id: async (value, context) => {
+        const cat = context?.arguments?.category as Category | undefined;
+        const registry = getPlatformRegistry();
+        const cats = cat && CAT_IDS.includes(cat) ? [cat] : CATEGORIES.map(c => c.id);
+        const ids: string[] = [];
+        for (const c of cats) ids.push(...(await registry.getPlatformsForCategory(c)).map(p => p.id));
+        return byPrefix([...new Set(ids)], value);
+      },
+    },
+  }),
+  { title: "Platform config", description: "One platform's full configuration (label, description, syntax hints, instructions, custom/override status)", mimeType: "application/json" },
+  async (uri, variables) => {
+    const category = v(variables.category) as Category;
+    const id = v(variables.id);
+    if (!CAT_IDS.includes(category)) return jsonResource(uri, { error: `unknown category '${category}'` });
+    const registry = getPlatformRegistry();
+    const platform = (await registry.getPlatformsForCategory(category)).find(p => p.id === id);
+    if (!platform) return jsonResource(uri, { error: `platform '${id}' not found in category '${category}'` });
+    return jsonResource(uri, platform);
+  }
+);
+
+// Template: one day's trace index — clarifyprompt://traces/{date}
+server.registerResource(
+  "traces-by-day",
+  new ResourceTemplate("clarifyprompt://traces/{date}", {
+    list: async () => {
+      const tracer = getTraceWriter();
+      if (tracer.getMode() === "off") return { resources: [] };
+      const days = await tracer.listDays();
+      return {
+        resources: days.map(d => ({
+          uri: `clarifyprompt://traces/${d}`,
+          name: `traces ${d}`,
+          description: `Optimization traces for ${d} (UTC)`,
+          mimeType: "application/json",
+        })),
+      };
+    },
+    complete: {
+      date: async (value) => {
+        const tracer = getTraceWriter();
+        if (tracer.getMode() === "off") return [];
+        return byPrefix(await tracer.listDays(), value);
+      },
+    },
+  }),
+  { title: "Traces by day", description: "Summary index of optimization traces for one UTC day. Use the get_trace tool for a single full trace.", mimeType: "application/json" },
+  async (uri, variables) => {
+    const tracer = getTraceWriter();
+    if (tracer.getMode() === "off") return jsonResource(uri, { mode: "off", message: "Tracing disabled. Set CLARIFYPROMPT_TRACE=local." });
+    const day = v(variables.date);
+    const entries = await tracer.readDay(day, 200);
+    return jsonResource(uri, {
+      day,
+      count: entries.length,
+      entries: entries.map(e => ({
+        id: e.id, ts: e.ts, sessionId: e.sessionId, category: e.category, platform: e.platform,
+        mode: e.mode, intent: e.bundleSummary.intent, model: e.model, latencyMs: e.latencyMs,
+        error: e.error?.message, promptPreview: e.input.originalPrompt.slice(0, 140),
+      })),
+    });
+  }
+);
+
+// Template: one loaded pack's metadata — clarifyprompt://packs/{id}
+server.registerResource(
+  "pack",
+  new ResourceTemplate("clarifyprompt://packs/{id}", {
+    list: async () => {
+      const store = getMemoryStore();
+      if (!store.isHealthy()) return { resources: [] };
+      return {
+        resources: store.listPacks().map(p => ({
+          uri: `clarifyprompt://packs/${p.id}`,
+          name: `${p.name}@${p.version}`,
+          description: `scope=${p.scope} · ${p.sourceType}`,
+          mimeType: "application/json",
+        })),
+      };
+    },
+    complete: {
+      id: (value) => {
+        const store = getMemoryStore();
+        if (!store.isHealthy()) return [];
+        return byPrefix(store.listPacks().map(p => String(p.id)), value);
+      },
+    },
+  }),
+  { title: "Knowledge pack", description: "One loaded knowledge pack's metadata (name, version, scope, source, chunk/load info)", mimeType: "application/json" },
+  async (uri, variables) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) return jsonResource(uri, { error: "memory store not healthy" });
+    const id = Number(v(variables.id));
+    const pack = store.listPacks().find(p => p.id === id);
+    if (!pack) return jsonResource(uri, { error: `pack ${id} not found` });
+    return jsonResource(uri, {
+      id: pack.id, name: pack.name, version: pack.version, scope: pack.scope,
+      sourceType: pack.sourceType, sourceRef: pack.sourceRef,
+      loadedAt: new Date(pack.loadedAt).toISOString(), metadata: pack.metadata,
+    });
+  }
+);
+
+// Template: live facts under a scope — clarifyprompt://memory/facts/{scope}
+server.registerResource(
+  "memory-facts",
+  new ResourceTemplate("clarifyprompt://memory/facts/{scope}", {
+    list: async () => {
+      // Scopes aren't cheaply enumerable; surface the always-present 'user'
+      // scope plus any scopes that currently own a loaded pack.
+      const store = getMemoryStore();
+      const scopes = new Set<string>(["user"]);
+      if (store.isHealthy()) for (const p of store.listPacks()) scopes.add(p.scope);
+      return {
+        resources: [...scopes].map(s => ({
+          uri: `clarifyprompt://memory/facts/${s}`,
+          name: `facts (${s})`,
+          description: `Live remembered facts in scope '${s}'`,
+          mimeType: "application/json",
+        })),
+      };
+    },
+    complete: {
+      scope: (value) => {
+        const store = getMemoryStore();
+        const scopes = new Set<string>(["user", "session"]);
+        if (store.isHealthy()) for (const p of store.listPacks()) scopes.add(p.scope);
+        return byPrefix([...scopes], value);
+      },
+    },
+  }),
+  { title: "Memory facts", description: "Live (non-invalidated) remembered facts under a memory scope, most-recently-observed first", mimeType: "application/json" },
+  async (uri, variables) => {
+    const store = getMemoryStore();
+    if (!store.isHealthy()) return jsonResource(uri, { error: "memory store not healthy" });
+    const scope = v(variables.scope);
+    const facts = store.listLiveFacts(scope, undefined, 100);
+    return jsonResource(uri, {
+      scope, count: facts.length,
+      facts: facts.map(f => ({
+        id: f.id, subject: f.subjectText, predicate: f.predicate, object: f.objectText,
+        confidence: f.confidence, source: f.source, observedAt: new Date(f.observedAt).toISOString(),
+      })),
+    });
+  }
 );
 
 // --- Connect ---

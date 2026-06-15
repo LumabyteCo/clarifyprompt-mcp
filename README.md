@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.7.1:** Fixes [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — some models (notably gpt-oss over Ollama's `/v1` shim, and thinking-channel models) could return a **silent empty** optimized prompt. `simpleGenerate` now reads all three thinking-channel field names, retries once on empty content, and fails loudly with a diagnostic if still empty — the engine degrades to the original prompt + a surfaced error instead of returning blank. Locked by a new deterministic `test:thinking` battery. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.8.0:** Roadmap step #3 — the engine's read surfaces are now browseable MCP **resource templates** with **autocomplete**: `clarifyprompt://platforms/{category}/{id}`, `traces/{date}`, `packs/{id}`, `memory/facts/{scope}`. `resources/list` enumerates all 60+ platforms as individual URIs; `completion/complete` autocompletes the template variables (`"im"→image`, `"mid"`(category=image)`→midjourney`). The server now advertises `resources` + `completions` capabilities. Read-only and additive — no tool or engine changes. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,31 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.8.0
+
+Step #3 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md): the engine's read surfaces become **browseable resource templates** with **argument autocompletion**. No tool or engine behavior changes.
+
+### Resource templates
+
+Four templates join the static `clarifyprompt://categories`, each backed by an existing engine getter:
+
+| URI template | What it reads |
+|---|---|
+| `clarifyprompt://platforms/{category}/{id}` | One platform's full config — `resources/list` enumerates all 60+ as individual URIs |
+| `clarifyprompt://traces/{date}` | Optimization-trace summary index for a UTC day |
+| `clarifyprompt://packs/{id}` | One loaded knowledge pack's metadata |
+| `clarifyprompt://memory/facts/{scope}` | Live remembered facts under a scope |
+
+MCP hosts with a resource browser (Claude Desktop, Cursor) now get a navigable tree instead of a single static blob.
+
+### Autocomplete
+
+`completion/complete` resolves the template variables: `{category}` → the 7 category ids, `{id}` → platform ids scoped by the chosen `{category}`, `{date}` → days with traces, pack ids, memory scopes. (MCP completion applies to prompt args + resource-template variables only — not tool inputs; ClarifyPrompt registers no prompts, so it lives on the templates.)
+
+### Capabilities
+
+The server now advertises `resources` (with templates) and `completions` at `initialize`. New deterministic `npm run test:resources` battery locks the surface.
 
 ## What's new in 1.7.1
 
@@ -338,7 +363,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.7.1)
+## What's in the box (cumulative through 1.8.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
