@@ -14,13 +14,14 @@ import { getMemoryStore } from "./engine/memory/store.js";
 import { reflectOnOutcome } from "./engine/memory/reflection.js";
 import { loadKnowledgePack } from "./engine/memory/packs.js";
 import { clarifyPrompt } from "./engine/clarification/clarify.js";
+import { buildElicitationForm, applyElicitedAnswers } from "./engine/clarification/elicit.js";
 import { groundPrompt } from "./engine/grounding/ground.js";
 import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.8.0",
+  version: "1.9.0",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
@@ -975,7 +976,7 @@ server.registerTool(
   "clarify_with_user",
   {
     title: "Ask clarifying questions",
-    description: "Given an ambiguous draft prompt, return 1–3 targeted clarifying questions instead of guessing. Each question carries a `suggested_answer` you can accept verbatim to keep moving, an optional 2–4 quick-pick `options` list, and a `dimension` tag (audience/scope/format/length/tone/constraints/goal/platform). When the analyzer is highly confident AND the prompt is non-trivially long, the tool short-circuits with `clarificationNeeded: false` so callers can pipeline this in front of optimize_prompt without paying a latency tax on every call. Pass `force: true` to always generate questions.",
+    description: "Given an ambiguous draft prompt, return 1–3 targeted clarifying questions instead of guessing. Each question carries a `suggested_answer` you can accept verbatim to keep moving, an optional 2–4 quick-pick `options` list, and a `dimension` tag (audience/scope/format/length/tone/constraints/goal/platform). When the analyzer is highly confident AND the prompt is non-trivially long, the tool short-circuits with `clarificationNeeded: false` so callers can pipeline this in front of optimize_prompt without paying a latency tax on every call. Pass `force: true` to always generate questions. Pass `elicit: true` to collect answers interactively through the host's native form UI (MCP elicitation) instead of returning the raw questions — when the client supports it.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     outputSchema: CLARIFY_OUT,
     inputSchema: {
@@ -988,6 +989,7 @@ server.registerTool(
       user_locale: z.string().optional(),
       force: z.boolean().optional().default(false).describe("Always generate questions even when the analyzer is highly confident. Useful for UIs that want to surface clarification on every call."),
       max_questions: z.number().int().positive().max(5).optional().default(3).describe("Cap on returned questions. Default 3, hard max 5."),
+      elicit: z.boolean().optional().default(false).describe("When true AND the connected client supports MCP elicitation, render the questions as a native form, collect the user's answers inline, and return them as `answers` (each question's suggested answer is the field default). Falls back to returning the raw questions when the client can't elicit. Default false (back-compat)."),
     },
   },
   async (args) => {
@@ -1002,6 +1004,33 @@ server.registerTool(
       force: args.force,
       maxQuestions: args.max_questions,
     });
+
+    // Elicitation path (1.9.0, roadmap #4): when the caller asks for it AND the
+    // connected client advertised the `elicitation` capability, render the
+    // questions as a native form, collect answers inline, and return them. Any
+    // failure (unsupported client, transport hiccup) degrades to the raw-questions
+    // JSON — fully back-compat with every existing caller.
+    const clientCaps = server.server.getClientCapabilities();
+    if (args.elicit && clientCaps?.elicitation && result.questions.length > 0) {
+      try {
+        const elicitRes = await server.server.elicitInput({
+          message: result.reason || "A few quick questions to sharpen your prompt:",
+          requestedSchema: buildElicitationForm(result.questions),
+        });
+        if (elicitRes.action === "accept") {
+          return ok({
+            ...result,
+            elicited: true,
+            elicitationAction: "accept",
+            answers: applyElicitedAnswers(result.questions, elicitRes.content),
+          } as unknown as Payload);
+        }
+        // decline / cancel — surface the action; caller keeps the raw questions.
+        return ok({ ...result, elicited: true, elicitationAction: elicitRes.action } as unknown as Payload);
+      } catch (err) {
+        return ok({ ...result, elicited: false, elicitationError: (err as Error).message } as unknown as Payload);
+      }
+    }
     return ok(result as unknown as Payload);
   }
 );

@@ -4,6 +4,45 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] — 2026-06-14
+
+Minor release — **step #4 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: `clarify_with_user` can now collect answers **interactively through the host's native form UI** via MCP elicitation, instead of only returning raw questions for the caller to render. Fully back-compat — opt-in and gracefully degrading.
+
+### Added
+
+- **`clarify_with_user` gains an `elicit` flag** (default `false`). When `elicit: true` **and** the connected client advertised the `elicitation` capability at `initialize`, the tool:
+  1. generates the clarifying questions as before, then
+  2. renders them as a native MCP elicitation form (`elicitation/create`) — each question becomes a field, questions with `options` become enum dropdowns, and each question's `suggestedAnswer` is the field default (one-click accept), then
+  3. returns the user's answers as `answers: [{ question, dimension, answer, usedSuggested }]` with `elicited: true` and `elicitationAction: "accept"`.
+- **Graceful degradation, three ways:** if the client doesn't support elicitation, if `elicit` is `false`, or if the elicitation round-trip errors, the tool returns the exact same raw-questions JSON it always has. Every existing caller is unaffected.
+- **`decline` / `cancel` handling:** when the user dismisses the form, the tool returns the questions plus `elicitationAction: "decline"` (or `"cancel"`) so the caller can react.
+
+### Why
+
+Before this, `clarify_with_user` handed the host a JSON blob of questions and left rendering + answer-collection entirely to the caller. With elicitation, a capable host (Claude Desktop, etc.) renders real form fields, the user answers inline, and the engine receives structured answers in the same call — turning clarification from "here are some questions, good luck" into a first-class interactive moment.
+
+### Notes
+
+- The MCP server validates the client's returned form `content` against the requested schema, so enum fields only accept their declared options — handled by `buildElicitationForm` (a default is emitted only when it's one of the enum values).
+- The elicitation mapping lives in a small pure module, `src/engine/clarification/elicit.ts` (`buildElicitationForm` / `applyElicitedAnswers`), reusable by `compose_prompt`'s pre-clarify stage in a later release.
+
+### Tests
+
+- **New `npm run test:elicit`** (`tests/elicitation.mjs`): Part A is deterministic (no LLM/wire) — locks the schema build (enum vs free-text, default-only-when-valid) and the answer merge (blank → suggested-answer fallback). Part B drives the **real server→client elicitation loop** with a mock elicitation-capable client that fills the form and asserts `elicited: true` + merged answers; it degrades to a SKIP if no local model is available to generate questions. Added to `test:all`.
+
+### Security (folded in)
+
+Two advisories published since 1.8.0 against **unchanged** dependencies (the lockfile hadn't moved) surfaced during this release's pre-ship audit and are fixed here:
+
+- **`js-yaml` → 4.2.0** (was 4.1.1) — quadratic-complexity DoS in merge-key handling via repeated aliases ([GHSA-h67p-54hq-rp68](https://github.com/advisories/GHSA-h67p-54hq-rp68)). `js-yaml` is a direct runtime dependency (parses the platform packs), so the floor in `package.json` is bumped to `^4.2.0`, not just the lockfile. Verified all 60+ platform YAML packs still load under 4.2.0.
+- **`hono` → 4.12.25** (was 4.12.23) — several path-traversal / CORS / header advisories. Transitive under `@modelcontextprotocol/sdk`'s HTTP-transport substack, which ClarifyPrompt (stdio-only) never loads — no runtime exposure — but cleared so `npm audit` is green.
+
+`npm audit --omit=dev` → **0 vulnerabilities**.
+
+### Verified
+
+`test:elicit` (pure + live loop) ✅ · the two `clarify-*` eval fixtures pass on `gemma4:31b-cloud` (non-elicit path intact) ✅ · wire ✅ · `test:resources` (YAML packs load under js-yaml 4.2.0) ✅ · 0 prod vulnerabilities · `tsc`.
+
 ## [1.8.0] — 2026-06-14
 
 Minor release — **step #3 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: the engine's read surfaces become browseable MCP **resource templates** with **argument autocompletion**. Step #1 (SDK floor) shipped in 1.6.5, step #2 (registerTool) in 1.7.0. No engine behavior changes; no tool surface changes.

@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.8.0:** Roadmap step #3 — the engine's read surfaces are now browseable MCP **resource templates** with **autocomplete**: `clarifyprompt://platforms/{category}/{id}`, `traces/{date}`, `packs/{id}`, `memory/facts/{scope}`. `resources/list` enumerates all 60+ platforms as individual URIs; `completion/complete` autocompletes the template variables (`"im"→image`, `"mid"`(category=image)`→midjourney`). The server now advertises `resources` + `completions` capabilities. Read-only and additive — no tool or engine changes. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.9.0:** Roadmap step #4 — `clarify_with_user` can now collect answers through the host's **native form UI** via MCP elicitation. Pass `elicit: true` and, on a capable client, the clarifying questions render as a real form (enum dropdowns for quick-picks, suggested answers as defaults); the engine gets the user's answers back in the same call as `answers: [...]`. Opt-in and fully back-compat — unsupported clients / `elicit: false` / round-trip errors all fall back to the existing raw-questions JSON. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,21 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.9.0
+
+Step #4 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md): **`clarify_with_user` can elicit answers through the host's native form UI**. Opt-in, fully back-compat.
+
+### Interactive clarification
+
+Pass `elicit: true`. On a client that supports MCP elicitation, the clarifying questions become a real form:
+
+- each question is a field, `options` become enum dropdowns, and each `suggestedAnswer` is the field default (one-click accept);
+- the user answers inline; the engine returns `answers: [{ question, dimension, answer, usedSuggested }]` with `elicited: true`.
+
+Without `elicit`, on a non-capable client, or if the round-trip errors, the tool returns the same raw-questions JSON it always has — every existing caller is unaffected. `decline` / `cancel` are surfaced via `elicitationAction`.
+
+This turns clarification from "here's a JSON blob of questions, you render it" into a first-class interactive moment in hosts like Claude Desktop. The mapping lives in a small pure module (`src/engine/clarification/elicit.ts`), reusable by `compose_prompt`'s pre-clarify stage later. New deterministic `npm run test:elicit` battery (pure helpers + a live mock-client round-trip) locks it.
 
 ## What's new in 1.8.0
 
@@ -363,7 +378,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.8.0)
+## What's in the box (cumulative through 1.9.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
