@@ -41,6 +41,12 @@ export interface OptimizationContext {
    * different model than the env default.
    */
   model?: string;
+  /**
+   * Per-call cancellation signal (1.10.0). Transient — NOT serialized into the
+   * trace (only `bundle` is). Strategies pass it to simpleGenerate so a client
+   * cancel aborts the in-flight optimize call.
+   */
+  signal?: AbortSignal;
 }
 
 export interface OptimizationResult {

@@ -38,6 +38,8 @@ export interface GroundInputs {
   includeBundle?: boolean;
   /** Per-call LLM model override (forwarded to the underlying optimize call). */
   model?: string;
+  /** Per-call cancellation signal (1.10.0) — forwarded to the optimize call. */
+  signal?: AbortSignal;
 }
 
 export interface GroundResult extends OptimizationResult {
@@ -98,6 +100,7 @@ export async function groundPrompt(inputs: GroundInputs): Promise<GroundResult> 
     includeBundle: inputs.includeBundle,
     userProvidedSources: cleaned,
     model: inputs.model,
+    signal: inputs.signal,
   });
 
   // Cross-check: which sources made it into the curated grounding? Each

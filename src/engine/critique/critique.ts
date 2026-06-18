@@ -57,6 +57,8 @@ export interface CritiqueInputs {
    * uses LLM_MODEL from env. Per-stage routing in compose_prompt sets this.
    */
   model?: string;
+  /** Per-call cancellation signal (1.10.0) — aborts the judge + rewrite calls. */
+  signal?: AbortSignal;
 }
 
 export interface CritiqueDimensionResult {
@@ -175,6 +177,7 @@ Rules:
       temperature: 0.1,
       maxTokens: 1024,
       model: inputs.model,
+      signal: inputs.signal,
     });
     const parsed = parseJudge(judgeRes.content);
     dimensions = normalizeDimensions(parsed.dimensions, criteria);
@@ -237,6 +240,7 @@ Rules:
         temperature: rewriteShape.temperature,
         maxTokens: Math.max(rewriteShape.maxTokens, 1024),
         model: inputs.model,
+        signal: inputs.signal,
       });
       const rw = parseRewrite(rewriteRes.content);
       const candidate = (rw.improved ?? '').toString().trim();

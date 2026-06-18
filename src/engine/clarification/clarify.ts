@@ -42,6 +42,8 @@ export interface ClarifyInputs {
    * clarify on a cheap model and optimize on a frontier model.
    */
   model?: string;
+  /** Per-call cancellation signal (1.10.0) — aborts the clarify LLM call. */
+  signal?: AbortSignal;
 }
 
 export interface ClarifyQuestion {
@@ -179,6 +181,7 @@ Rules:
       temperature: 0.3,
       maxTokens: 768,
       model: inputs.model,
+      signal: inputs.signal,
     });
     const parsed = parseQuestions(result.content);
     if (!parsed.length) {

@@ -47,6 +47,11 @@ export interface OptimizeRequest {
    * memory-retrieval embedder are unaffected.
    */
   model?: string;
+  /**
+   * Per-call cancellation signal (1.10.0). Propagated to the optimize LLM call
+   * (and the analyzer) so a client cancel aborts work in flight.
+   */
+  signal?: AbortSignal;
 }
 
 export class OptimizationEngine {
@@ -149,6 +154,7 @@ export class OptimizationEngine {
       memoryMatches,
       userProvidedSources: request.userProvidedSources,
       model: request.model,
+      signal: request.signal,
     };
 
     // Everything upstream has a graceful fallback; the LLM call itself can

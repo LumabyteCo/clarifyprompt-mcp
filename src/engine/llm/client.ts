@@ -46,6 +46,14 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;
+  /**
+   * Optional caller cancellation signal (1.10.0). Combined with the per-call
+   * timeout so a client cancel (MCP `notifications/cancelled` → the tool
+   * handler's `extra.signal`) aborts the in-flight HTTP request immediately,
+   * not just on timeout. Model-agnostic: the signal reaches `fetch` regardless
+   * of provider or model.
+   */
+  signal?: AbortSignal;
 }
 
 export interface ChatCompletionResponse {
@@ -117,6 +125,16 @@ export class LLMClient {
     return this.config.defaultModel;
   }
 
+  /**
+   * Combine the per-call timeout with an optional caller cancellation signal so
+   * `fetch` aborts on whichever fires first. `AbortSignal.any` is available on
+   * Node ≥18.17 (our floor is >=18; CI covers 18/20/22/24).
+   */
+  private withTimeout(caller?: AbortSignal): AbortSignal {
+    const timeout = AbortSignal.timeout(this.config.timeout!);
+    return caller ? AbortSignal.any([timeout, caller]) : timeout;
+  }
+
   async chat(request: Omit<ChatCompletionRequest, 'model'> & { model?: string }): Promise<ChatCompletionResponse> {
     if (this.isAnthropic) {
       return this.chatAnthropic(request);
@@ -138,7 +156,7 @@ export class LLMClient {
         temperature: request.temperature ?? 0.7,
         max_tokens: request.max_tokens ?? 2048,
       }),
-      signal: AbortSignal.timeout(this.config.timeout!),
+      signal: this.withTimeout(request.signal),
     });
 
     if (!response.ok) {
@@ -176,7 +194,7 @@ export class LLMClient {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(this.config.timeout!),
+      signal: this.withTimeout(request.signal),
     });
 
     if (!response.ok) {
@@ -236,7 +254,7 @@ export class LLMClient {
         temperature: request.temperature ?? 0.7,
         max_tokens: request.max_tokens ?? 2048,
       }),
-      signal: AbortSignal.timeout(this.config.timeout!),
+      signal: this.withTimeout(request.signal),
     });
 
     if (!response.ok) {
@@ -276,6 +294,7 @@ export class LLMClient {
     model?: string;
     temperature?: number;
     maxTokens?: number;
+    signal?: AbortSignal;
   }): Promise<{ content: string; tokensUsed: number }> {
     const response = await this.chat({
       model: options?.model,
@@ -285,6 +304,7 @@ export class LLMClient {
       ],
       temperature: options?.temperature,
       max_tokens: options?.maxTokens,
+      signal: options?.signal,
     });
 
     const choice = response.choices[0];
@@ -330,6 +350,7 @@ export class LLMClient {
         ],
         temperature: options?.temperature,
         max_tokens: Math.max(options?.maxTokens ?? 0, 16384),
+        signal: options?.signal,
       });
       const recovered = extractAssistantContent(retry.choices[0]?.message);
       if (recovered.content) {

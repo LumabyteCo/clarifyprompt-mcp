@@ -21,7 +21,7 @@ import { composePrompt } from "./engine/composition/compose.js";
 
 const server = new McpServer({
   name: "clarifyprompt",
-  version: "1.9.0",
+  version: "1.10.0",
 });
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
@@ -1188,7 +1188,23 @@ server.registerTool(
     include_bundle: z.boolean().optional().default(false),
     },
   },
-  async (args) => {
+  async (args, extra) => {
+    // Cancellation + progress (1.10.0). `extra.signal` fires when the client
+    // sends notifications/cancelled for this request — plumbed all the way to
+    // the in-flight LLM fetch. Progress is emitted only when the client opted
+    // in by including a progressToken in the request _meta.
+    const progressToken = extra._meta?.progressToken;
+    let progressCount = 0;
+    const onProgress = progressToken !== undefined
+      ? (u: { message: string }) => {
+          progressCount++;
+          void extra.sendNotification({
+            method: "notifications/progress",
+            params: { progressToken, progress: progressCount, message: u.message },
+          }).catch(() => { /* progress is best-effort; never fail the call on it */ });
+        }
+      : undefined;
+
     const result = await composePrompt({
       prompt: args.prompt,
       preClarify: args.pre_clarify,
@@ -1216,6 +1232,8 @@ server.registerTool(
       userPinnedInstructions: args.user_pinned_instructions,
       skipIntentResolution: args.skip_intent_resolution,
       includeBundle: args.include_bundle,
+      signal: extra.signal,
+      onProgress,
     });
     return ok(result as unknown as Payload);
   }

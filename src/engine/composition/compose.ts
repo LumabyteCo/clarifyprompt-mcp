@@ -98,6 +98,27 @@ export interface ComposeInputs {
   userPinnedInstructions?: string;
   skipIntentResolution?: boolean;
   includeBundle?: boolean;
+
+  // ── Cancellation + progress (1.10.0) ──────────────────────────
+  /**
+   * Cancellation signal. Propagated to every stage's LLM call so a client
+   * cancel aborts work in flight; also checked between iterations so a long
+   * revise loop stops promptly.
+   */
+  signal?: AbortSignal;
+  /**
+   * Progress callback, invoked at the start of each stage. The MCP handler maps
+   * these to `notifications/progress` so hosts can show a live status on a long
+   * compose. Pure-data; safe to ignore.
+   */
+  onProgress?: (update: ComposeProgress) => void;
+}
+
+export interface ComposeProgress {
+  stage: ComposeStage['name'] | 'analyze';
+  iteration: number;
+  maxIterations: number;
+  message: string;
 }
 
 export interface ComposeStage {
@@ -151,12 +172,22 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
     });
   };
 
+  const maxIter = Math.max(1, Math.min(5, inputs.maxIterations ?? 1));
+  let iterations = 0;
+  const emit = (stage: ComposeProgress['stage'], message: string) =>
+    inputs.onProgress?.({ stage, iteration: iterations, maxIterations: maxIter, message });
+  const checkAbort = () => {
+    if (inputs.signal?.aborted) throw new Error('compose_prompt cancelled by client');
+  };
+
   // ── 1. clarify (optional) ──────────────────────────────────────
   const clarifyMode = inputs.preClarify ?? 'auto';
   let clarification: ClarifyResult | undefined;
 
   if (clarifyMode !== 'never') {
     const startedAt = Date.now();
+    checkAbort();
+    emit('clarify', 'checking whether clarification is needed');
     clarification = await clarifyPrompt({
       prompt: inputs.prompt,
       category: inputs.category,
@@ -168,6 +199,7 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
       maxQuestions: inputs.maxQuestions,
       force: clarifyMode === 'always',
       model: inputs.clarifyModel,
+      signal: inputs.signal,
     });
     recordStage(
       'clarify',
@@ -196,7 +228,6 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
   //
   // Clarify only runs once (at the top), since the question "what does the
   // user want?" doesn't get re-asked on a rewritten prompt.
-  const maxIter = Math.max(1, Math.min(5, inputs.maxIterations ?? 1));
   const useGround = Array.isArray(inputs.sources) && inputs.sources.length > 0;
 
   let optimization: OptimizationResult | undefined;
@@ -206,15 +237,16 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
   let currentPrompt = inputs.prompt;
   let finalPrompt = inputs.prompt;
   let revised = false;
-  let iterations = 0;
 
   for (let iter = 0; iter < maxIter; iter++) {
     iterations++;
+    checkAbort();
     const iterTag = maxIter > 1 ? ` [iter ${iter + 1}/${maxIter}]` : '';
 
     // ── ground OR optimize ──
     if (useGround) {
       const startedAt = Date.now();
+      emit('ground', `grounding against ${inputs.sources!.length} source(s)${iterTag}`);
       grounding = await groundPrompt({
         prompt: currentPrompt,
         sources: inputs.sources!,
@@ -233,11 +265,13 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
         skipIntentResolution: inputs.skipIntentResolution,
         includeBundle: inputs.includeBundle,
         model: inputs.optimizeModel,
+        signal: inputs.signal,
       });
       optimizedText = grounding.optimizedPrompt;
       recordStage('ground', startedAt, `${grounding.usedSources.length} source(s) pinned, ${grounding.droppedSources.length} dropped${iterTag}`);
     } else {
       const startedAt = Date.now();
+      emit('optimize', `optimizing prompt${iterTag}`);
       optimization = await getOptimizationEngine().optimize({
         prompt: currentPrompt,
         category: inputs.category,
@@ -255,6 +289,7 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
         includeBundle: inputs.includeBundle,
         skipIntentResolution: inputs.skipIntentResolution,
         model: inputs.optimizeModel,
+        signal: inputs.signal,
       });
       optimizedText = optimization.optimizedPrompt;
       recordStage('optimize', startedAt, `${optimization.grounding?.sources.length ?? 0} grounding source(s) selected${iterTag}`);
@@ -263,10 +298,18 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
     // Default finalPrompt to whatever the latest optimize/ground produced.
     finalPrompt = optimizedText;
 
+    // The engine's graceful-degradation try/catch swallows an AbortError into a
+    // fallback (original prompt) rather than re-throwing. Re-assert cancellation
+    // here so a cancel during optimize/ground halts the chain cleanly instead of
+    // returning a throwaway result.
+    checkAbort();
+
     // ── critique (optional) ──
     if (!inputs.postCritique) break; // no critique → no revise → no loop value
 
     const cStart = Date.now();
+    checkAbort();
+    emit('critique', `critiquing the optimized prompt${iterTag}`);
     critique = await critiquePrompt({
       // Always compare the LATEST optimized output, but reference the
       // ORIGINAL user prompt for intent_alignment so paraphrasing across
@@ -283,6 +326,7 @@ export async function composePrompt(inputs: ComposeInputs): Promise<ComposeResul
       reviseThreshold: inputs.reviseThreshold,
       skipRewrite: !inputs.autoRevise,
       model: inputs.critiqueModel,
+      signal: inputs.signal,
     });
     recordStage('critique', cStart, `verdict=${critique.verdict}, score=${critique.overallScore}${iterTag}`);
 

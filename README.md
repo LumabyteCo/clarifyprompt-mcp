@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.9.0:** Roadmap step #4 — `clarify_with_user` can now collect answers through the host's **native form UI** via MCP elicitation. Pass `elicit: true` and, on a capable client, the clarifying questions render as a real form (enum dropdowns for quick-picks, suggested answers as defaults); the engine gets the user's answers back in the same call as `answers: [...]`. Opt-in and fully back-compat — unsupported clients / `elicit: false` / round-trip errors all fall back to the existing raw-questions JSON. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.10.0:** Roadmap step #5 (stable core) — `compose_prompt` is now **cancellable** and reports **live progress**. An `AbortSignal` is plumbed through the whole LLM path, so a client cancel (`notifications/cancelled`) aborts the in-flight model request immediately and stops the revise loop; with a `progressToken` in the request, the server emits `notifications/progress` per stage. Model-agnostic, opt-in, fully back-compat. (The experimental MCP `tasks/*` async lifecycle is deferred until the SDK stabilizes it and clients adopt it — see CHANGELOG.) See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,22 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.10.0
+
+Step #5 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md), stable core: **`compose_prompt` is cancellable and reports live progress**. Model-agnostic, opt-in, fully back-compat.
+
+### Cancellation
+
+An `AbortSignal` is plumbed through the entire LLM path (`simpleGenerate` → `chat` → `fetch`, combined with the per-call timeout) and every engine stage. When a client sends `notifications/cancelled` for a `compose_prompt` call, the in-flight model request aborts immediately and the revise loop stops at the next stage boundary — instead of running every iteration to completion. The signal reaches `fetch` regardless of which model/provider is configured.
+
+### Progress
+
+Include a `progressToken` in the `compose_prompt` request `_meta` and the server emits `notifications/progress` at each stage (clarify / optimize / ground / critique) with a monotonic counter and a human message like `optimizing prompt [iter 2/3]`. Hosts can show a live status on a long multi-iteration compose. No token → no notifications, zero overhead.
+
+### Why not MCP tasks (yet)
+
+Roadmap #5 named the MCP **tasks** API. It's still `experimental/` in the SDK ("may change without notice"), its reference is ~600 lines, and no current client speaks the `tasks/*` protocol — so a full implementation would be unusable off-by-default code today. The real value (cancellable + progress-reporting compose) is delivered here on **stable** primitives; the experimental async-task wrapper is deferred to land with #7 (A2A), which the `AbortSignal` groundwork here already sets up. New deterministic `npm run test:cancel` battery locks the behavior.
 
 ## What's new in 1.9.0
 
@@ -378,7 +394,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.9.0)
+## What's in the box (cumulative through 1.10.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

@@ -4,6 +4,27 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] — 2026-06-14
+
+Minor release — **step #5 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md), stable core**: `compose_prompt` is now **cancellable** and reports **live progress** on long runs. Built entirely on stable MCP primitives (`extra.signal` + `notifications/progress`); model-agnostic.
+
+### Added
+
+- **Cancellation.** An `AbortSignal` is now plumbed through the entire LLM path — `simpleGenerate` → `chat` → `fetch` (combined with the existing per-call timeout via `AbortSignal.any`) — and through every engine stage (`optimize`, `ground`, `critique`, `clarify`). The `compose_prompt` handler passes the request's `extra.signal`, so when a client sends `notifications/cancelled`, the in-flight HTTP request to the model aborts immediately, and the revise loop stops at the next stage boundary (`checkAbort`) rather than running to completion. Works the same across every provider/model — the signal reaches `fetch` regardless of which LLM is configured.
+- **Progress.** When a client includes a `progressToken` in the `compose_prompt` request `_meta`, the server emits `notifications/progress` at the start of each stage (clarify / optimize / ground / critique), with a monotonic counter and a human message (e.g. `optimizing prompt [iter 2/3]`). Hosts can show a live status on a long multi-iteration compose. Opt-in: no token → no notifications, zero overhead.
+
+### Scope note — the experimental tasks API was deliberately deferred
+
+Roadmap #5 named MCP **tasks** (`tasks/create` / `get` / `cancel`) as the mechanism. On inspection, the SDK's tasks API lives under `experimental/` ("may change without notice"), its reference implementation is ~600 lines (custom store + result handler + session + message queue), and — decisively — **no current MCP client speaks the `tasks/*` protocol yet**, so a full implementation would be off-by-default code with nothing to exercise it. The genuine user value of #5 (cancellable, progress-reporting long compose) is fully delivered here on **stable** primitives. The experimental async-task wrapper is deferred to a future release, to land alongside #7 (A2A) once the SDK promotes tasks out of `experimental/` and clients adopt them. The `AbortSignal` groundwork laid here is exactly what that wrapper (and A2A) will build on.
+
+### Tests
+
+- **New `npm run test:cancel`** (`tests/cancellation.mjs`): Part A is deterministic (no LLM) — a pre-aborted signal makes `composePrompt` throw before any LLM call, and the `onProgress` contract is asserted. Part B is a live wire test — `compose_prompt` with a `progressToken` is observed emitting `notifications/progress` with a monotonic counter. Added to `test:all`.
+
+### Verified
+
+`test:cancel` (deterministic + live progress) ✅ · wire ✅ · integration ✅ · compose + clarify eval fixtures on `gemma4:31b-cloud` ✅ · `tsc`. The signal/progress params are all optional, so every existing caller (no signal, no token) is byte-for-byte unaffected.
+
 ## [1.9.0] — 2026-06-14
 
 Minor release — **step #4 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: `clarify_with_user` can now collect answers **interactively through the host's native form UI** via MCP elicitation, instead of only returning raw questions for the caller to render. Fully back-compat — opt-in and gracefully degrading.

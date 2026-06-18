@@ -252,6 +252,7 @@ Ground the optimization in the Grounding Context above when relevant. Respect pr
       temperature: shape.temperature,
       maxTokens: shape.maxTokens,
       model: context.model,
+      signal: context.signal,
     });
 
     return result.content.trim();
