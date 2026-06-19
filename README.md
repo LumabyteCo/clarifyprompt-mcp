@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.10.0:** Roadmap step #5 (stable core) — `compose_prompt` is now **cancellable** and reports **live progress**. An `AbortSignal` is plumbed through the whole LLM path, so a client cancel (`notifications/cancelled`) aborts the in-flight model request immediately and stops the revise loop; with a `progressToken` in the request, the server emits `notifications/progress` per stage. Model-agnostic, opt-in, fully back-compat. (The experimental MCP `tasks/*` async lifecycle is deferred until the SDK stabilizes it and clients adopt it — see CHANGELOG.) See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.11.0:** Roadmap step #6 — a pluggable **transport factory**. Set `CLARIFYPROMPT_TRANSPORT=streamable-http` to serve over **Streamable HTTP** (Node built-in `http`, no new deps; stateful sessions, `/health`, configurable port/host/path) instead of stdio — the runway toward A2A and remote MCP hosts. **stdio stays the default**, so every existing config is unchanged. Each HTTP session gets its own server instance (the GHSA-safe per-session pattern). See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -26,6 +26,28 @@ ClarifyPrompt returns (for DALL-E):
 ```
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+
+## What's new in 1.11.0
+
+Step #6 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md): a pluggable **transport factory** — ClarifyPrompt can now serve over **Streamable HTTP**, the runway toward A2A and remote MCP hosts. **stdio stays the default; nothing about existing setups changes.**
+
+### Transports
+
+Set `CLARIFYPROMPT_TRANSPORT`:
+
+| Value | Behaviour |
+|---|---|
+| `stdio` (default) | One server over stdin/stdout — exactly as before |
+| `streamable-http` | MCP Streamable HTTP over Node's built-in `http` (no new deps): stateful sessions (`mcp-session-id`), SSE streaming, a `/health` probe |
+
+HTTP knobs (only in `streamable-http` mode): `CLARIFYPROMPT_HTTP_PORT` (3000), `CLARIFYPROMPT_HTTP_HOST` (`127.0.0.1` — localhost-only by default), `CLARIFYPROMPT_HTTP_PATH` (`/mcp`).
+
+```bash
+CLARIFYPROMPT_TRANSPORT=streamable-http CLARIFYPROMPT_HTTP_PORT=3000 npx clarifyprompt-mcp
+# → POST http://127.0.0.1:3000/mcp  ·  GET http://127.0.0.1:3000/health
+```
+
+Tool/resource registration moved into an exported `createServer()` factory: stdio gets one server, **streamable-http gets one per session** (the SDK-recommended, GHSA-safe pattern — never shares a server across HTTP clients). New deterministic `npm run test:http` battery drives a full HTTP session.
 
 ## What's new in 1.10.0
 
@@ -394,7 +416,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.10.0)
+## What's in the box (cumulative through 1.11.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.

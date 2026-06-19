@@ -4,6 +4,28 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] — 2026-06-14
+
+Minor release — **step #6 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: a pluggable **transport factory**. ClarifyPrompt can now serve over **Streamable HTTP** in addition to stdio — the runway toward Agent-to-Agent (A2A, #7) and remote MCP hosts. **stdio remains the default; existing behaviour is unchanged.**
+
+### Added
+
+- **`CLARIFYPROMPT_TRANSPORT` env** — `stdio` (default) or `streamable-http`.
+- **Streamable HTTP transport** (`src/transport.ts`) over Node's built-in `http` — **no new runtime dependencies**. Stateful sessions (the server issues an `mcp-session-id`), full SSE streaming support, a `/health` liveness endpoint, and a configurable MCP endpoint path. HTTP knobs (only read in `streamable-http` mode): `CLARIFYPROMPT_HTTP_PORT` (3000), `CLARIFYPROMPT_HTTP_HOST` (127.0.0.1 — localhost-only by default; set `0.0.0.0` to expose), `CLARIFYPROMPT_HTTP_PATH` (`/mcp`).
+- **Per-session server factory.** Tool/resource registration moved into an exported `createServer()` factory. stdio creates exactly one server; **streamable-http creates one server per session** — the SDK's recommended pattern, since sharing a single server across concurrent HTTP sessions can leak one client's response data to another ([GHSA-345p-7cg4-v4c7](https://github.com/advisories/GHSA-345p-7cg4-v4c7)). The module-level helpers, schemas, and engine singletons are pure/stateless and safely shared.
+
+### Back-compat
+
+- **stdio is unchanged and remains the default** — no env var, no behaviour change. Every existing Claude Desktop / Cursor / Claude Code config keeps working exactly as before. The transport refactor moved registrations into a function but left them char-identical; the stdio wire test passes unmodified.
+
+### Tests
+
+- **New `npm run test:http`** (`tests/http-transport.mjs`) — spawns the server in `streamable-http` mode and drives a real MCP session over HTTP (no LLM): `/health` probe, `initialize` → session id, `tools/list` returns all 23 tools, unknown path → 404, and a second client gets a **distinct** session id (proving per-session isolation). Deterministic, CI-safe. Added to `test:all`.
+
+### Verified
+
+`test:http` (full HTTP session) ✅ · wire / stdio (byte-identical) ✅ · resources / elicit / thinking (deterministic, via the factory) ✅ · integration ✅ · compose eval on `gemma4:31b-cloud` ✅ · `tsc`.
+
 ## [1.10.0] — 2026-06-14
 
 Minor release — **step #5 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md), stable core**: `compose_prompt` is now **cancellable** and reports **live progress** on long runs. Built entirely on stable MCP primitives (`extra.signal` + `notifications/progress`); model-agnostic.

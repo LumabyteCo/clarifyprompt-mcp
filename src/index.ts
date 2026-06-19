@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { getOptimizationEngine } from "./engine/optimization/engine.js";
 import { CATEGORIES, MODES, getPlatformById, type Category } from "./engine/config/categories.js";
@@ -18,11 +17,7 @@ import { buildElicitationForm, applyElicitedAnswers } from "./engine/clarificati
 import { groundPrompt } from "./engine/grounding/ground.js";
 import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
-
-const server = new McpServer({
-  name: "clarifyprompt",
-  version: "1.10.0",
-});
+import { startTransport } from "./transport.js";
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
 const MODE_ENUM = z.enum(["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"]);
@@ -228,7 +223,21 @@ const COMPOSE_OUT = z.object({
   iterations: z.number(),
 }).partial().passthrough();
 
-// --- Tools ---
+// --- Server factory (1.11.0) -------------------------------------------------
+//
+// Build a FRESH McpServer per connection: exactly one for stdio, and one PER
+// SESSION for streamable-http. This is the SDK's recommended pattern — sharing
+// a single server instance across concurrent HTTP sessions can leak one client's
+// response data to another (GHSA-345p-7cg4-v4c7). The module-level helpers,
+// schemas, and engine singletons above are pure/stateless and safely shared.
+
+export function createServer(): McpServer {
+  const server = new McpServer({
+    name: "clarifyprompt",
+    version: "1.11.0",
+  });
+
+  // --- Tools ---
 
 server.registerTool(
   "optimize_prompt",
@@ -1451,7 +1460,13 @@ server.registerResource(
   }
 );
 
-// --- Connect ---
+  return server;
+}
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
+// --- Connect (1.11.0: transport factory) ------------------------------------
+//
+// Default transport is stdio (unchanged behavior). Set
+// CLARIFYPROMPT_TRANSPORT=streamable-http to serve over HTTP instead — the
+// runway for Agent-to-Agent (A2A) and remote MCP hosts.
+
+await startTransport(createServer);

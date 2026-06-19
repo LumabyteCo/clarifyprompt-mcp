@@ -6,16 +6,44 @@
     "url": "https://github.com/LumabyteCo/clarifyprompt-mcp",
     "source": "github"
   },
-  "version": "1.10.0",
+  "version": "1.11.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "clarifyprompt-mcp",
-      "version": "1.10.0",
+      "version": "1.11.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
+        {
+          "description": "Transport (1.11.0): 'stdio' (default) or 'streamable-http' to serve over HTTP. The runway for A2A / remote MCP hosts.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "CLARIFYPROMPT_TRANSPORT"
+        },
+        {
+          "description": "HTTP port when CLARIFYPROMPT_TRANSPORT=streamable-http (default 3000).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "CLARIFYPROMPT_HTTP_PORT"
+        },
+        {
+          "description": "HTTP bind host when CLARIFYPROMPT_TRANSPORT=streamable-http (default 127.0.0.1 — localhost-only; set 0.0.0.0 to expose).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "CLARIFYPROMPT_HTTP_HOST"
+        },
+        {
+          "description": "HTTP MCP endpoint path when CLARIFYPROMPT_TRANSPORT=streamable-http (default /mcp).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "CLARIFYPROMPT_HTTP_PATH"
+        },
         {
           "description": "LLM API endpoint URL (OpenAI-compatible or Anthropic)",
           "isRequired": true,
