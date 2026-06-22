@@ -19,7 +19,7 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
-const VERSION = "1.12.0";
+const VERSION = "1.12.1";
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
 const MODE_ENUM = z.enum(["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"]);

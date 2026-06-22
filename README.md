@@ -10,7 +10,9 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.12.0:** Roadmap step #7 — ClarifyPrompt now speaks **A2A (Agent-to-Agent)**. Set `CLARIFYPROMPT_TRANSPORT=a2a` and it serves as a discoverable A2A peer: an **agent card** at `/.well-known/agent-card.json`, a `compile-prompt-for-platform` skill over JSON-RPC (`message/send`) with **live SSE streaming** (`message/stream`), and first-class **task cancellation** + **`input-required` clarification** round-trips — all powered by the same compose pipeline. Other agents can now call ClarifyPrompt to compile prompts. **stdio stays the default**; nothing about existing setups changes. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.12.1:** The real fix for [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — **thinking-channel models (gpt-oss, glm, …) now reliably produce optimized prompts** instead of occasionally returning empty content. Root cause (re-investigated from scratch): they spend their token budget on the *thinking* channel first and never reach the final answer. The fix is a `max_tokens` floor for reasoning models (universal) plus `reasoning_effort: "low"` (for families that honor it, like gpt-oss; tune with `LLM_REASONING_EFFORT`) — not the previously-assumed `/api/chat` switch, which turned out to be a dead end. Verified on `gpt-oss:20b-cloud` and `glm-5.2:cloud` (both 0% empty). See [CHANGELOG.md](./CHANGELOG.md).
+>
+> **New in 1.12.0:** Roadmap step #7 — ClarifyPrompt now speaks **A2A (Agent-to-Agent)**. Set `CLARIFYPROMPT_TRANSPORT=a2a` and it serves as a discoverable A2A peer: an **agent card** at `/.well-known/agent-card.json`, a `compile-prompt-for-platform` skill over JSON-RPC (`message/send`) with **live SSE streaming** (`message/stream`), and first-class **task cancellation** + **`input-required` clarification** round-trips — all powered by the same compose pipeline. Other agents can now call ClarifyPrompt to compile prompts. **stdio stays the default**; nothing about existing setups changes.
 
 ## How It Works
 
@@ -60,6 +62,21 @@ Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming conv
 **3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
 
 > <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22. ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+
+## What's new in 1.12.1
+
+The real fix for issue [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3): **thinking-channel models now reliably produce optimized prompts** instead of intermittently returning empty content. Both `gpt-oss:20b-cloud` and `glm-5.2:cloud` went from empty ~40% of runs to **0%**.
+
+Re-investigating from scratch overturned the documented root cause. It was **never** "Ollama's `/v1` shim drops the harmony final channel." These models spend their `max_tokens` budget on the **thinking channel first** and never reach the final channel — so `content` comes back `""` (worse at higher reasoning effort). Two levers, applied together because different families honor different ones:
+
+- **A `max_tokens` floor (8192) for detected reasoning models** — the *universal* lever. It attacks the root cause directly, so it works regardless of which thinking knob a family respects. It's a ceiling, not a target: short answers finish early, so no added latency.
+- **`reasoning_effort: "low"`** — for families that respect it (gpt-oss), also trimming latency/cost. Tune with **`LLM_REASONING_EFFORT`** (`low` | `medium` | `high`).
+
+The levers are genuinely family-specific: **gpt-oss** honors `reasoning_effort` but ignores Ollama's `think`; **glm** is the exact opposite — it ignores `reasoning_effort`, so only the budget floor saves it.
+
+**Detection is robust, not a hardcoded model list** (which would rot as new models ship). "Is this a thinking model?" is answered, cached per model, by: (1) **the runtime itself** — Ollama's `/api/show` reports a `thinking` capability (this is how `minimax-m3:cloud` is detected, with no name match); (2) **response-learning** — any reasoning trace, or empty-content-with-tokens, marks that model thereafter (works for any provider); (3) a small name hint as last resort. Non-reasoning models stay byte-identical, and the name-agnostic empty-content retry is the final backstop. Validated on `gpt-oss:20b-cloud`, `glm-5.2:cloud`, and `minimax-m3:cloud` (all 0% empty on the first call).
+
+> The previously-proposed "switch to Ollama's native `/api/chat`" was a **dead end** — `/api/chat` with `think:false` *still* returns empty content for gpt-oss (it ignores it), and it would have added a fragile second code path.
 
 ## What's new in 1.12.0
 
@@ -478,7 +495,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.12.0)
+## What's in the box (cumulative through 1.12.1)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -1099,6 +1116,7 @@ ClarifyPrompt uses an LLM to optimize prompts. It works with **any OpenAI-compat
 | `LLM_API_URL` | Yes | API endpoint URL |
 | `LLM_API_KEY` | Depends | API key (not needed for local Ollama) |
 | `LLM_MODEL` | Yes | Model name/ID |
+| `LLM_REASONING_EFFORT` | No | **(1.12.1+)** Reasoning level for thinking-channel models (gpt-oss, glm, `*-thinking`, deepseek-r, qwq): `low` \| `medium` \| `high`. Default `low`. These models also get a `max_tokens` floor so their reasoning trace can't starve the final answer ([#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3)). Ignored for non-reasoning models. |
 | `CLARIFYPROMPT_HOME` | No | **Canonical (1.2.0+)** root for everything ClarifyPrompt writes — custom platforms, instruction `.md` files, traces, memory DB, and knowledge packs. Default: `$XDG_DATA_HOME/clarifyprompt` or `~/.clarifyprompt`. |
 | `CLARIFYPROMPT_TRACE` | No | `off` \| `local` \| `otel`. Default: `local`. Traces are strictly local JSONL; nothing is uploaded. |
 | `EMBED_API_URL` | No | **(1.3.0+)** Embedding endpoint for memory + knowledge-pack retrieval. Any OpenAI-compatible `/v1/embeddings` endpoint. Defaults to `LLM_API_URL` when unset — Ollama users just work. |

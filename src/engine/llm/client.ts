@@ -1,8 +1,21 @@
+import {
+  isThinkingModel,
+  isThinkingByName,
+  characterizeThinking,
+  observeResponse,
+} from './model-capabilities.js';
+
 export interface LLMConfig {
   apiUrl: string;
   apiKey: string;
   defaultModel: string;
   timeout?: number;
+  /**
+   * Default `reasoning_effort` applied to detected reasoning models (see
+   * isReasoningModel). Defaults to 'low' — the level that reliably keeps gpt-oss
+   * from spending its whole budget in the thinking channel. From LLM_REASONING_EFFORT.
+   */
+  reasoningEffort?: ReasoningEffort;
 }
 
 export interface ChatMessage {
@@ -40,6 +53,36 @@ export function extractAssistantContent(
   };
 }
 
+export type ReasoningEffort = 'low' | 'medium' | 'high';
+
+/**
+ * Floor on `max_tokens` for reasoning models. The empty-content failure (issue
+ * #3) is fundamentally a budget problem: these models emit a large thinking
+ * trace BEFORE the final answer, so a tight `max_tokens` is spent entirely on
+ * reasoning and `content` comes back "". A generous floor guarantees room for
+ * both. Verified to cover the worst observed traces (glm-5.2 ~2.6k thinking
+ * tokens) with ample headroom for the final answer. It's a cap, not a target —
+ * models stop at their natural end, so this adds no latency when reasoning is short.
+ */
+const REASONING_MIN_TOKENS = 8192;
+
+// "Is this a thinking-channel model?" — the one that can exhaust its token
+// budget on reasoning before emitting the final answer (issue #3). This is
+// characterized ROBUSTLY, not from a hardcoded list: the Ollama runtime's
+// reported capabilities, plus learning from actual responses, with a small name
+// hint as last resort (see model-capabilities.ts). Two levers, applied together
+// because families honor different ones: a `max_tokens` floor (universal — the
+// only thing that works for glm) and `reasoning_effort: 'low'` (gpt-oss). The
+// name-agnostic empty-content retry (simpleGenerate) is the final backstop.
+//
+// `isReasoningModel` is re-exported (name-based) for back-compat; internally we
+// use the cache-aware `isThinkingModel`.
+export const isReasoningModel = isThinkingByName;
+
+function parseReasoningEffort(raw: string | undefined): ReasoningEffort | undefined {
+  return raw === 'low' || raw === 'medium' || raw === 'high' ? raw : undefined;
+}
+
 export interface ChatCompletionRequest {
   model: string;
   messages: ChatMessage[];
@@ -54,6 +97,12 @@ export interface ChatCompletionRequest {
    * of provider or model.
    */
   signal?: AbortSignal;
+  /**
+   * OpenAI `reasoning_effort` ('low' | 'medium' | 'high'). When omitted, the
+   * client auto-applies its configured default to detected reasoning models
+   * (see isReasoningModel) and sends nothing for everyone else.
+   */
+  reasoning_effort?: ReasoningEffort;
 }
 
 export interface ChatCompletionResponse {
@@ -116,6 +165,9 @@ export class LLMClient {
       apiKey,
       defaultModel,
       timeout: config.timeout || (envTimeoutValid ? envTimeoutMs : DEFAULT_CONFIG.timeout),
+      reasoningEffort: config.reasoningEffort
+        ?? parseReasoningEffort(process.env.LLM_REASONING_EFFORT)
+        ?? 'low',
     };
 
     this.isAnthropic = apiUrl.includes('anthropic.com');
@@ -123,6 +175,41 @@ export class LLMClient {
 
   getModelName(): string {
     return this.config.defaultModel;
+  }
+
+  /**
+   * The `reasoning_effort` to send: an explicit per-request value wins; otherwise
+   * the configured default is applied ONLY to detected reasoning models, so the
+   * common (non-reasoning) path stays byte-identical. Returns undefined when
+   * nothing should be sent.
+   */
+  private resolveReasoningEffort(model: string, explicit?: ReasoningEffort): ReasoningEffort | undefined {
+    if (explicit) return explicit;
+    return isThinkingModel(model) ? this.config.reasoningEffort : undefined;
+  }
+
+  /** Build the OpenAI-compatible chat body, adding reasoning_effort when applicable. */
+  private buildOpenAIBody(
+    request: Omit<ChatCompletionRequest, 'model'> & { model?: string },
+    stream: boolean,
+  ): Record<string, unknown> {
+    const model = request.model || this.config.defaultModel;
+    const reasoning = isThinkingModel(model);
+    // Floor the budget for reasoning models so the thinking trace can't starve
+    // the final answer (the universal fix — works even where reasoning_effort
+    // is ignored). It's a ceiling: short answers still finish early.
+    let maxTokens = request.max_tokens ?? 2048;
+    if (reasoning) maxTokens = Math.max(maxTokens, REASONING_MIN_TOKENS);
+    const body: Record<string, unknown> = {
+      model,
+      messages: request.messages,
+      stream,
+      temperature: request.temperature ?? 0.7,
+      max_tokens: maxTokens,
+    };
+    const effort = this.resolveReasoningEffort(model, request.reasoning_effort);
+    if (effort) body.reasoning_effort = effort;
+    return body;
   }
 
   /**
@@ -149,13 +236,7 @@ export class LLMClient {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.config.apiKey}`,
       },
-      body: JSON.stringify({
-        model: request.model || this.config.defaultModel,
-        messages: request.messages,
-        stream: false,
-        temperature: request.temperature ?? 0.7,
-        max_tokens: request.max_tokens ?? 2048,
-      }),
+      body: JSON.stringify(this.buildOpenAIBody(request, false)),
       signal: this.withTimeout(request.signal),
     });
 
@@ -247,13 +328,7 @@ export class LLMClient {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.config.apiKey}`,
       },
-      body: JSON.stringify({
-        model: request.model || this.config.defaultModel,
-        messages: request.messages,
-        stream: true,
-        temperature: request.temperature ?? 0.7,
-        max_tokens: request.max_tokens ?? 2048,
-      }),
+      body: JSON.stringify(this.buildOpenAIBody(request, true)),
       signal: this.withTimeout(request.signal),
     });
 
@@ -294,8 +369,18 @@ export class LLMClient {
     model?: string;
     temperature?: number;
     maxTokens?: number;
+    reasoningEffort?: ReasoningEffort;
     signal?: AbortSignal;
   }): Promise<{ content: string; tokensUsed: number }> {
+    const model = options?.model ?? this.config.defaultModel;
+    // Robustly characterize the model up front (Ollama /api/show capability probe,
+    // cached) so the budget floor + reasoning_effort apply on the FIRST call —
+    // avoiding an empty-then-retry double-call for thinking models we haven't met.
+    // Best-effort; never throws; skipped for Anthropic (different thinking model).
+    if (!this.isAnthropic) {
+      await characterizeThinking(model, { apiUrl: this.config.apiUrl, apiKey: this.config.apiKey });
+    }
+
     const response = await this.chat({
       model: options?.model,
       messages: [
@@ -304,6 +389,7 @@ export class LLMClient {
       ],
       temperature: options?.temperature,
       max_tokens: options?.maxTokens,
+      reasoning_effort: options?.reasoningEffort,
       signal: options?.signal,
     });
 
@@ -312,31 +398,33 @@ export class LLMClient {
     let tokensUsed = response.usage?.total_tokens || 0;
     const finishReason = choice?.finish_reason;
     const completionTokens = response.usage?.completion_tokens ?? 0;
+    // Learn from the response: a reasoning trace — or empty content with tokens
+    // spent — proves a thinking channel, so future calls to this model get the
+    // floor upfront even if the runtime probe and name hint both missed it.
+    observeResponse(model, { content, reasoning, completionTokens });
 
-    // Empty-content recovery (issue #3). The final answer came back empty. Three
-    // real causes seen in the wild — handled uniformly because the user-facing
-    // harm (a silent empty optimized prompt) is identical:
-    //   (a) the model routed everything through a thinking channel
-    //       (`reasoning` / `thinking` / `reasoning_content`) and emitted no final
-    //       answer — recoverable by re-asking for the final answer only;
-    //   (b) it exhausted the token budget mid-thought (finish_reason='length');
-    //   (c) it generated tokens the OpenAI-compatible endpoint never surfaced as
-    //       `content` at all — gpt-oss harmony format over Ollama's /v1 shim:
-    //       completion_tokens>0, content=='', and NO thinking field populated.
-    // Retry ONCE with a final-answer-only directive + a larger budget. If the
-    // answer is still empty, THROW — the engine catches it, degrades to the
-    // original prompt, and records the error in the trace, so callers get a
-    // clear failure + usable text instead of a silent empty string.
+    // Empty-content recovery (issue #3). The final answer came back empty. The
+    // real root cause for reasoning models (gpt-oss especially): the model spends
+    // its whole `max_tokens` budget in the thinking channel and never reaches the
+    // final channel — completion_tokens hits the cap, `reasoning` is large,
+    // `content` is "". (Confirmed empirically: worse at higher reasoning effort;
+    // it is NOT the `/v1` shim "dropping" a final channel that was emitted.)
+    //
+    // The effective lever is the reasoning level, NOT a "final-answer-only"
+    // instruction — gpt-oss ignores being told to stop reasoning (verified). So
+    // retry ONCE forcing `reasoning_effort: 'low'` (plus a larger budget and the
+    // directive, which help other providers). If it's STILL empty, THROW — the
+    // engine catches it, degrades to the original prompt, and records the error,
+    // so callers get a clear failure + usable text, never a silent empty string.
     if (!content) {
       if (!this.warnedReasoningEmptyContent) {
         this.warnedReasoningEmptyContent = true;
         process.stderr.write(
           `[clarifyprompt] Model '${response.model}' returned empty content ` +
           `(finish_reason=${finishReason}, completion_tokens=${completionTokens}, ` +
-          `thinking_trace=${reasoning ? 'present' : 'absent'}). Retrying once with a final-answer-only ` +
-          `directive and a larger token budget. If this recurs with completion_tokens>0, the model's ` +
-          `output channel isn't being surfaced by this OpenAI-compatible endpoint (common with gpt-oss ` +
-          `harmony format via Ollama's /v1 shim) — try a non-reasoning model or Ollama's native /api/chat.\n`,
+          `thinking_trace=${reasoning ? 'present' : 'absent'}). Retrying once at reasoning_effort=low ` +
+          `with a larger token budget. If this recurs, the model is exhausting its budget in the thinking ` +
+          `channel — set LLM_REASONING_EFFORT=low (default), raise max_tokens, or use a non-reasoning model.\n`,
         );
       }
       const retry = await this.chat({
@@ -350,6 +438,7 @@ export class LLMClient {
         ],
         temperature: options?.temperature,
         max_tokens: Math.max(options?.maxTokens ?? 0, 16384),
+        reasoning_effort: 'low', // the lever that actually keeps gpt-oss from starving the final channel
         signal: options?.signal,
       });
       const recovered = extractAssistantContent(retry.choices[0]?.message);
@@ -359,10 +448,10 @@ export class LLMClient {
       } else {
         const retryCompletion = retry.usage?.completion_tokens ?? 0;
         throw new LLMError(
-          `Model '${response.model}' returned empty content even after a final-answer-only retry ` +
-          `(generated ${completionTokens}+${retryCompletion} token(s) the endpoint did not surface as ` +
-          `content). This is common with gpt-oss harmony output over Ollama's OpenAI-compatible /v1 ` +
-          `endpoint. Try a non-reasoning model, Ollama's native /api/chat, or raise max_tokens.`,
+          `Model '${response.model}' returned empty content even after a reasoning_effort=low retry ` +
+          `(generated ${completionTokens}+${retryCompletion} thinking token(s) but no final answer). The ` +
+          `model is exhausting its token budget in the thinking channel — set LLM_REASONING_EFFORT=low, ` +
+          `raise max_tokens, or use a non-reasoning model.`,
           502,
           reasoning.slice(0, 500),
         );

@@ -4,6 +4,32 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.1] — 2026-06-22
+
+Patch — **the real fix for issue [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) (gpt-oss empty content).** The 1.7.1 mitigation surfaced the failure loudly and degraded gracefully; this release makes gpt-oss actually produce optimized prompts.
+
+### Fixed
+
+- **Thinking-channel models (gpt-oss, glm, …) now reliably return a final answer.** Re-investigating from scratch overturned the documented root cause. It was **never** "Ollama's `/v1` shim drops the harmony final channel." These models emit a large reasoning trace *before* the final answer, so a tight `max_tokens` is spent entirely in the **thinking channel** and `content` comes back `""` (completion_tokens hits the cap, reasoning is huge). Higher reasoning effort makes it worse; a bigger budget makes it better.
+- **The universal fix is a `max_tokens` floor (8192) for detected reasoning models** — it attacks the shared root cause directly, so it works regardless of which thinking-control knob a given family honors. It's a ceiling, not a target: short answers still finish early, so there's no added latency.
+- **Plus `reasoning_effort: "low"`** (the OpenAI lever) for families that respect it (gpt-oss), which also trims latency/cost. Crucially, the levers are **family-specific** and applying both is what makes the fix general: gpt-oss honors `reasoning_effort` but ignores Ollama's `think`; **glm is the exact opposite** (ignores `reasoning_effort` — only the budget floor saves it). **The previously-proposed "switch to Ollama's native `/api/chat`" path was a dead end** — `/api/chat` `think:false` *still* returns empty for gpt-oss, and it would have added a fragile second code path.
+- **The empty-content retry is the name-agnostic backstop** for any thinking model not in the detection list: it retries at `reasoning_effort: "low"` + a 16384 budget, then throws a clear thinking-budget diagnostic if still empty (it used to merely *ask* the model to stop reasoning, which gpt-oss/glm both ignore).
+- Verified empirically: `gpt-oss:20b-cloud` empty ~40% of runs → **0%**; `glm-5.2:cloud` (same failure, and it ignores `reasoning_effort` entirely) → **0%**, on the first call (no double-call latency).
+
+### Added
+
+- **Robust, self-updating model characterization** (`src/engine/llm/model-capabilities.ts`) — "is this a thinking-channel model?" is no longer a hardcoded name list (which rots as new models ship). It's answered, cached per model, by: (1) **the runtime itself** — Ollama's `/api/show` reports `capabilities`, which includes `thinking` for reasoning models (authoritative; `minimax-m3:cloud` is detected this way with no name match); (2) **response-learning** — any response that carries a reasoning trace, or comes back empty with tokens spent, marks that model as thinking thereafter (works for any provider); (3) a small **name hint** as last resort. The empty-content retry remains the final name-agnostic backstop.
+- **`LLM_REASONING_EFFORT`** env (`low` | `medium` | `high`, default `low`) — applied only to characterized reasoning models; non-reasoning models are untouched (byte-identical request body). Raise it for deeper reasoning if you have the budget.
+- Exported `isReasoningModel(model)` and a per-call `reasoningEffort` option on `simpleGenerate` / `reasoning_effort` on the chat request.
+
+### Tests
+
+- **`test:thinking` extended (7 groups)** — the retry asserts it forces `reasoning_effort=low`; the detection table + body-level levers (reasoning model → `reasoning_effort=low` **and** the `max_tokens` floor ≥8192; glm → floor applied; normal model → byte-identical); and a **robustness** group (T7): a novel model name unmatched by the heuristic is still characterized via a mocked `/api/show` probe, and response-learning marks a model as thinking from a reasoning trace or an empty-with-tokens response.
+
+### Verified
+
+`test:thinking` (deterministic, 7 groups, incl. glm + budget-floor + robust characterization) ✅ · live `simpleGenerate` 300-token budget, all non-empty on the **first** call: `gpt-oss:20b-cloud` **4/4**, `glm-5.2:cloud` **4/4**, `minimax-m3:cloud` **3/3** (characterized via `/api/show`, no name match) + full `compose_prompt` **3/3** real optimized prompts ✅ · non-reasoning path (gemma4/qwen) request body byte-identical ✅ · wire / stdio / resources ✅ · lockfile diff = version-only, 5/5 sqlite-vec platforms, 0 vulns ✅ · `tsc`.
+
 ## [1.12.0] — 2026-06-20
 
 Minor release — **step #7, the final step, of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: ClarifyPrompt now speaks **A2A (Agent-to-Agent)**. Set `CLARIFYPROMPT_TRANSPORT=a2a` and it comes up as a discoverable A2A peer that other agents can call to compile prompts — built on the same compose pipeline, with the cancellation/progress/clarification primitives from #4–#6 mapped onto A2A semantics. **stdio remains the default; existing behaviour is unchanged.** This completes the roadmap (7/7).
