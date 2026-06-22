@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import * as _path from 'node:path';
 const REPO_ROOT = _path.resolve(_path.dirname(fileURLToPath(import.meta.url)), '..');
 import { spawn } from 'node:child_process';
+import * as net from 'node:net';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as fs from 'node:fs/promises';
@@ -107,6 +108,21 @@ try {
     }) });
     const sid2 = r.headers.get('mcp-session-id');
     (sid2 && sid2 !== sessionId) ? ok(`distinct session id for a second client (${sid2?.slice(0, 8)}… ≠ ${sessionId?.slice(0, 8)}…)`) : bad('session isolation', `sid2=${sid2}`);
+  }
+
+  sep('H6: malformed request line does not crash the process');
+  {
+    const rawResp = await new Promise(resolve => {
+      const sock = net.connect(PORT, '127.0.0.1', () => sock.write('GET // HTTP/1.1\r\nHost: x\r\n\r\n'));
+      let buf = '';
+      sock.on('data', d => { buf += d; });
+      sock.on('close', () => resolve(buf));
+      sock.on('error', () => resolve(buf));
+      setTimeout(() => { sock.destroy(); resolve(buf); }, 1500);
+    });
+    /400|Bad/.test(rawResp) ? ok('malformed request line → 400, no crash') : bad('raw malformed request', rawResp.slice(0, 80) || '(no response)');
+    const alive = await fetch(`${BASE}/health`).then(r => r.ok).catch(() => false);
+    alive ? ok('server still serving /health afterward') : bad('server crashed on malformed request', 'health unreachable');
   }
 } catch (err) {
   bad('http test crashed', `${err.message}\nserver stderr:\n${serverErr.slice(0, 300)}`);

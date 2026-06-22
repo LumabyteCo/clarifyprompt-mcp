@@ -10,7 +10,7 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.11.0:** Roadmap step #6 — a pluggable **transport factory**. Set `CLARIFYPROMPT_TRANSPORT=streamable-http` to serve over **Streamable HTTP** (Node built-in `http`, no new deps; stateful sessions, `/health`, configurable port/host/path) instead of stdio — the runway toward A2A and remote MCP hosts. **stdio stays the default**, so every existing config is unchanged. Each HTTP session gets its own server instance (the GHSA-safe per-session pattern). See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.12.0:** Roadmap step #7 — ClarifyPrompt now speaks **A2A (Agent-to-Agent)**. Set `CLARIFYPROMPT_TRANSPORT=a2a` and it serves as a discoverable A2A peer: an **agent card** at `/.well-known/agent-card.json`, a `compile-prompt-for-platform` skill over JSON-RPC (`message/send`) with **live SSE streaming** (`message/stream`), and first-class **task cancellation** + **`input-required` clarification** round-trips — all powered by the same compose pipeline. Other agents can now call ClarifyPrompt to compile prompts. **stdio stays the default**; nothing about existing setups changes. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -27,6 +27,33 @@ ClarifyPrompt returns (for DALL-E):
 
 Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
 
+## What's new in 1.12.0
+
+Step #7 — the final step — of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md): ClarifyPrompt now speaks **A2A (Agent-to-Agent)**, so other agents can call it to compile prompts. **stdio stays the default; nothing about existing setups changes.**
+
+Set `CLARIFYPROMPT_TRANSPORT=a2a` and ClarifyPrompt comes up as a discoverable A2A peer on Node's built-in `http` (the only new dependency is the official `@a2a-js/sdk`, which itself pulls just `uuid`):
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /.well-known/agent-card.json` | **Agent card** — discovery: identity, capabilities, the `compile-prompt-for-platform` skill |
+| `POST /a2a` | A2A **JSON-RPC 2.0**: `message/send`, `message/stream` (SSE), `tasks/get`, `tasks/cancel`, … |
+| `GET /health` | Liveness probe |
+
+```bash
+CLARIFYPROMPT_TRANSPORT=a2a CLARIFYPROMPT_HTTP_PORT=3000 npx clarifyprompt-mcp
+# → card:  http://127.0.0.1:3000/.well-known/agent-card.json
+# → a2a:   POST http://127.0.0.1:3000/a2a   (message/send · message/stream)
+```
+
+The whole roadmap pays off here — one incoming A2A message flows through the same compose pipeline, and the primitives built in earlier steps map straight onto A2A semantics:
+
+- **Compile** — a `message/send` with the raw prompt (plain text, or JSON `{ prompt, platform?, category?, … }`) returns a task whose **artifact** carries the optimized prompt (text) plus the full structured compose result (data).
+- **Streaming** (1.10.0 progress → A2A) — `message/stream` emits `status-update` events as each pipeline stage runs, then the artifact, over **SSE**.
+- **Cancellation** (1.10.0 AbortSignal → A2A) — `tasks/cancel` aborts the in-flight compose within milliseconds and reports a terminal `canceled` state.
+- **Clarification** (1.9.0 elicitation → A2A) — clarify is **off by default** for one-shot peers; opt in with `pre_clarify: 'auto' | 'always'` and an ambiguous prompt pauses the task in A2A's first-class **`input-required`** state with the questions (readable text + structured data). Answer on the same task and it compiles.
+
+Configure the public base URL advertised in the card with `CLARIFYPROMPT_A2A_BASE_URL` (handy behind a proxy); port/host are shared with `streamable-http`. New deterministic `npm run test:a2a` battery drives card discovery, a live compile, the clarify round-trip, and SSE streaming.
+
 ## What's new in 1.11.0
 
 Step #6 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md): a pluggable **transport factory** — ClarifyPrompt can now serve over **Streamable HTTP**, the runway toward A2A and remote MCP hosts. **stdio stays the default; nothing about existing setups changes.**
@@ -39,8 +66,9 @@ Set `CLARIFYPROMPT_TRANSPORT`:
 |---|---|
 | `stdio` (default) | One server over stdin/stdout — exactly as before |
 | `streamable-http` | MCP Streamable HTTP over Node's built-in `http` (no new deps): stateful sessions (`mcp-session-id`), SSE streaming, a `/health` probe |
+| `a2a` | Serve as an **A2A (Agent-to-Agent)** peer — agent card, JSON-RPC + SSE (see 1.12.0 above) |
 
-HTTP knobs (only in `streamable-http` mode): `CLARIFYPROMPT_HTTP_PORT` (3000), `CLARIFYPROMPT_HTTP_HOST` (`127.0.0.1` — localhost-only by default), `CLARIFYPROMPT_HTTP_PATH` (`/mcp`).
+HTTP knobs (in `streamable-http` / `a2a` mode): `CLARIFYPROMPT_HTTP_PORT` (3000), `CLARIFYPROMPT_HTTP_HOST` (`127.0.0.1` — localhost-only by default), `CLARIFYPROMPT_HTTP_PATH` (`/mcp`, streamable-http only).
 
 ```bash
 CLARIFYPROMPT_TRANSPORT=streamable-http CLARIFYPROMPT_HTTP_PORT=3000 npx clarifyprompt-mcp
@@ -416,7 +444,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.11.0)
+## What's in the box (cumulative through 1.12.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -425,6 +453,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 - **Session retrieval (save_outcome)** — the caller reports `accepted | edited | rejected` per optimization; similar accepted outputs in the same session get injected as few-shot examples into future similar prompts. Persistent memory lands in 1.3.
 - **Local JSONL tracing** — every optimization writes a structured trace line (now with `shape`, `groundingSources`, `error` fields) to `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl`. **Nothing is uploaded.** Toggle via `CLARIFYPROMPT_TRACE=off`.
 - **Unified `$CLARIFYPROMPT_HOME`** — one env var for everything ClarifyPrompt writes. Legacy `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` still work (deprecation hint, silenceable).
+- **Three transports** — `stdio` (default), `streamable-http` (MCP over Node `http`, stateful sessions + `/health`), and `a2a` (an **Agent-to-Agent** peer: agent card, JSON-RPC `message/send` + SSE `message/stream`, task cancellation, `input-required` clarification). One `CLARIFYPROMPT_TRANSPORT` env var; stdio behavior is byte-identical to before.
 - **60+ platforms, 7 categories, custom platforms** — the original core is unchanged and fully backward-compatible.
 - **Any LLM, any provider.** One code path works with **any OpenAI-compatible API** — Ollama (local + cloud), LM Studio, vLLM, OpenAI, Google Gemini, xAI Grok, Groq, Mistral, DeepSeek, Cohere, Perplexity, Together, Fireworks, OpenRouter — plus **Anthropic Claude** directly. Reasoning models (`o1/o3/o4`, `deepseek-reasoner`, `gpt-oss`, `*-thinking`) are auto-detected and given a larger token budget so they actually produce content. [See 15+ pre-configured provider examples below](#provider-examples).
 - **Apache-2.0, forever.** Open-source core, no relicensing.

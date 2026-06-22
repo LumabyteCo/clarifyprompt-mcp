@@ -3,6 +3,7 @@
 // Default is stdio (unchanged behaviour). Set CLARIFYPROMPT_TRANSPORT to switch:
 //   stdio            — one server over stdin/stdout (default)
 //   streamable-http  — the MCP Streamable HTTP transport over a Node http server
+//   a2a              — serve as an Agent-to-Agent (A2A) peer (1.12.0, roadmap #7)
 //
 // HTTP env knobs (only read in streamable-http mode):
 //   CLARIFYPROMPT_HTTP_PORT  (default 3000)
@@ -20,7 +21,7 @@ const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PATH = "/mcp";
 
-export async function startTransport(createServer: () => McpServer): Promise<void> {
+export async function startTransport(createServer: () => McpServer, version: string): Promise<void> {
   const mode = (process.env.CLARIFYPROMPT_TRANSPORT ?? "stdio").toLowerCase();
 
   if (mode === "stdio") {
@@ -35,8 +36,14 @@ export async function startTransport(createServer: () => McpServer): Promise<voi
     return;
   }
 
+  if (mode === "a2a") {
+    const { startA2A } = await import("./a2a/server.js");
+    await startA2A(version);
+    return;
+  }
+
   throw new Error(
-    `Unknown CLARIFYPROMPT_TRANSPORT='${mode}'. Use 'stdio' (default) or 'streamable-http'.`,
+    `Unknown CLARIFYPROMPT_TRANSPORT='${mode}'. Use 'stdio' (default), 'streamable-http', or 'a2a'.`,
   );
 }
 
@@ -58,15 +65,31 @@ async function startStreamableHttp(createServer: () => McpServer): Promise<void>
     res.end(JSON.stringify(body));
   };
 
+  const MAX_BODY_BYTES = 4 * 1024 * 1024; // 4 MB cap — guards against memory exhaustion
   const readBody = async (req: IncomingMessage): Promise<unknown> => {
+    let total = 0;
     const chunks: Buffer[] = [];
-    for await (const chunk of req) chunks.push(chunk as Buffer);
+    for await (const chunk of req) {
+      total += (chunk as Buffer).length;
+      if (total > MAX_BODY_BYTES) {
+        req.destroy();
+        throw new Error(`Request body exceeds the ${MAX_BODY_BYTES}-byte limit.`);
+      }
+      chunks.push(chunk as Buffer);
+    }
     const raw = Buffer.concat(chunks).toString("utf8");
     return raw ? JSON.parse(raw) : undefined;
   };
 
   const httpServer = http.createServer(async (req, res) => {
-    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? host}`);
+    // Parse defensively — a malformed request line / Host header makes `new URL()`
+    // throw, and an uncaught synchronous throw in the listener exits the process.
+    let url: URL;
+    try {
+      url = new URL(req.url ?? "/", `http://${req.headers.host ?? host}`);
+    } catch {
+      return sendJson(res, 400, { error: "Bad request URL." });
+    }
 
     // Liveness probe — handy for containers / load balancers.
     if (req.method === "GET" && url.pathname === "/health") {
@@ -120,6 +143,13 @@ async function startStreamableHttp(createServer: () => McpServer): Promise<void>
         res.end();
       }
     }
+  });
+
+  // Malformed HTTP that fails Node's own request parser never reaches the
+  // listener — close the socket cleanly instead of letting Node throw.
+  httpServer.on("clientError", (_err, socket) => {
+    if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
+    else socket.destroy();
   });
 
   await new Promise<void>((resolve) => httpServer.listen(port, host, resolve));

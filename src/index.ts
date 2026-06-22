@@ -19,6 +19,8 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
+const VERSION = "1.12.0";
+
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
 const MODE_ENUM = z.enum(["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"]);
 
@@ -234,7 +236,7 @@ const COMPOSE_OUT = z.object({
 export function createServer(): McpServer {
   const server = new McpServer({
     name: "clarifyprompt",
-    version: "1.11.0",
+    version: VERSION,
   });
 
   // --- Tools ---
@@ -1469,4 +1471,4 @@ server.registerResource(
 // CLARIFYPROMPT_TRANSPORT=streamable-http to serve over HTTP instead — the
 // runway for Agent-to-Agent (A2A) and remote MCP hosts.
 
-await startTransport(createServer);
+await startTransport(createServer, VERSION);

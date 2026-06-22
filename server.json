@@ -6,32 +6,39 @@
     "url": "https://github.com/LumabyteCo/clarifyprompt-mcp",
     "source": "github"
   },
-  "version": "1.11.0",
+  "version": "1.12.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "clarifyprompt-mcp",
-      "version": "1.11.0",
+      "version": "1.12.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "description": "Transport (1.11.0): 'stdio' (default) or 'streamable-http' to serve over HTTP. The runway for A2A / remote MCP hosts.",
+          "description": "Transport: 'stdio' (default), 'streamable-http' to serve MCP over HTTP, or 'a2a' (1.12.0) to serve as an Agent-to-Agent peer (JSON-RPC + SSE, agent card at /.well-known/agent-card.json).",
           "isRequired": false,
           "format": "string",
           "isSecret": false,
           "name": "CLARIFYPROMPT_TRANSPORT"
         },
         {
-          "description": "HTTP port when CLARIFYPROMPT_TRANSPORT=streamable-http (default 3000).",
+          "description": "A2A only (1.12.0): public base URL advertised in the agent card (useful behind a proxy). Default http://<host>:<port>. The A2A endpoint is POST /a2a; HTTP port/host are shared with streamable-http.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "CLARIFYPROMPT_A2A_BASE_URL"
+        },
+        {
+          "description": "HTTP port when CLARIFYPROMPT_TRANSPORT=streamable-http or a2a (default 3000).",
           "isRequired": false,
           "format": "string",
           "isSecret": false,
           "name": "CLARIFYPROMPT_HTTP_PORT"
         },
         {
-          "description": "HTTP bind host when CLARIFYPROMPT_TRANSPORT=streamable-http (default 127.0.0.1 — localhost-only; set 0.0.0.0 to expose).",
+          "description": "HTTP bind host when CLARIFYPROMPT_TRANSPORT=streamable-http or a2a (default 127.0.0.1 — localhost-only; set 0.0.0.0 to expose).",
           "isRequired": false,
           "format": "string",
           "isSecret": false,

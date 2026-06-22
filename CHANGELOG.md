@@ -4,6 +4,53 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] — 2026-06-20
+
+Minor release — **step #7, the final step, of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: ClarifyPrompt now speaks **A2A (Agent-to-Agent)**. Set `CLARIFYPROMPT_TRANSPORT=a2a` and it comes up as a discoverable A2A peer that other agents can call to compile prompts — built on the same compose pipeline, with the cancellation/progress/clarification primitives from #4–#6 mapped onto A2A semantics. **stdio remains the default; existing behaviour is unchanged.** This completes the roadmap (7/7).
+
+### Added
+
+- **`a2a` transport** (`CLARIFYPROMPT_TRANSPORT=a2a`). ClarifyPrompt serves as an Agent-to-Agent peer over Node's built-in `http`:
+  - `GET /.well-known/agent-card.json` — the **agent card** (A2A discovery): identity, `capabilities.streaming=true`, and one skill, `compile-prompt-for-platform`.
+  - `POST /a2a` — A2A **JSON-RPC 2.0**: `message/send`, `message/stream` (SSE), `tasks/get`, `tasks/cancel`, `tasks/resubscribe`, `tasks/pushNotificationConfig/*`.
+  - `GET /health` — liveness.
+- **Compile over A2A** — an incoming message (plain-text prompt, or JSON `{ prompt, platform?, category?, post_critique?, auto_revise?, max_iterations?, skip_intent_resolution?, pre_clarify? }`, or a `DataPart`) runs through `compose_prompt`. The result is returned as a task **artifact** with two parts: the optimized prompt (text) and the full structured compose result (data).
+- **Streaming** — `message/stream` emits A2A `status-update` events as each pipeline stage runs (the 1.10.0 progress callback → A2A), then the `artifact-update`, over **SSE**.
+- **Cancellation** — `tasks/cancel` aborts the in-flight compose within milliseconds (the 1.10.0 `AbortSignal` → A2A) and reports a terminal `canceled` task state.
+- **Clarification round-trip** — clarify is **off by default** for one-shot A2A peers (a peer wants a compiled prompt, not a question it may not be able to answer). Opt in with `pre_clarify: 'auto' | 'always'`: an ambiguous prompt pauses the task in A2A's first-class **`input-required`** state, carrying the clarifying questions as readable text **and** a structured `DataPart`. A follow-up message on the same task resumes with clarify off and compiles (the 1.9.0 elicitation idea → A2A).
+- **`CLARIFYPROMPT_A2A_BASE_URL` env** — overrides the public base URL advertised in the agent card (useful behind a proxy). HTTP `PORT`/`HOST` are shared with `streamable-http`.
+- **Dependency:** `@a2a-js/sdk` `^0.3.13` (the official A2A JS SDK; Apache-2.0). Its only transitive dependency is `uuid`. The 5 platform-specific `sqlite-vec` optionals are untouched; `npm audit` reports **0 vulnerabilities**.
+
+### Fixed
+
+- **A2A no longer echoes an un-optimized prompt as if it were compiled.** Because compose defaults `preClarify` to `auto`, an ambiguous one-shot prompt would short-circuit at the clarify stage and return the *original* prompt as `finalPrompt` — which the executor would have published as a `completed` artifact, misleading the calling agent. The A2A path now defaults `preClarify` to `never` (always compile) and routes the opt-in clarify case to `input-required` instead. (Caught pre-ship by probing the live artifact.)
+
+### Hardened (pre-ship adversarial review)
+
+A multi-agent adversarial review of the A2A surface ran before shipping; 13 verified findings were fixed (each re-verified by a live test). The notable ones:
+
+- **A malformed HTTP request line no longer crashes the process.** `new URL(req.url, baseUrl)` sat outside the request handler's try/catch, so a raw-socket request like `GET // HTTP/1.1` threw `ERR_INVALID_URL` synchronously in the listener and **exited the whole server**. The URL is now parsed defensively (→ `400`), plus a `clientError` socket handler. **The same fix was applied to the streamable-http transport**, which shared the flaw (it also reads the attacker-controlled `Host` header).
+- **A client that disconnects mid-stream now aborts the in-flight compose.** Previously the detached `execute()` kept the LLM call (and its cost) running against a dead socket. `message/stream` now wires the response `close` event to `tasks/cancel`, so the task transitions to `canceled` within ~ms.
+- **Empty-prompt `message/send` returns a clean `failed` task** (was a dropped event → opaque `-32603`): the initial Task is now published before the guard, so the SDK's `ResultManager` has a task to attach the terminal status to.
+- **Request bodies are size-capped at 4 MB** (`413`/socket-close) on both HTTP transports — no more unbounded buffering before `JSON.parse`.
+- **The A2A task store is bounded** (LRU, 1000 entries) instead of the SDK's unbounded `InMemoryTaskStore`, so a long-running peer doesn't leak memory one task at a time.
+- **Malformed JSON → spec-correct `-32700`** (was `-32603`): the raw body string is handed to the SDK, which emits the proper Parse-error envelope.
+- **Clarification messages now render their suggested defaults** — `formatClarification` read `suggested_answer` (snake_case) but the runtime field is `suggestedAnswer` (camelCase), so the defaults were silently dropped.
+- **`message/stream` emits a terminal error frame** on a mid-stream error instead of a silently truncated `200`; abort classification relies on the `AbortSignal` (not a fragile message-text regex); and bad `CLARIFYPROMPT_HTTP_PORT` / `CLARIFYPROMPT_A2A_BASE_URL` fail fast at startup with a clear message.
+
+### Back-compat
+
+- **stdio is unchanged and remains the default.** No env var, no behaviour change; every existing config keeps working. The `a2a` transport is additive — a new branch in the transport factory behind `CLARIFYPROMPT_TRANSPORT=a2a`. The stdio wire test passes unmodified.
+
+### Tests
+
+- **New `npm run test:a2a`** (`tests/a2a-transport.mjs`) — spawns the server in `a2a` mode and exercises it as a peer. Deterministic (no model): agent-card discovery, `/health`, 404, **plus a hardening section** (empty-prompt → `failed` task, malformed JSON → `-32700`, oversized body → `413`, raw-socket `GET //` → process survives). Live (SKIP without a model): `message/send` compile, the `pre_clarify` → `input-required` → resume round-trip, `message/stream` SSE, and **client-disconnect → `canceled`**. Added to `test:all`.
+- **`test:http` gains H6** — a malformed request line over a raw socket must not crash the streamable-http server.
+
+### Verified
+
+`test:a2a` (all 8 sections, incl. live compile + clarify round-trip + SSE + disconnect-cancel on `gemma4:31b-cloud`) ✅ · `test:http` (incl. H6 malformed-line survival) ✅ · wire / stdio (byte-identical) ✅ · resources / elicit / cancel / thinking ✅ · integration (9/9 on re-run) ✅ · pre-ship adversarial review (22 findings → 13 fixed, each re-verified live) ✅ · lockfile diff = version + `@a2a-js/sdk` + `uuid` only, 0 vulns ✅ · `tsc`.
+
 ## [1.11.0] — 2026-06-14
 
 Minor release — **step #6 of the [MCP modernization roadmap](./docs/audits/mcp-completeness-2026-05.md)**: a pluggable **transport factory**. ClarifyPrompt can now serve over **Streamable HTTP** in addition to stdio — the runway toward Agent-to-Agent (A2A, #7) and remote MCP hosts. **stdio remains the default; existing behaviour is unchanged.**
