@@ -14,18 +14,52 @@ Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're
 
 ## How It Works
 
-```
+ClarifyPrompt does two things a plain prompt template can't. Every output below is a **real, unedited capture** from `optimize_prompt` run against this repo (see [Provenance](#provenance) at the end of this section).
+
+**1 — It knows each platform.** Same raw prompt, different target, completely different output:
+
+```text
 You write:    "a dragon flying over a castle at sunset"
 
-ClarifyPrompt returns (for Midjourney):
-  "a majestic dragon flying over a medieval castle at sunset
-   --ar 16:9 --v 6.1 --style raw --q 2 --chaos 30 --s 700"
+→ Midjourney  A colossal, majestic dragon with shimmering scales soaring over a towering
+              medieval stone castle, dramatic sunset sky with vibrant orange and deep purple
+              hues, cinematic fantasy concept art, volumetric lighting, highly detailed
+              --ar 16:9 --v 6.1 --s 250 --q 2
 
-ClarifyPrompt returns (for DALL-E):
-  "A majestic dragon flying over a castle at sunset. Size: 1024x1024"
+→ DALL-E      A majestic dragon with glowing crimson scales soars over a towering medieval
+              stone castle, silhouetted against a vibrant orange and purple sunset sky.
+              Rendered in a high-fantasy digital art style with dramatic, warm lighting and
+              highly detailed textures, wide aspect ratio.
 ```
 
-Same prompt, different platform, completely different output. ClarifyPrompt knows what each platform expects — and in 1.2.0, it also knows *what you're working on*.
+Midjourney gets `--ar/--v/--s/--q` flags; DALL-E gets flag-free natural-language prose. Same intent, each platform's native dialect.
+
+**2 — It knows what you're working on.** This is the part a template can't fake. Drop a vague one-liner while editing `src/transport.ts` *in this very repo*, and the engine grounds it in your real workspace — `package.json`, git state, the active file — and resolves intent **before** it shapes the output:
+
+```text
+You write:    "add a configurable request timeout to the http transport"
+              · active file: src/transport.ts   · resolved intent: production-code
+              · grounded in: active-file · workspace-meta · git-state · environment ·
+                target-model · platform-hints
+
+→ Cursor      Implement a configurable request timeout for the HTTP transport in
+              `src/transport.ts`.
+              Requirements:
+              1. Add a new environment variable `CLARIFYPROMPT_HTTP_TIMEOUT` … (default 30000 ms)
+              2. Apply this timeout to all incoming requests in the streamable-http transport
+              …
+              5. Preserve existing behavior for stdio and a2a transports
+              …
+              The implementation should be added to the streamable-http section of
+              `startTransport()`.
+              (excerpted — the full rewrite has 7 numbered requirement groups)
+```
+
+Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming convention, the `startTransport()` entry point, or the stdio/a2a transports it must preserve — the engine read those from the active file and `package.json` and folded them in. That's the difference between *rephrasing a prompt* and *compiling it against context*.
+
+**3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
+
+> <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22. ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
 
 ## What's new in 1.12.0
 
