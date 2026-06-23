@@ -250,3 +250,85 @@ jobs:
             exit 0
           fi
           npm publish --provenance --access public
+
+  # ---------------------------------------------------------------------------
+  # Publish the container image to GitHub Container Registry (ghcr.io).
+  #
+  # SECURITY: no stored secret. ghcr is GitHub, so auth uses the built-in,
+  # ephemeral, auto-masked GITHUB_TOKEN (scoped to this repo, dies with the run)
+  # — there is no PAT to create or rotate. The image is built from explicit
+  # COPYs (never `COPY . .`) behind a hardened .dockerignore, so no .env / keys
+  # can enter any layer; the `docker` + `secrets-audit` jobs gate this one.
+  # Ships keyless (Sigstore) provenance + an SBOM attestation for supply-chain
+  # trust. Runs on tag pushes and manual dispatch (so you control the first one).
+  #
+  # NOTE: the first push creates a PRIVATE package. To let anyone `docker pull`,
+  # make it public once: GitHub → repo → Packages → clarifyprompt-mcp →
+  # Package settings → Change visibility → Public.
+  # ---------------------------------------------------------------------------
+  docker-publish:
+    name: ghcr publish (tag / manual)
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: [build, secrets-audit, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write       # push to ghcr.io (via GITHUB_TOKEN)
+      id-token: write       # keyless Sigstore signing of attestations
+      attestations: write   # provenance + SBOM
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # drop the git token; this job never pushes to git
+
+      - name: Verify tag matches package.json version (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          [ "$TAG" = "$PKG" ] || { echo "::error::Tag $GITHUB_REF_NAME != package.json ($PKG)"; exit 1; }
+          echo "Tag matches package.json ✓ ($PKG)"
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # Third-party actions are SHA-pinned (immutable) — a moved tag can't inject
+      # code into this attestations:write / id-token:write job. Comments track the version.
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130   # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f   # v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9   # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # ephemeral, auto-masked; NOT a PAT
+
+      - name: Image metadata (tags + OCI labels)
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051   # v5
+        with:
+          images: ghcr.io/${{ github.repository }}   # metadata-action lowercases the name
+          tags: |
+            type=raw,value=${{ steps.ver.outputs.version }}
+            # `latest` moves on a real release tag OR a deliberate manual dispatch
+            # (the only two triggers this job runs on — both maintainer-controlled).
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' }}
+          labels: |
+            org.opencontainers.image.title=clarifyprompt-mcp
+            org.opencontainers.image.description=Context-aware MCP prompt compiler (stdio | streamable-http | a2a)
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - name: Build + push (multi-arch, signed provenance + SBOM)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8   # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true

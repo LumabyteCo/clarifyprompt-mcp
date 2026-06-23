@@ -1,6 +1,7 @@
 # ClarifyPrompt MCP
 
 [![npm version](https://img.shields.io/npm/v/clarifyprompt-mcp.svg)](https://www.npmjs.com/package/clarifyprompt-mcp)
+[![ghcr.io](https://img.shields.io/badge/ghcr.io-clarifyprompt--mcp-2496ED?logo=docker&logoColor=white)](https://github.com/LumabyteCo/clarifyprompt-mcp/pkgs/container/clarifyprompt-mcp)
 [![evals](https://github.com/LumabyteCo/clarifyprompt-mcp/actions/workflows/evals.yml/badge.svg?branch=main)](https://github.com/LumabyteCo/clarifyprompt-mcp/actions/workflows/evals.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
@@ -510,6 +511,34 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 - **Apache-2.0, forever.** Open-source core, no relicensing.
 
 ## Quick Start
+
+### With Docker
+
+Pull the published image from GitHub Container Registry (multi-arch: `amd64` + `arm64`, with signed provenance + SBOM):
+
+```bash
+docker pull ghcr.io/lumabyteco/clarifyprompt-mcp:latest
+```
+
+All config is passed at **run time** — nothing is baked into the image, so the image is safe to share and contains no secrets:
+
+```bash
+# stdio (for MCP hosts that launch the container)
+docker run --rm -i \
+  -e LLM_API_URL=http://host.docker.internal:11434/v1 \
+  -e LLM_MODEL=qwen2.5:7b \
+  -e CLARIFYPROMPT_HOME=/data \
+  -v clarifyprompt-data:/data \
+  ghcr.io/lumabyteco/clarifyprompt-mcp:latest
+
+# or serve over HTTP / A2A
+docker run --rm -p 3000:3000 \
+  -e CLARIFYPROMPT_TRANSPORT=a2a -e CLARIFYPROMPT_HTTP_HOST=0.0.0.0 \
+  -e LLM_API_URL=http://host.docker.internal:11434/v1 -e LLM_MODEL=qwen2.5:7b \
+  ghcr.io/lumabyteco/clarifyprompt-mcp:latest
+```
+
+> Mount a volume at `CLARIFYPROMPT_HOME` to persist memory, traces, and packs across runs. Pass `LLM_API_KEY` / `EMBED_API_KEY` as `-e` env vars (or `--env-file`) at run time — never bake them into an image.
 
 ### With Claude Desktop
 

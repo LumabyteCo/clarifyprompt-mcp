@@ -1,8 +1,34 @@
+# Build artifacts + deps (rebuilt inside the image)
 node_modules/
 dist/
-.env
 *.tsbuildinfo
-.DS_Store
 *.tgz
+
+# Secrets + local config — must NEVER enter the build context or any image layer.
+# (The Dockerfile uses explicit COPYs and never `COPY . .`, so these can't be
+# baked even without this file; this is defense-in-depth + a smaller context.)
+.env
+.env.*
 .npmrc
+*.pem
+*.key
+
+# VCS + CI + editor
 .git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+
+# Maintainer-local / not needed at runtime (keeps marketing assets, traces,
+# screenshots, eval reports, and tests out of the context the daemon receives).
+docs/
+evals/
+tests/
+coverage/
+*.log
+*.jsonl
+matrix.html
+
+# NOTE: packs/ and packs/**/*.md are intentionally NOT ignored — the runtime
+# image ships the bundled knowledge packs.
