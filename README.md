@@ -342,7 +342,7 @@ load_knowledge_pack source="https://raw.githubusercontent.com/LumabyteCo/clarify
 `evals/matrix.mjs` runs `npm run eval` sequentially against N models and stitches the results into one side-by-side HTML (`evals/matrix.html` by default). Lights up the model-class-gated fixtures (`shape-small-local-model` / `shape-mid-tier-model` / `shape-reasoning-model`) that single-model runs skip, and exposes deltas like "qwen-7b fails analyzer-creative-media but gpt-4o-mini passes it" in a glance.
 
 ```bash
-npm run matrix -- --models llama3.2:3b,qwen2.5-coder:7b-instruct-q4_K_M,qwen2.5:14b-instruct-q4_K_M
+npm run matrix -- --models qwen2.5-coder:7b-instruct-q4_K_M,gpt-oss:20b-cloud,glm-5.2:cloud
 ```
 
 Outputs a dark-themed table — rows = fixtures, columns = models, cells = pass / fail / skip / errored with tooltips showing which checks failed.
@@ -1348,6 +1348,19 @@ The analyzer runs on the same `LLM_MODEL` that does the rewrite. In the integrat
 - Llama 3.2 3B → occasionally over-commits on ambiguous prompts (e.g. tagged `"make it better"` as `brand-voice/high` when `unknown/low` is the right answer). Larger models on the same prompt correctly returned `unknown/low`.
 
 **Guidance:** prefer a 7B+ local model (or any frontier hosted model) as `LLM_MODEL`. Latency-sensitive callers can set `skip_intent_resolution: true` to skip the analyzer; the engine falls back to user-hint category and default mode, losing intent-driven mode + overlay but keeping grounding + shape. A systematic **eval harness** with a public fixture set lands in **1.3 (Day 3)** so you can score the analyzer against your own fixtures and detect regressions across model or classifier changes.
+
+### Recommended models
+
+Score yourself with the bundled matrix runner: `npm run matrix -- --models <a>,<b>,…`. A recent run (2026-06, the 30-fixture suite, pass threshold `0.85`, score = mean fixture score):
+
+| Model | Where | Suite score | Notes |
+|---|---|---|---|
+| `glm-5.2:cloud` | cloud · reasoning | **99%** | Top overall. Thinking-budget handled automatically (1.12.1). |
+| `gpt-oss:20b-cloud` | cloud · reasoning | **98%** | OpenAI open-weights; `reasoning_effort` applied automatically (1.12.1). |
+| `qwen2.5-coder:7b` | **local** | **97%** | A small local model handles nearly the whole suite — the validated local-first default. |
+| `gemma4:31b-cloud` | cloud | 92% | Solid all-rounder. |
+
+The handful of sub-threshold fixtures in any run are the subjective `analyzer-*` intent/mode classification and grounding-phrasing cases (content-variance across models), **not** pipeline errors — the deterministic pipeline fixtures (clarify, ground, critique, compose, memory, packs) pass on every model. **The default stays local-first** (`qwen2.5:7b`); reach for a frontier/reasoning model when you want the last few points of intent accuracy. Reasoning models (`gpt-oss`, `glm`, `*-thinking`, …) are auto-tuned (a `max_tokens` floor + `reasoning_effort`) so they don't return empty content — see [`LLM_REASONING_EFFORT`](#environment-variables).
 
 ### Capability table is not exhaustive
 Entries today: Claude, GPT-4/o-series, Gemini, Grok, DeepSeek (chat + reasoning), Qwen, Llama, Mistral/Codestral, Mixtral, Gemma, Phi, Cohere Command, Aya, Kimi, GLM, Minimax, GPT-OSS, Yi, Nemotron. Unknown models fall back to `capabilities: {}` and `standard` prompt-shape — still functional, just without model-aware sizing. Adding entries is a data-only edit to [src/engine/context/targetModelSignals.ts](src/engine/context/targetModelSignals.ts).
