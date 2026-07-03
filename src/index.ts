@@ -19,7 +19,7 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
-const VERSION = "1.12.1";
+const VERSION = "1.13.0";
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
 const MODE_ENUM = z.enum(["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"]);
@@ -1110,7 +1110,7 @@ server.registerTool(
   "critique_prompt",
   {
     title: "Critique a prompt (LLM-as-judge)",
-    description: "LLM-as-judge for a prompt. Scores it 0–10 across 5 default dimensions (clarity, specificity, intent_alignment, format_fitness, length_appropriateness) — or your own custom criteria — and returns per-dimension rationale + concrete suggestions, an overall score, and a verdict (`accept` / `revise` / `reject`). When the score is below `revise_threshold` (default 7.0), the tool also returns an `improvedPrompt` you can use as a drop-in replacement. Use it pre-flight (is this prompt good enough for the expensive model?), postmortem (was the prompt the cause of a bad output?), or to A/B-pick the best of N optimization variants. Pass `original_prompt` when critiquing an optimized version so the judge can verify intent was preserved.",
+    description: "LLM-as-judge for a prompt. Scores it 0–10 across 6 default dimensions (clarity, specificity, intent_alignment, format_fitness, length_appropriateness, plain_language) — or your own custom criteria — and returns per-dimension rationale + concrete suggestions, an overall score, and a verdict (`accept` / `revise` / `reject`). When the score is below `revise_threshold` (default 7.0), the tool also returns an `improvedPrompt` you can use as a drop-in replacement. Use it pre-flight (is this prompt good enough for the expensive model?), postmortem (was the prompt the cause of a bad output?), or to A/B-pick the best of N optimization variants. Pass `original_prompt` when critiquing an optimized version so the judge can verify intent was preserved.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     outputSchema: CRITIQUE_OUT,
     inputSchema: {
@@ -1125,7 +1125,7 @@ server.registerTool(
       criteria: z.array(z.object({
         name: z.string().describe("Short snake_case identifier."),
         description: z.string().describe("One sentence explaining what this dimension measures."),
-      })).optional().describe("Override the default 5 criteria. Up to ~8 dimensions; more bloats the judge call."),
+      })).optional().describe("Override the default 6 criteria. Up to ~8 dimensions; more bloats the judge call."),
       revise_threshold: z.number().min(0).max(10).optional().default(7.0).describe("Overall score below this triggers the rewrite pass. Default 7.0."),
       skip_rewrite: z.boolean().optional().default(false).describe("Skip the rewrite pass even when below threshold (faster; just returns scores)."),
     },
@@ -1173,7 +1173,7 @@ server.registerTool(
     critique_criteria: z.array(z.object({
       name: z.string(),
       description: z.string(),
-    })).optional().describe("Override the default 5 critique criteria."),
+    })).optional().describe("Override the default 6 critique criteria."),
     auto_revise: z.boolean().optional().default(false)
       .describe("When true AND post_critique is true AND verdict !== 'accept' AND there's an improvedPrompt: `final_prompt` becomes the rewritten version instead of the raw optimization."),
     max_iterations: z.number().int().min(1).max(5).optional().default(1)

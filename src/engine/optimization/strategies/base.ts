@@ -16,6 +16,18 @@ import {
   type CurationResult,
 } from '../curator.js';
 
+// One-line stand-ins for getModeInstructions() under compact shaping — small
+// models still get the mode's core rule after the long block is trimmed away.
+const COMPACT_MODE_LINE: Record<Mode, string> = {
+  concise: 'Keep the rewritten prompt to 1-3 short sentences.',
+  detailed: 'Include full context and concrete details; keep the vocabulary plain.',
+  structured: 'Organize the rewritten prompt into clearly labeled sections.',
+  'step-by-step': 'Write the rewritten prompt as numbered, sequential steps.',
+  'bullet-points': 'Write the rewritten prompt as a scannable bulleted list.',
+  technical: 'Use precise technical terminology, specifications, and constraints.',
+  simple: 'Use plain, everyday words; short sentences; no jargon.',
+};
+
 export abstract class BaseStrategy implements OptimizationStrategy {
   abstract readonly name: string;
   abstract readonly category: Category;
@@ -137,15 +149,22 @@ Intent: analysis — comparing, evaluating, or summarizing a corpus.
 
   /**
    * Pass B: shape the system prompt to the downstream LLM's capabilities.
-   * Compact budgets drop the intent overlay and the mode's long description
-   * because small models choke on multi-KB system prompts.
+   * Compact budgets keep only the base prompt plus a one-line mode rule —
+   * small models choke on multi-KB system prompts. (The intent overlay is
+   * appended after shaping by the callers, so it always survives.)
    */
-  protected applyShape(systemPrompt: string, shape: PromptShape): string {
+  protected applyShape(systemPrompt: string, shape: PromptShape, mode?: Mode): string {
     if (shape.systemPromptBudget === 'compact') {
-      // Keep only the first two sections (base + category principles);
-      // drop platform guidance and mode rules. The actual task gets across.
+      // slice(0, 3) is anchored to getBaseSystemPrompt()'s exact 3-paragraph
+      // structure (intro, Core Principles, Important Rules) — everything after
+      // it (category header + principles, platform guidance, the mode's long
+      // block) is dropped. The mode itself must survive as a single line —
+      // small models are exactly the ones that need an explicit
+      // mode:'simple' the most.
       const parts = systemPrompt.split('\n\n');
-      return parts.slice(0, 3).join('\n\n');
+      const trimmed = parts.slice(0, 3).join('\n\n');
+      const modeLine = mode ? COMPACT_MODE_LINE[mode] : undefined;
+      return modeLine ? `${trimmed}\n${modeLine}` : trimmed;
     }
     return systemPrompt;
   }
@@ -159,6 +178,7 @@ Core Principles:
 3. BE SPECIFIC: Replace vague terms with concrete details
 4. STRUCTURE WELL: Organize complex requests logically
 5. OPTIMIZE FOR AI: Format prompts for optimal AI comprehension
+6. USE COMMON WORDS: Prefer plain, everyday vocabulary — never swap in a rarer word where a common one carries the same meaning (say "use", not "utilize"). Detail means more information, not fancier words
 
 Important Rules:
 - Output ONLY the optimized prompt, no explanations or metadata
@@ -171,7 +191,7 @@ Important Rules:
     const raw = this.buildSystemPrompt(context, platformInstructions);
     const intent = context.bundle?.analysis?.intent;
     const shape = getPromptShape(context.bundle, intent);
-    const shaped = this.applyShape(raw, shape);
+    const shaped = this.applyShape(raw, shape, context.mode);
     const overlay = this.getIntentOverlay(intent);
     // Intent overlay lands AFTER shape-based trimming so small-model
     // compact-budget calls still carry the intent-specific directive.
@@ -192,7 +212,7 @@ Important Rules:
     // overlay is appended — the overlay is the most directive signal and must
     // never be trimmed, regardless of shape budget.
     const rawSystem = this.buildSystemPrompt(context, platformInstructions);
-    const shaped = this.applyShape(rawSystem, shape);
+    const shaped = this.applyShape(rawSystem, shape, context.mode);
     const overlay = this.getIntentOverlay(intent);
     const systemPrompt = overlay ? `${shaped}\n${overlay}` : shaped;
 

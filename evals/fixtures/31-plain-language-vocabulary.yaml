@@ -1,0 +1,11 @@
+name: plain-language-vocabulary
+description: 'Rewrites must keep everyday vocabulary — an ordinary request must not come back dressed in formal words (utilize, facilitate, endeavor, …). Guards the USE COMMON WORDS principle in the base system prompt.'
+tags: [compose, vocabulary, regression]
+input:
+  tool: compose_prompt
+  prompt: 'Write an email to my landlord asking them to fix the broken heater in apartment 4B before the weekend. It has been broken since Monday and I work from home.'
+  pre_clarify: never
+  post_critique: false
+expected:
+  final_prompt_must_not_contain: ['utilize', 'facilitate', 'endeavor', 'commence', 'ascertain', 'expeditious', 'furthermore', 'leverage']
+  no_error: true

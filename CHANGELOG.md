@@ -4,6 +4,24 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] — 2026-07-03
+
+Minor — **plain-language rewrites.** The engine now prefers common, everyday words over formal synonyms across the whole pipeline: a new core principle in the optimizer, a new `plain_language` critique dimension, and a fix that stops small local models from silently losing their `mode` under compact shaping.
+
+### Changed
+
+- **Rewrites now prefer common, everyday words.** A new core principle in the shared optimization system prompt ("USE COMMON WORDS") stops the engine from dressing prompts up in needlessly formal vocabulary — specificity should come from concrete details, not rarer synonyms. LLMs handle common, everyday wording more reliably than formal synonyms of the same meaning, and small local models — ClarifyPrompt's default targets — benefit the most.
+- **`critique_prompt` gained a 6th default dimension: `plain_language`** — penalizes needlessly formal or rare vocabulary where a simpler word carries the same meaning. Because the rewrite pass applies every suggestion from dimensions scoring below 7, `auto_revise` loops now correct register drift for free. Custom `criteria` overrides are unaffected.
+- The critique rewrite step is explicitly told not to raise the register of the user's language.
+
+### Fixed
+
+- **An explicit `mode` is no longer silently dropped for small local models.** Compact system-prompt shaping used to trim the mode instructions entirely, so e.g. `mode: "simple"` had no effect on 3B-class models. Each mode now survives compact shaping as a one-line rule.
+
+### Evals
+
+- New fixtures: `31-plain-language-vocabulary` (compose output must not contain formal-register words like "utilize"/"facilitate") and `32-shape-compact-keeps-mode` (the mode line survives compact shaping on small models).
+
 ## [1.12.1] — 2026-06-22
 
 Patch — **the real fix for issue [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) (gpt-oss empty content).** The 1.7.1 mitigation surfaced the failure loudly and degraded gracefully; this release makes gpt-oss actually produce optimized prompts.

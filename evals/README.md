@@ -115,7 +115,7 @@ The aggregate "average score" line in the summary is the unweighted mean of fixt
 
 ## CI integration (opt-in)
 
-The harness runs in GitHub Actions as a release gate when an `OPENAI_API_KEY` repo secret is configured. It uses `gpt-4o-mini` (~$0.005 per CI run on the current 17 active fixtures). To enable on your fork:
+The harness runs in GitHub Actions as a release gate when an `OPENAI_API_KEY` repo secret is configured. It uses `gpt-4o-mini` (roughly a cent per CI run on the current 27 active fixtures). To enable on your fork:
 
 1. Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 2. Name: `OPENAI_API_KEY` · Value: an OpenAI API key with access to `gpt-4o-mini`

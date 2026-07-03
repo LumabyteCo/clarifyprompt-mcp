@@ -11,9 +11,9 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.12.1:** The real fix for [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — **thinking-channel models (gpt-oss, glm, …) now reliably produce optimized prompts** instead of occasionally returning empty content. Root cause (re-investigated from scratch): they spend their token budget on the *thinking* channel first and never reach the final answer. The fix is a `max_tokens` floor for reasoning models (universal) plus `reasoning_effort: "low"` (for families that honor it, like gpt-oss; tune with `LLM_REASONING_EFFORT`) — not the previously-assumed `/api/chat` switch, which turned out to be a dead end. Verified on `gpt-oss:20b-cloud` and `glm-5.2:cloud` (both 0% empty). See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.13.0:** **Plain-language rewrites.** Optimized prompts now stick to common, everyday words instead of drifting into formal vocabulary ("use", never "utilize") — specificity comes from concrete details, not fancier synonyms. `critique_prompt` gained a 6th default dimension, **`plain_language`**, so `auto_revise` loops correct register drift automatically. Also fixed: an explicit `mode` (e.g. `simple`) is no longer silently dropped for small local models under compact system-prompt shaping. See [CHANGELOG.md](./CHANGELOG.md).
 >
-> **New in 1.12.0:** Roadmap step #7 — ClarifyPrompt now speaks **A2A (Agent-to-Agent)**. Set `CLARIFYPROMPT_TRANSPORT=a2a` and it serves as a discoverable A2A peer: an **agent card** at `/.well-known/agent-card.json`, a `compile-prompt-for-platform` skill over JSON-RPC (`message/send`) with **live SSE streaming** (`message/stream`), and first-class **task cancellation** + **`input-required` clarification** round-trips — all powered by the same compose pipeline. Other agents can now call ClarifyPrompt to compile prompts. **stdio stays the default**; nothing about existing setups changes.
+> **New in 1.12.1:** The real fix for [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — **thinking-channel models (gpt-oss, glm, …) now reliably produce optimized prompts** instead of occasionally returning empty content. Root cause (re-investigated from scratch): they spend their token budget on the *thinking* channel first and never reach the final answer. The fix is a `max_tokens` floor for reasoning models (universal) plus `reasoning_effort: "low"` (for families that honor it, like gpt-oss; tune with `LLM_REASONING_EFFORT`) — not the previously-assumed `/api/chat` switch, which turned out to be a dead end. Verified on `gpt-oss:20b-cloud` and `glm-5.2:cloud` (both 0% empty). See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -63,6 +63,15 @@ Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming conv
 **3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
 
 > <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22. ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+
+## What's new in 1.13.0
+
+**Plain-language rewrites, end to end.** LLMs handle common, everyday wording more reliably than formal synonyms of the same meaning — and small local models, ClarifyPrompt's default targets, benefit the most. This release bakes that into every stage that shapes output wording:
+
+- **The optimizer prefers common words.** A new core principle in the shared system prompt ("USE COMMON WORDS") applies to all 7 category strategies and both `optimize_prompt` and `ground_prompt`: never swap in a rarer word where a common one carries the same meaning. Detail means more information, not fancier words — specificity, structure, and constraints are untouched.
+- **`critique_prompt` gained a 6th default dimension: `plain_language`.** It penalizes needlessly formal or rare vocabulary where a simpler word would do. Because the rewrite pass applies every suggestion from dimensions scoring below 7, `auto_revise` loops now correct register drift for free. Custom `criteria` overrides are unaffected.
+- **Fixed: explicit `mode` no longer silently dropped for small local models.** Compact system-prompt shaping used to trim the mode instructions entirely — so `mode: "simple"` had no effect on 3B-class models. Every mode now survives compact shaping as a one-line rule.
+- **Two new eval fixtures** guard the behavior: `31-plain-language-vocabulary` (optimized output must not contain formal-register words) and `32-shape-compact-keeps-mode` (the mode line reaches small models).
 
 ## What's new in 1.12.1
 
@@ -496,7 +505,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.12.1)
+## What's in the box (cumulative through 1.13.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -822,7 +831,7 @@ Returns the same shape as `optimize_prompt` plus `usedSources` (which sources ac
 
 ### `critique_prompt` *(new in 1.4.0)*
 
-LLM-as-judge. Scores a candidate prompt 0–10 across 5 default dimensions and (when below threshold) returns an improved rewrite.
+LLM-as-judge. Scores a candidate prompt 0–10 across 6 default dimensions and (when below threshold) returns an improved rewrite.
 
 ```json
 {
@@ -843,7 +852,8 @@ LLM-as-judge. Scores a candidate prompt 0–10 across 5 default dimensions and (
     { "name": "specificity", "score": 0, "rationale": "...", "suggestions": [...] },
     { "name": "intent_alignment", "score": 3, "rationale": "...", "suggestions": [...] },
     { "name": "format_fitness", "score": 2, "rationale": "...", "suggestions": [...] },
-    { "name": "length_appropriateness", "score": 1, "rationale": "...", "suggestions": [...] }
+    { "name": "length_appropriateness", "score": 1, "rationale": "...", "suggestions": [...] },
+    { "name": "plain_language", "score": 4, "rationale": "...", "suggestions": [...] }
   ],
   "improvedPrompt": "Improve the README's getting-started section: shorten...",
   "improvements": ["Specified the artifact (README's getting-started section)", "Added concrete success criteria", "..."],
@@ -857,7 +867,7 @@ LLM-as-judge. Scores a candidate prompt 0–10 across 5 default dimensions and (
 |---|---|---|
 | `prompt` | — | Candidate prompt to score. |
 | `original_prompt` | — | When critiquing an optimized version, the user's original ask. Used for the `intent_alignment` dimension. |
-| `criteria` | 5 defaults | Custom dimensions: `[{ name, description }, ...]`. Up to ~8 dimensions. |
+| `criteria` | 6 defaults | Custom dimensions: `[{ name, description }, ...]`. Up to ~8 dimensions. |
 | `revise_threshold` | `7.0` | Overall score below this triggers the rewrite pass. |
 | `skip_rewrite` | `false` | Skip the rewrite pass entirely (faster; just returns scores). |
 

@@ -1,0 +1,12 @@
+name: shape-compact-keeps-mode
+description: 'Compact shaping used to drop the mode block entirely, silently ignoring an explicit mode for small local models. The mode must survive as a one-line rule in the rendered system prompt.'
+tags: [shape, mode, target-model]
+skip_unless_model_matches: '(llama3\.2:3b|phi-3:mini|gemma:2b)'
+input:
+  prompt: 'parse iso 8601 dates in typescript'
+  category: code
+  mode: simple
+expected:
+  shape_budget: compact
+  system_prompt_must_contain: ['plain, everyday words']
+  no_error: true

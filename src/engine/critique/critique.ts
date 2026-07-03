@@ -2,8 +2,8 @@
  * critique_prompt — LLM-as-judge for a prompt.
  *
  * Scores a candidate prompt across N dimensions (clarity, specificity,
- * intent-alignment, format-fitness, length-appropriateness by default;
- * caller-customizable). Returns per-dimension 0–10 scores + rationales,
+ * intent-alignment, format-fitness, length-appropriateness, plain-language
+ * by default; caller-customizable). Returns per-dimension 0–10 scores + rationales,
  * an overall score, a verdict (`accept`, `revise`, `reject`), and — when
  * the score is below `revise_threshold` — an improved rewrite the caller
  * can use as a drop-in replacement.
@@ -43,7 +43,7 @@ export interface CritiqueInputs {
   fileLanguage?: string;
   fileExcerpt?: string;
   userLocale?: string;
-  /** Override the default 5 criteria. Leave undefined for the standard set. */
+  /** Override the default 6 criteria. Leave undefined for the standard set. */
   criteria?: CritiqueCriterion[];
   /**
    * Overall score below this triggers the "improved" rewrite pass.
@@ -94,6 +94,7 @@ const DEFAULT_CRITERIA: CritiqueCriterion[] = [
   { name: 'intent_alignment',       description: 'Does the prompt match what the user actually wants to achieve? (If an originalPrompt is provided, judge whether the rewrite preserved its intent.)' },
   { name: 'format_fitness',         description: 'Is the requested output format appropriate for the platform/category and downstream use?' },
   { name: 'length_appropriateness', description: 'Is the prompt the right length — neither vague-and-too-short nor padded-and-too-long?' },
+  { name: 'plain_language',         description: 'Does the prompt use common, everyday words? Penalize needlessly formal or rare vocabulary where a simpler word carries the same meaning.' },
 ];
 
 const DEFAULT_REVISE_THRESHOLD = 7.0;
@@ -223,6 +224,7 @@ Rules:
 - Preserve the user's underlying intent. Do not change WHAT they're asking for.
 - Apply EVERY suggestion from dimensions whose score is below 7.
 - Keep length appropriate to the category — don't pad.
+- Prefer common, everyday words; do not raise the register of the user's language.
 - "improvements" is a short list of human-readable edits actually made.
 - No prose, no markdown fences, JUST the JSON object.`;
 
