@@ -63,7 +63,9 @@ Every key is optional. The harness only scores what you declare.
 | `intent_confidence`, `intent_confidence_min` | `low` / `medium` / `high` — the `_min` variant accepts higher confidence too |
 | `shape_max_tokens_min`, `shape_max_tokens_max` | Bounds on `result.shape.maxTokens` |
 | `must_contain`, `must_not_contain` | Case-insensitive substring matches against `optimizedPrompt` |
+| `final_prompt_must_contain`, `final_prompt_must_not_contain` | Same, against compose's `finalPrompt` |
 | `min_output_length`, `max_output_length` | Length bounds on `optimizedPrompt` |
+| `max_reading_grade` | Flesch–Kincaid grade ceiling on `optimizedPrompt` (compose: `finalPrompt`). English-calibrated register-drift tripwire — don't use on non-English fixtures |
 | `grounding_sources_must_include` / `_must_exclude` | Each entry matches an exact source ID or a prefix (e.g. `memory:` matches `memory:fact:42`) |
 | `system_prompt_must_contain` | Substrings in the rendered system prompt (read from the trace) |
 | `no_error: true` | `result.error` must be absent |
@@ -95,8 +97,8 @@ Each fixture earns a score in `[0, 1]` — the weighted-pass-rate of its declare
 
 | Check class | Weight |
 |---|---|
-| `category`, `must_contain`, `no_error` | **2.0** |
-| `intent`, `must_not_contain`, `grounding_sources_*`, `system_prompt_must_contain` | **1.5** |
+| `category`, `must_contain`, `final_prompt_must_contain`, `no_error` | **2.0** |
+| `intent`, `must_not_contain`, `final_prompt_must_not_contain`, `max_reading_grade`, `grounding_sources_*`, `system_prompt_must_contain` | **1.5** |
 | `platform`, `intent_confidence*`, `mode`, `mode_source`, `recommended_mode`, `shape_budget` | **1.0** |
 | `shape_max_tokens_*`, `min/max_output_length` | **0.5** |
 

@@ -8,4 +8,5 @@ input:
   post_critique: false
 expected:
   final_prompt_must_not_contain: ['utilize', 'facilitate', 'endeavor', 'commence', 'ascertain', 'expeditious', 'furthermore', 'leverage']
+  max_reading_grade: 12
   no_error: true

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ClarifyPrompt</title>
+<style>
+  /* Host-injected CSS variables drive theming; every var() carries a fallback
+     so the panel renders standalone (e.g. in a bare iframe during testing). */
+  :root {
+    --cp-bg: var(--color-background-primary, #ffffff);
+    --cp-bg-2: var(--color-background-secondary, #f6f7f9);
+    --cp-fg: var(--color-text-primary, #1a1d21);
+    --cp-fg-2: var(--color-text-secondary, #5c6470);
+    --cp-border: var(--color-border-primary, #e2e5e9);
+    --cp-accent: var(--color-text-accent, #4666d5);
+    --cp-ok: var(--color-text-success, #1a8a4a);
+    --cp-warn: var(--color-text-warning, #b7791f);
+    --cp-bad: var(--color-text-danger, #c53030);
+    --cp-radius: var(--border-radius-lg, 10px);
+    --cp-font: var(--font-sans, system-ui, -apple-system, sans-serif);
+    --cp-mono: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  }
+  [data-theme="dark"] {
+    --cp-bg: var(--color-background-primary, #1e2126);
+    --cp-bg-2: var(--color-background-secondary, #262a30);
+    --cp-fg: var(--color-text-primary, #e8eaed);
+    --cp-fg-2: var(--color-text-secondary, #9aa3ad);
+    --cp-border: var(--color-border-primary, #3a3f46);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 12px; background: var(--cp-bg); color: var(--cp-fg);
+    font-family: var(--cp-font); font-size: 13px; line-height: 1.5;
+  }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    display: inline-block; padding: 1px 8px; border-radius: 999px;
+    border: 1px solid var(--cp-border); background: var(--cp-bg-2);
+    font-size: 11px; color: var(--cp-fg-2); white-space: nowrap;
+  }
+  .badge.accept { color: var(--cp-ok); border-color: currentColor; }
+  .badge.revise { color: var(--cp-warn); border-color: currentColor; }
+  .badge.reject { color: var(--cp-bad); border-color: currentColor; }
+  h2 { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
+  .prompt-box {
+    background: var(--cp-bg-2); border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius); padding: 10px 12px;
+    font-family: var(--cp-mono); font-size: 12px; white-space: pre-wrap;
+    word-break: break-word; max-height: 320px; overflow-y: auto;
+  }
+  .diff ins { background: color-mix(in srgb, var(--cp-ok) 18%, transparent); text-decoration: none; border-radius: 2px; }
+  .diff del { background: color-mix(in srgb, var(--cp-bad) 14%, transparent); border-radius: 2px; }
+  .dims { display: grid; grid-template-columns: max-content 1fr max-content; gap: 4px 10px; align-items: center; }
+  .dims .bar { height: 6px; border-radius: 3px; background: var(--cp-bg-2); border: 1px solid var(--cp-border); overflow: hidden; }
+  .dims .bar > span { display: block; height: 100%; background: var(--cp-accent); }
+  .dims .name { color: var(--cp-fg-2); font-size: 12px; }
+  .dims .score { font-variant-numeric: tabular-nums; font-size: 12px; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  button {
+    font: inherit; padding: 5px 14px; border-radius: var(--cp-radius);
+    border: 1px solid var(--cp-border); background: var(--cp-bg-2); color: var(--cp-fg);
+    cursor: pointer;
+  }
+  button.primary { background: var(--cp-accent); border-color: var(--cp-accent); color: #fff; }
+  button:disabled { opacity: 0.55; cursor: default; }
+  textarea {
+    width: 100%; min-height: 60px; margin-top: 8px; font: inherit;
+    background: var(--cp-bg-2); color: var(--cp-fg);
+    border: 1px solid var(--cp-border); border-radius: var(--cp-radius); padding: 8px 10px;
+  }
+  .muted { color: var(--cp-fg-2); font-size: 12px; }
+  .hidden { display: none; }
+  #status { min-height: 18px; margin-top: 6px; }
+  ul.questions { margin: 6px 0 0; padding-left: 18px; }
+  ul.questions li { margin-bottom: 6px; }
+  .suggested { color: var(--cp-fg-2); font-style: italic; }
+</style>
+</head>
+<body>
+  <div id="root"><p class="muted">Waiting for a compose result…</p></div>
+  <!--PANEL_JS-->
+</body>
+</html>

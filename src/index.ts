@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerAppResource, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { z } from "zod";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { getOptimizationEngine } from "./engine/optimization/engine.js";
 import { CATEGORIES, MODES, getPlatformById, type Category } from "./engine/config/categories.js";
 import { getConfigStore } from "./engine/config/persistence.js";
@@ -19,7 +23,19 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
-const VERSION = "1.13.0";
+const VERSION = "1.14.0";
+
+// MCP Apps (extension io.modelcontextprotocol/ui): compose_prompt renders an
+// interactive result panel in hosts that support it (Claude Desktop, ChatGPT,
+// Cursor, VS Code, …). Hosts without the extension ignore the _meta and get
+// the usual text + structuredContent — nothing changes for them.
+// The HTML is built by scripts/build-panel.mjs into dist/apps/ at build time.
+const COMPOSE_PANEL_URI = "ui://clarifyprompt/compose-panel.html";
+const COMPOSE_PANEL_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "apps",
+  "compose-panel.html",
+);
 
 const CATEGORY_ENUM = z.enum(["chat", "image", "voice", "video", "music", "code", "document"]);
 const MODE_ENUM = z.enum(["concise", "detailed", "structured", "step-by-step", "bullet-points", "technical", "simple"]);
@@ -1156,6 +1172,10 @@ server.registerTool(
     title: "Compose the full pipeline",
     description: "Run the canonical ClarifyPrompt pipeline in ONE call: clarify (optional pre-stage) → ground OR optimize (core) → critique (optional post-stage) → optional auto-revise. Use this when you want the four-tool happy path without orchestrating five round-trips. Short-circuits if `pre_clarify` surfaces questions — caller answers and re-calls. When `sources` is non-empty the chain takes the strict ground_prompt branch; otherwise it goes through optimize_prompt. When `auto_revise` is true and critique returns a non-accept verdict with an improved rewrite, `final_prompt` is the rewrite. The `stages` array is a per-call audit log so callers can see exactly what ran.",
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+    // Both meta formats, exactly as ext-apps' registerAppTool emits them:
+    // nested `ui.resourceUri` is the modern form; flat "ui/resourceUri" keeps
+    // older hosts (which only check the legacy key) rendering the panel.
+    _meta: { ui: { resourceUri: COMPOSE_PANEL_URI }, "ui/resourceUri": COMPOSE_PANEL_URI },
     outputSchema: COMPOSE_OUT,
     inputSchema: {
     prompt: z.string().describe("The prompt to compose."),
@@ -1279,6 +1299,21 @@ function jsonResource(uri: URL | string, payload: unknown) {
 const v = (x: string | string[] | undefined) => (Array.isArray(x) ? x[0] : x) ?? "";
 const byPrefix = (xs: string[], value: string) =>
   (value ? xs.filter(x => x.toLowerCase().startsWith(value.toLowerCase())) : xs).slice(0, 100);
+
+// MCP Apps panel (ui:// resource referenced by compose_prompt's _meta.ui).
+// Served from dist/apps/compose-panel.html; if the build artifact is missing
+// (e.g. running straight from ts sources) the read fails loudly instead of
+// serving an empty panel.
+registerAppResource(
+  server,
+  "Compose result panel",
+  COMPOSE_PANEL_URI,
+  { mimeType: RESOURCE_MIME_TYPE },
+  async () => {
+    const html = await fs.readFile(COMPOSE_PANEL_PATH, "utf8");
+    return { contents: [{ uri: COMPOSE_PANEL_URI, mimeType: RESOURCE_MIME_TYPE, text: html }] };
+  },
+);
 
 // Static: full category configuration.
 server.registerResource(

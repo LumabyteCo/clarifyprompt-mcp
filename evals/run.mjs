@@ -187,6 +187,7 @@ const CHECK_WEIGHTS = {
   must_not_contain: 1.5,
   min_output_length: 0.5,
   max_output_length: 0.5,
+  max_reading_grade: 1.5,
   grounding_sources_must_include: 1.5,
   grounding_sources_must_exclude: 1.5,
   system_prompt_must_contain: 1.5,
@@ -233,6 +234,26 @@ const CHECK_WEIGHTS = {
 
 const CONFIDENCE_RANK = { low: 1, medium: 2, high: 3 };
 
+/**
+ * Flesch–Kincaid grade level with a heuristic syllable counter (vowel groups,
+ * trailing-e discount). Newlines count as sentence breaks so bulleted prompts
+ * don't read as one giant sentence. Deterministic register-drift tripwire,
+ * not a linguistics-grade measurement — and English-calibrated: the syllable
+ * heuristic is Latin-vowel based, so non-English output scores low rather
+ * than failing. Don't put max_reading_grade on non-English fixtures.
+ */
+function readingGrade(text) {
+  const words = (text || '').toLowerCase().match(/[\p{L}'’]+/gu) || [];
+  if (!words.length) return 0;
+  const sentences = Math.max(1, (text || '').split(/[.!?\n]+/).filter((s) => s.trim().length > 0).length);
+  let syllables = 0;
+  for (const w of words) {
+    const groups = (w.replace(/e$/, '').match(/[aeiouy]+/g) || []).length;
+    syllables += Math.max(1, groups);
+  }
+  return 0.39 * (words.length / sentences) + 11.8 * (syllables / words.length) - 15.59;
+}
+
 function scoreCheck(name, expected, actual, opts = {}) {
   // Returns { passed: boolean, detail: string }
   switch (name) {
@@ -268,6 +289,11 @@ function scoreCheck(name, expected, actual, opts = {}) {
     case 'max_output_length': {
       const pass = (actual?.length || 0) <= expected;
       return { passed: pass, detail: pass ? `len=${actual?.length || 0}` : `expected len ≤${expected}, got ${actual?.length || 0}` };
+    }
+    case 'max_reading_grade': {
+      const grade = Math.round(readingGrade(actual || '') * 10) / 10;
+      const pass = grade <= expected;
+      return { passed: pass, detail: pass ? `grade=${grade} ≤ ${expected}` : `expected reading grade ≤${expected}, got ${grade}` };
     }
     case 'must_contain':
     case 'system_prompt_must_contain': {
@@ -486,6 +512,7 @@ function evaluateFixture(fixture, result, systemPrompt, tool) {
       case 'must_not_contain':
       case 'min_output_length':
       case 'max_output_length':              actual = result.optimizedPrompt; break;
+      case 'max_reading_grade':              actual = isCompose ? result.finalPrompt : result.optimizedPrompt; break;
       case 'grounding_sources_must_include':
       case 'grounding_sources_must_exclude': actual = result.grounding?.sources || []; break;
       case 'system_prompt_must_contain':     actual = systemPrompt || ''; break;

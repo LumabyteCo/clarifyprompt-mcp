@@ -11,9 +11,9 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.13.0:** **Plain-language rewrites.** Optimized prompts now stick to common, everyday words instead of drifting into formal vocabulary ("use", never "utilize") — specificity comes from concrete details, not fancier synonyms. `critique_prompt` gained a 6th default dimension, **`plain_language`**, so `auto_revise` loops correct register drift automatically. Also fixed: an explicit `mode` (e.g. `simple`) is no longer silently dropped for small local models under compact system-prompt shaping. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.14.0:** **An interactive compose panel via MCP Apps.** In hosts that speak the `io.modelcontextprotocol/ui` extension (Claude Desktop, ChatGPT, Cursor, VS Code, …), `compose_prompt` renders a live panel: original-vs-optimized **diff**, all six **critique scores**, the pipeline **stages**, and **Accept / Revise** actions — Accept records the outcome into ClarifyPrompt's memory loop, Revise sends your feedback back into the chat. One self-contained `ui://` resource; hosts without the extension see zero change. See [CHANGELOG.md](./CHANGELOG.md).
 >
-> **New in 1.12.1:** The real fix for [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3) — **thinking-channel models (gpt-oss, glm, …) now reliably produce optimized prompts** instead of occasionally returning empty content. Root cause (re-investigated from scratch): they spend their token budget on the *thinking* channel first and never reach the final answer. The fix is a `max_tokens` floor for reasoning models (universal) plus `reasoning_effort: "low"` (for families that honor it, like gpt-oss; tune with `LLM_REASONING_EFFORT`) — not the previously-assumed `/api/chat` switch, which turned out to be a dead end. Verified on `gpt-oss:20b-cloud` and `glm-5.2:cloud` (both 0% empty). See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.13.0:** **Plain-language rewrites.** Optimized prompts now stick to common, everyday words instead of drifting into formal vocabulary ("use", never "utilize") — specificity comes from concrete details, not fancier synonyms. `critique_prompt` gained a 6th default dimension, **`plain_language`**, so `auto_revise` loops correct register drift automatically. Also fixed: an explicit `mode` (e.g. `simple`) is no longer silently dropped for small local models under compact system-prompt shaping. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## How It Works
 
@@ -63,6 +63,20 @@ Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming conv
 **3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
 
 > <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22. ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+
+## What's new in 1.14.0
+
+**`compose_prompt` now has a face.** ClarifyPrompt ships an [MCP Apps](https://github.com/modelcontextprotocol/ext-apps) panel (extension `io.modelcontextprotocol/ui`) that supporting hosts render inline next to the tool result:
+
+- **Original vs optimized, as a word-level diff** — see exactly what the compiler changed.
+- **Critique, visualized** — all six dimensions (clarity, specificity, intent_alignment, format_fitness, length_appropriateness, plain_language) as score bars, with the verdict and the per-call `stages` audit trail as badges.
+- **Accept** — one click records `save_outcome(accepted)` from the panel, feeding the few-shot memory loop, and quietly tells the model the prompt was accepted.
+- **Revise…** — type what should change; the panel sends it back into the chat so the model re-composes.
+- **Clarification-aware** — when the pre-clarify stage stops the chain with questions, the panel renders them (with suggested answers) instead of a diff.
+
+Zero-risk rollout: the panel is one self-contained HTML resource (`ui://clarifyprompt/compose-panel.html`, inline CSS/JS — the extension sandbox blocks external requests) linked from `compose_prompt`'s `_meta.ui`. Hosts without the extension ignore it entirely; the text + `structuredContent` output is byte-identical. Runs on the existing SDK ^1.29 floor. New deterministic `npm run test:apps` battery locks the wiring.
+
+Also new: the eval harness gained a **`max_reading_grade`** check — a deterministic Flesch–Kincaid ceiling that locks 1.13.0's plain-language behavior as a measurable gate (formal-register slop scores ~20+; plain rewrites ~3–6).
 
 ## What's new in 1.13.0
 
@@ -505,7 +519,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.13.0)
+## What's in the box (cumulative through 1.14.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -1383,7 +1397,8 @@ Supported as a first-class case. The engine auto-detects reasoners at family lev
 ```
 clarifyprompt-mcp/
   src/
-    index.ts                           MCP server entry point (23 tools, 5 resources: 1 static + 4 templates)
+    index.ts                           MCP server entry point (23 tools, 6 resources: 1 static + 4 templates + 1 ui panel)
+    apps/                              MCP Apps compose panel (panel.html template + panel.ts, bundled at build time)
     engine/
       config/
         categories.ts                  CategoryConfig type + CATEGORIES const (loaded from YAML in 1.5.0)
@@ -1430,8 +1445,9 @@ clarifyprompt-mcp/
       composition/compose.ts           (1.4.0) compose_prompt — canonical clarify→ground/opt→critique pipeline
   evals/                                Eval harness v0 (1.3.0; setup: multi-call in 1.5.0)
     run.mjs                            YAML fixtures → MCP server → scored HTML report
-    fixtures/*.yaml                    23 deterministic fixtures
+    fixtures/*.yaml                    32 deterministic fixtures
     schema.json                        Fixture schema
+  scripts/build-panel.mjs               (1.14.0) bundles the MCP Apps panel into dist/apps/
   packs/                                Knowledge packs + platform packs (single source of truth, 1.6.4+)
     README.md                          Pack authoring guide (frontmatter, chunks, quality bar)
     *.md                               Knowledge packs — 4 bundled, community-contributable via PR

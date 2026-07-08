@@ -64,11 +64,11 @@ For every `packs/*.md` file:
 
 ---
 
-## ADD: CP-6 — companion registry sync (soft warning)
+## ~~ADD: CP-6 — companion registry sync~~ (RETIRED 2026-07-03)
 
-When preparing a release, compare `./packs/` against [LumabyteCo/clarifyprompt-packs](https://github.com/LumabyteCo/clarifyprompt-packs) via `gh api repos/LumabyteCo/clarifyprompt-packs/contents/packs`. Flag any filename or size drift as a warning — the repos can legitimately diverge but it's worth a human look.
+**Retired.** `LumabyteCo/clarifyprompt-packs` was **archived** during the 1.6.4 pack-registry consolidation — packs live in-repo under `packs/` now. There is no companion registry to sync against; any "drift" vs the archived repo is expected and meaningless. Do not run this check or flag drift warnings.
 
-**Generalization hint:** any project with a "starter kit in main repo + curated companion registry" pattern benefits. Needs the general skill to learn a "companion registry URL" config field before it can promote.
+**Generalization hint (kept for the record):** the "starter kit + companion registry" sync pattern is still generalizable for projects that *have* a live registry; this repo no longer does.
 
 ---
 
@@ -205,7 +205,7 @@ Track which project-scoped checks have been **promoted** to the user-scoped skil
 When the user next runs a skills consolidation pass, these are the strongest candidates remaining — proven useful here, would help most projects, but waiting on a second-project signal:
 
 1. **AUGMENT version consistency** (`src/index.ts` McpServer literal) — every Node-SDK MCP server benefits. Promote with a detection gate (SDK present in deps).
-2. **CP-6 companion registry sync** — any project with a "main repo + curated companion registry" pattern. Promote when the general skill grows a "companion registry URL" config field.
+2. ~~CP-6 companion registry sync~~ — retired 2026-07-03 (the companion repo was archived at 1.6.4; packs are in-repo). The pattern remains promotable for projects with a live registry.
 3. **CP-8 integration battery presence** — generic once the test files are version-controlled (currently TODO for 1.4).
 
 ---

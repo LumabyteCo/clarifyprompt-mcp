@@ -4,6 +4,26 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] — 2026-07-03
+
+Minor — **an interactive compose panel via MCP Apps.** In hosts that support the `io.modelcontextprotocol/ui` extension (Claude Desktop, ChatGPT, Cursor, VS Code, …), `compose_prompt` now renders a live result panel: original-vs-optimized diff, per-dimension critique scores, pipeline stages, and Accept / Revise actions. Hosts without the extension see zero change.
+
+### Added
+
+- **MCP Apps compose panel** (`ui://clarifyprompt/compose-panel.html`). `compose_prompt` carries `_meta.ui.resourceUri`; the panel ships as one self-contained HTML resource (the extension sandbox blocks all external requests). Built on `@modelcontextprotocol/ext-apps` ^1.7.4 — which runs on the existing SDK ^1.29 floor, no SDK 2.0 required.
+  - **Diff view** — word-level diff of the original prompt vs `finalPrompt`.
+  - **Critique scores** — all six dimensions as 0–10 bars, plus verdict/score badges and the per-call `stages` audit trail.
+  - **Accept** calls `save_outcome` (verdict `accepted`) straight from the panel, feeding the few-shot memory loop, then informs the model via `ui/update-model-context`.
+  - **Revise…** sends the user's feedback back into the chat via `ui/message`, prompting a re-compose.
+  - Theming follows the host (CSS variables + `data-theme`), with standalone fallbacks.
+- **`max_reading_grade` eval check** — deterministic Flesch–Kincaid grade ceiling on `optimizedPrompt`/`finalPrompt` (newline-aware sentence splitting so bulleted prompts score sanely). Generalizes 1.13.0's per-word blocklist: formal-register slop measures ~20+, plain rewrites ~3–6. Wired into fixture 31 at grade ≤ 12.
+- **`npm run test:apps`** — deterministic wire battery (no LLM): tool `_meta.ui` linkage, `ui://` resource listing + mime (`text/html;profile=mcp-app`), bundle self-containment (no external script/style refs), and build-marker replacement. Chained into `test:all`.
+
+### Build
+
+- `npm run build` now also bundles the panel (`scripts/build-panel.mjs`, esbuild → single inline-script HTML in `dist/apps/`). New devDependency: `esbuild`. New runtime dependency: `@modelcontextprotocol/ext-apps`.
+- **Node floor raised to `>=20`** (was `>=18`). `@modelcontextprotocol/ext-apps` requires Node 20+, and Node 18 has been EOL since April 2025 — claiming support for it with this dependency would be dishonest packaging. CI matrix is now 20/22/24.
+
 ## [1.13.0] — 2026-07-03
 
 Minor — **plain-language rewrites.** The engine now prefers common, everyday words over formal synonyms across the whole pipeline: a new core principle in the optimizer, a new `plain_language` critique dimension, and a fix that stops small local models from silently losing their `mode` under compact shaping.

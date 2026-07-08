@@ -113,6 +113,7 @@
         },
         "min_output_length": { "type": "integer" },
         "max_output_length": { "type": "integer" },
+        "max_reading_grade": { "type": "number", "description": "Flesch–Kincaid grade level of optimizedPrompt (compose: finalPrompt) must be ≤ this. Deterministic register-drift tripwire." },
         "grounding_sources_must_include": {
           "type": "array",
           "items": { "type": "string" },

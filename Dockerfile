@@ -8,13 +8,15 @@ WORKDIR /app
 # we let the package's install script run, which fetches the prebuilt native
 # binary. Note: better-sqlite3@12.10.0 dropped prebuilds for Node 20 (which
 # reached EOL in April 2026); the Docker base must stay on a maintained LTS
-# line. Our CI test matrix validates against node 18/20/22; the runtime image
+# line. Our CI test matrix validates against node 20/22/24 (>=20 floor since
+# 1.14.0 — @modelcontextprotocol/ext-apps requires it); the runtime image
 # tracks current active LTS.
 COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY tsconfig.json ./
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 RUN npm run build
 
 FROM node:22-slim
