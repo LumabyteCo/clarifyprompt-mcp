@@ -299,3 +299,20 @@ This audit deliberately did not modify any engine code — its job was diagnosti
 ---
 
 **Next-session entry point:** read this doc, then the user picks a stopping point (`#3` / `#5` / `#7`) and the modernization sequence kicks off.
+
+---
+
+## Addendum (2026-07-03) — post-roadmap status & 2026-07-28 spec impact
+
+The 7-step roadmap above is **complete** (7/7, shipped 1.6.5 → 1.12.0; see CHANGELOG). Status of the §3 capabilities that were *not* covered by the seven steps, re-graded against the **2026-07-28 spec release candidate** (RC locked 2026-05-21):
+
+| Capability | New status | Why |
+|---|---|---|
+| `sampling` | **won't do** | Deprecated by SEP-2577 in the 2026-07-28 RC ("new implementations SHOULD NOT adopt sampling"; ≥12-month removal window). The "delegate to host model" idea is dead — Claude Code never shipped client-side sampling anyway (anthropics/claude-code#1785). Use direct provider APIs (we already do). |
+| `roots` | **won't do** | Deprecated by SEP-2577 alongside sampling. Our manual `cwd` argument stays. |
+| `logging` | **won't do** | Deprecated by SEP-2577. Local JSONL traces + `notifications/progress` (shipped 1.10.0) cover the need. |
+| `prompts` | **skip (unchanged)** | Original audit verdict stands: we compile prompts, we don't ship canned ones. No spec-level change in the RC. |
+| `tasks` | **still deferred — track SEP-2663** | Graduates from experimental core to an official *extension* in 2026-07-28 with a redesigned, statelessness-compatible lifecycle (breaking vs the experimental API we deliberately skipped at 1.10.0). Still zero verified client adoption (Claude Code FR #18617 open). Revisit when a client ships it; our AbortSignal + progress + A2A task store groundwork is ready. |
+| resource `subscribe` / pagination | **defer past 2026-07-28** | The RC makes MCP stateless at the protocol layer (SEP-2575 removes the initialize handshake, SEP-2567 removes `Mcp-Session-Id`, SEP-2322 replaces SSE streams). Build subscriptions after the dust settles, on SDK v2. |
+
+**Next modernization step (call it #8): ride SDK v2 when it goes stable** (beta since 2026-06-29; stable lands with the 2026-07-28 spec). Impact here: package split (`@modelcontextprotocol/server` + adapters), Standard Schema (zod v4), ESM-only/Node 20+, and the statelessness changes hit our `streamable-http` transport and elicitation flow. The hard prerequisite (registerTool/registerResource migration) shipped in 1.7.0, so the ride is estimated at 0.5–1 day. 1.x receives security fixes for ≥6 months after v2 ships.

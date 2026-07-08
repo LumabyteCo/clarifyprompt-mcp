@@ -72,17 +72,16 @@ When preparing a release, compare `./packs/` against [LumabyteCo/clarifyprompt-p
 
 ---
 
-## ADD: CP-8 — integration test batteries present (informational)
+## ADD: CP-8 — test batteries pass (escalated 2026-07-03)
 
-For minor-version prep (e.g. `1.3.0 → 1.4.0`), confirm the test batteries exist and can at least parse:
+The batteries are version-controlled under `tests/` (10 batteries, chained via `npm run test:all` — see `package.json#scripts`). The original `/tmp/` staging and the "do they exist?" phase are history; this check now runs them.
 
-- `/tmp/clarify-integration-test.mjs` (1.2 Definition-of-Done cases)
-- `/tmp/clarify-day2-test.mjs` (1.3 memory + packs + curation)
-- `/tmp/clarify-reasoning-test.mjs` (reasoning + cloud-model coverage)
+For minor-version prep:
 
-**TODO for 1.4:** move these from `/tmp/` into `tests/` under version control. Once moved, this check escalates from "do they exist?" to "do they pass?".
+- **Required (deterministic, no live LLM):** `npm run test:wire && npm run test:resources && npm run test:http && npm run test:thinking` — protocol wiring, resource templates, HTTP transport, and the mocked thinking-channel battery. All must exit 0.
+- **Recommended when an Ollama model is available:** `npm run test:integration` (9-case Definition-of-Done battery) — or full `npm run test:all` for a release with engine changes. Known content-variance flake: integration `D9` on cloud models — re-run once before treating as a failure.
 
-**Generalization hint:** test-harness existence is a general pattern; the file paths are project-specific. Stays project-scoped until the tests are repo-versioned.
+**Generalization hint:** "release gate = deterministic test subset locally, full battery when models available" is a general pattern; the battery names are project-specific. Promotion candidate now that the tests are repo-versioned.
 
 ---
 

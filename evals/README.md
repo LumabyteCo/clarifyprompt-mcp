@@ -135,4 +135,4 @@ Workflow source: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — t
 - **LLM-judge scoring at the harness level** — `critique_prompt` itself ships as a runtime tool in 1.4, but the harness's per-fixture scoring is still deterministic-only. Adding LLM-judge as an optional score-blender is a v1 candidate.
 - **Cross-run trend dashboard** — each run is standalone HTML. v1 could persist results into a JSON timeline so you can see drift over commits or model versions.
 - **Auto-tagging based on which engine surface the fixture exercises** — manual tags for now.
-- **Memory-layer fixture coverage** — knowledge packs, reflection facts, vector retrieval ranking — the most-novel engine surface has the least eval coverage. Tracked as "D" in the post-1.4 backlog.
+- ~~**Memory-layer fixture coverage**~~ — covered since 1.6.x by fixtures 22–25 (pack-chunk grounding, similarity ranking, remember persists, forget invalidates).

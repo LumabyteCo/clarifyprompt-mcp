@@ -200,7 +200,7 @@ Patch fixing [#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3): a *
 
 - **Reads all three thinking-channel field names** (`reasoning` / `thinking` / `reasoning_content`) — fixes DeepSeek / qwen-thinking and similar.
 - **Retries once, then fails loudly** when content is empty regardless of any thinking field. This covers the real issue #3 case: gpt-oss harmony output over Ollama's `/v1` shim generates tokens (`completion_tokens > 0`) but returns `content: ""` with no thinking field. The engine now degrades to the original prompt + a surfaced `error` instead of returning blank.
-- **Genuinely recovering** gpt-oss harmony output (via Ollama's native `/api/chat`) is a tracked follow-up — out of scope for a patch. The silent-failure harm is resolved now.
+- **Genuinely recovering** gpt-oss harmony output (via Ollama's native `/api/chat`) was tracked as a follow-up — **resolved in 1.12.1**, which proved the `/api/chat` path a dead end and fixed the actual root cause (a `max_tokens` floor + `reasoning_effort` for reasoning models; see the 1.12.1 notes above).
 - **New deterministic `npm run test:thinking`** battery locks the regression with mocked responses (no live cloud dependency).
 
 Verified: `test:thinking`, reasoning battery (gpt-oss degrades loudly; the genuine reasoner `kimi-k2-thinking:cloud` still returns real content), integration, day2, evals, wire.
@@ -511,7 +511,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
 - **Target-model-aware prompt shaping** — system prompt, `maxTokens`, and `temperature` adapt to the downstream LLM's context window and the resolved intent. Small local models get a compact prompt; Claude/GPT-4/Gemini get the full richness.
 - **Grounding Context (single, priority-ordered)** — user pinned instructions → project rules → active file → prior accepted examples → web search → workspace metadata → target-model hints → custom platform instructions → built-in syntax hints. No more parallel context silos.
-- **Session retrieval (save_outcome)** — the caller reports `accepted | edited | rejected` per optimization; similar accepted outputs in the same session get injected as few-shot examples into future similar prompts. Persistent memory lands in 1.3.
+- **Session retrieval (save_outcome)** — the caller reports `accepted | edited | rejected` per optimization; similar accepted outputs in the same session get injected as few-shot examples into future similar prompts. Backed by persistent memory (SQLite + sqlite-vec), so accepted outcomes survive restarts.
 - **Local JSONL tracing** — every optimization writes a structured trace line (now with `shape`, `groundingSources`, `error` fields) to `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl`. **Nothing is uploaded.** Toggle via `CLARIFYPROMPT_TRACE=off`.
 - **Unified `$CLARIFYPROMPT_HOME`** — one env var for everything ClarifyPrompt writes. Legacy `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` still work (deprecation hint, silenceable).
 - **Three transports** — `stdio` (default), `streamable-http` (MCP over Node `http`, stateful sessions + `/health`), and `a2a` (an **Agent-to-Agent** peer: agent card, JSON-RPC `message/send` + SSE `message/stream`, task cancellation, `input-required` clarification). One `CLARIFYPROMPT_TRANSPORT` env var; stdio behavior is byte-identical to before.
@@ -1132,7 +1132,7 @@ load_knowledge_pack({ source: "./node_modules/clarifyprompt-mcp/packs/sox-compli
 
 - **`user`** — persisted in `$CLARIFYPROMPT_HOME` and available across every project on this machine.
 - **`project`** — persisted, but scoped to the current working tree's identity (project-id derived from `cwd` + git remote when present).
-- **`session`** — in-memory only, gone when the MCP server restarts.
+- **`session`** — scoped to the current MCP session; not retrieved after the server restarts.
 
 Packs of all three scopes are scored together at retrieval time; the curator decides which chunks survive the token budget.
 
@@ -1348,8 +1348,8 @@ Every optimization writes one JSONL line capturing `{id, ts, sessionId, category
 
 ## Known limitations & roadmap
 
-### Session memory is in-memory only (today)
-The `save_outcome` + few-shot retrieval loop writes into a per-process ring buffer. Restarting the MCP server clears session state; two servers don't share memory. The **MCP tool surface is deliberately stable** — the interface won't change in 1.3. The upgrade is purely a backend swap to **SQLite + sqlite-vec** for disk persistence and richer similarity. Ship target: **1.3**.
+### Memory persistence (shipped)
+The `save_outcome` + few-shot retrieval loop persists to **SQLite + sqlite-vec** under `$CLARIFYPROMPT_HOME` — sessions, optimizations, outcomes, facts, and pack chunks all survive restarts. An in-memory ring buffer remains only as a same-session fast path. Session-scoped entries are keyed to their session id, so they're not retrieved by later sessions.
 
 ### Intent quality scales with the model running the analyzer
 The analyzer runs on the same `LLM_MODEL` that does the rewrite. In the integration battery:
@@ -1357,7 +1357,7 @@ The analyzer runs on the same `LLM_MODEL` that does the rewrite. In the integrat
 - Qwen 2.5 7B and 14B → correct on every well-formed prompt tested.
 - Llama 3.2 3B → occasionally over-commits on ambiguous prompts (e.g. tagged `"make it better"` as `brand-voice/high` when `unknown/low` is the right answer). Larger models on the same prompt correctly returned `unknown/low`.
 
-**Guidance:** prefer a 7B+ local model (or any frontier hosted model) as `LLM_MODEL`. Latency-sensitive callers can set `skip_intent_resolution: true` to skip the analyzer; the engine falls back to user-hint category and default mode, losing intent-driven mode + overlay but keeping grounding + shape. A systematic **eval harness** with a public fixture set lands in **1.3 (Day 3)** so you can score the analyzer against your own fixtures and detect regressions across model or classifier changes.
+**Guidance:** prefer a 7B+ local model (or any frontier hosted model) as `LLM_MODEL`. Latency-sensitive callers can set `skip_intent_resolution: true` to skip the analyzer; the engine falls back to user-hint category and default mode, losing intent-driven mode + overlay but keeping grounding + shape. The bundled **eval harness** ([`evals/`](./evals/), `npm run eval`) ships a public fixture set so you can score the analyzer against your own fixtures and detect regressions across model or classifier changes.
 
 ### Recommended models
 
@@ -1383,7 +1383,7 @@ Supported as a first-class case. The engine auto-detects reasoners at family lev
 ```
 clarifyprompt-mcp/
   src/
-    index.ts                           MCP server entry point (23 tools, 1 resource)
+    index.ts                           MCP server entry point (23 tools, 5 resources: 1 static + 4 templates)
     engine/
       config/
         categories.ts                  CategoryConfig type + CATEGORIES const (loaded from YAML in 1.5.0)
