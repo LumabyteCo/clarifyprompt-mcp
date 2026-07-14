@@ -11,6 +11,8 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
+> **New in 1.15.0:** **Nano Banana** (Google Gemini 2.5 Flash Image) is now a **built-in image platform** — `optimize_prompt(platform: "nano-banana")` compiles image prompts in its native style (natural-language scene direction, photographic terms, edit-preserving-identity phrasing, in-image text). Plus **latest-model compatibility across every provider**: `claude-sonnet-5`, `gpt-5`/o-series, and Gemini reject `temperature` and/or `max_tokens`; the client now sends the right parameters (proactively for known reasoning ids, and learns the rest from a `400`). Verified live against Anthropic, OpenAI, Gemini, and Ollama Cloud. See [CHANGELOG.md](./CHANGELOG.md).
+>
 > **New in 1.14.1:** **Portable-by-default text output** — a `chat`/`document`/`code` prompt with no explicit platform now stays platform-neutral instead of quietly defaulting to Claude's idioms (XML tags); name a platform to opt into vendor-specific tuning. Plus the MCP Apps compose panel now shows a `for <platform>` badge and a clean **Your prompt → Optimized** before/after (with a `show changes` toggle) instead of an always-on diff. See [CHANGELOG.md](./CHANGELOG.md).
 >
 > **New in 1.14.0:** **An interactive compose panel via MCP Apps.** In hosts that speak the `io.modelcontextprotocol/ui` extension (Claude Desktop, ChatGPT, Cursor, VS Code, …), `compose_prompt` renders a live panel: original-vs-optimized view, all six **critique scores**, the pipeline **stages**, and **Accept / Revise** actions — Accept records the outcome into ClarifyPrompt's memory loop, Revise sends your feedback back into the chat. One self-contained `ui://` resource; hosts without the extension see zero change. See [CHANGELOG.md](./CHANGELOG.md).
@@ -35,9 +37,15 @@ You write:    "a dragon flying over a castle at sunset"
               stone castle, silhouetted against a vibrant orange and purple sunset sky.
               Rendered in a high-fantasy digital art style with dramatic, warm lighting and
               highly detailed textures, wide aspect ratio.
+
+→ Nano Banana A majestic dragon with deep crimson scales and a leathery, bat-like wingspan
+              glides through the warm, golden-hour sky just above a towering medieval castle
+              made of weathered grey stone. ... Frame this as a wide cinematic landscape shot
+              using a 24mm lens at f/8 for deep depth of field, camera positioned at a
+              slightly elevated three-quarter angle... Aspect ratio 16:9.
 ```
 
-Midjourney gets `--ar/--v/--s/--q` flags; DALL-E gets flag-free natural-language prose. Same intent, each platform's native dialect.
+Midjourney gets `--ar/--v/--s/--q` flags; DALL-E and Nano Banana get flag-free natural language — and Nano Banana layers in photographic direction (lens, f-stop, camera angle) and explicit mood, its documented style. Same idea, each platform's native dialect.
 
 **2 — It knows what you're working on.** This is the part a template can't fake. Drop a vague one-liner while editing `src/transport.ts` *in this very repo*, and the engine grounds it in your real workspace — `package.json`, git state, the active file — and resolves intent **before** it shapes the output:
 
@@ -64,7 +72,13 @@ Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming conv
 
 **3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
 
-> <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22. ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+> <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22 (the Nano Banana capture added 2026-07-03, same `glm-5.2:cloud` model). ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+
+## What's new in 1.15.0
+
+**Nano Banana, built in.** Google's Gemini 2.5 Flash Image ("Nano Banana") is now a first-class image platform — `optimize_prompt(category: "image", platform: "nano-banana")` compiles your idea into its native prompting style: full-sentence scene direction (not keyword piles), photographic terminology for camera/lens/depth, explicit lighting, edit-phrasing that preserves subject identity, multi-reference character consistency, and reliable in-image text. Like every image platform, ClarifyPrompt compiles the prompt; you send it to the model.
+
+**Latest-model compatibility, every provider.** Thinking-enabled models reject parameters clarifyprompt always sent: `claude-sonnet-5` and OpenAI reasoning models reject `temperature`; `gpt-5` / o-series also reject `max_tokens` (they require `max_completion_tokens`). Every call to them used to fail and degrade to the original prompt. Now the client sends the right body — **proactively** for well-known reasoning ids (no wasted round-trip) and, for anything the hints don't recognize (including future models), it **learns from the `400` and retries**. Models that accept the standard parameters are byte-identical. Verified live against Anthropic (`claude-sonnet-5`), OpenAI (`gpt-5`), Gemini (`gemini-flash-latest`), and Ollama Cloud (`glm-5.2:cloud`). Reasoning models think a lot — bump `LLM_TIMEOUT_MS` (the 30s default is often too short).
 
 ## What's new in 1.14.1
 
@@ -435,7 +449,7 @@ Each compose stage can now target a different model:
 {
   "prompt": "...",
   "clarify_model": "qwen2.5-coder:7b-instruct-q4_K_M",
-  "optimize_model": "claude-sonnet-4-20250514",
+  "optimize_model": "claude-sonnet-5",
   "critique_model": "gpt-4o-mini"
 }
 ```
@@ -527,7 +541,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.14.1)
+## What's in the box (cumulative through 1.15.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -1003,7 +1017,7 @@ The canonical pipeline. One call runs clarify → ground/optimize → critique �
     "prompt": "...",
     "post_critique": true,
     "clarify_model":  "qwen2.5-coder:7b-instruct-q4_K_M",
-    "optimize_model": "claude-sonnet-4-20250514",
+    "optimize_model": "claude-sonnet-5",
     "critique_model": "gpt-4o-mini"
   }
   ```
@@ -1229,6 +1243,7 @@ ClarifyPrompt uses an LLM to optimize prompts. It works with **any OpenAI-compat
 | `LLM_API_URL` | Yes | API endpoint URL |
 | `LLM_API_KEY` | Depends | API key (not needed for local Ollama) |
 | `LLM_MODEL` | Yes | Model name/ID |
+| `LLM_TIMEOUT_MS` | No | Per-call LLM request timeout in ms. Default `30000` (30s). **Bump this for big local models** — e.g. a 50 GB `qwen3-next:80b` can take ~120s per call, which exceeds the default and would surface as a timeout. `LLM_TIMEOUT_MS=180000` is a safe value for large local models. |
 | `LLM_REASONING_EFFORT` | No | **(1.12.1+)** Reasoning level for thinking-channel models (gpt-oss, glm, `*-thinking`, deepseek-r, qwq): `low` \| `medium` \| `high`. Default `low`. These models also get a `max_tokens` floor so their reasoning trace can't starve the final answer ([#3](https://github.com/LumabyteCo/clarifyprompt-mcp/issues/3)). Ignored for non-reasoning models. |
 | `CLARIFYPROMPT_HOME` | No | **Canonical (1.2.0+)** root for everything ClarifyPrompt writes — custom platforms, instruction `.md` files, traces, memory DB, and knowledge packs. Default: `$XDG_DATA_HOME/clarifyprompt` or `~/.clarifyprompt`. |
 | `CLARIFYPROMPT_TRACE` | No | `off` \| `local` \| `otel`. Default: `local`. Traces are strictly local JSONL; nothing is uploaded. |
@@ -1274,20 +1289,22 @@ LLM_API_URL=https://api.openai.com/v1
 LLM_API_KEY=sk-...
 LLM_MODEL=gpt-4o
 ```
+> Reasoning models (`gpt-5`, `o3`, `o4-mini`) work too — the client handles their `max_completion_tokens` and `temperature` requirements automatically. They think extensively, so bump `LLM_TIMEOUT_MS` (e.g. `180000`); the 30s default is often too short.
 
 **Anthropic Claude:**
 ```
 LLM_API_URL=https://api.anthropic.com/v1
 LLM_API_KEY=sk-ant-...
-LLM_MODEL=claude-sonnet-4-20250514
+LLM_MODEL=claude-sonnet-5
 ```
 
 **Google Gemini:**
 ```
 LLM_API_URL=https://generativelanguage.googleapis.com/v1beta/openai
 LLM_API_KEY=your-gemini-key
-LLM_MODEL=gemini-2.0-flash
+LLM_MODEL=gemini-flash-latest
 ```
+> Use a model your key can access — older ids (e.g. `gemini-2.0-flash`, `gemini-2.5-flash`) return `404 "no longer available to new users"` on newer keys. `gemini-flash-latest` tracks the current flash model. (Note: `gemini-2.5-flash-image` — "Nano Banana" — is an **image** model; it can't be `LLM_MODEL`, which must be a text model. Target it as an image *platform* instead.)
 
 **Groq:**
 ```
@@ -1493,7 +1510,7 @@ clarifyprompt-mcp/
         strategies/
           base.ts                      Bundle-aware base strategy (intent overlay + shape-aware sizing)
           chat.ts                      9 platforms
-          image.ts                     10 platforms
+          image.ts                     12 platforms
           video.ts                     11 platforms
           voice.ts                     7 platforms
           music.ts                     4 platforms

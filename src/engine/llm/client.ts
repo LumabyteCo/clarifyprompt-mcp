@@ -5,6 +5,50 @@ import {
   observeResponse,
 } from './model-capabilities.js';
 
+// Models that reject the `temperature` parameter (newer thinking-enabled Claude
+// models like claude-sonnet-5 return 400 "temperature is deprecated for this
+// model."; OpenAI o-series / gpt-5 only accept temperature=1). Learned at
+// runtime from the first 400 so subsequent calls skip temperature up front —
+// name-agnostic, so it also covers future models. Persists per process.
+const noTemperatureModels = new Set<string>();
+
+// OpenAI reasoning models (gpt-5, o-series) reject `max_tokens` and require
+// `max_completion_tokens`. Same learn-on-400 pattern as temperature; these two
+// quirks compound on the same model (gpt-5 has both), so a request can take up
+// to two retries — one per quirk, each applied at most once.
+const maxCompletionTokensModels = new Set<string>();
+
+/** A 400 whose body blames `temperature` → the model doesn't accept it. */
+function isTemperatureRejection(status: number, body: string): boolean {
+  return status === 400 && /temperature/i.test(body);
+}
+
+/** A 400 pointing at `max_completion_tokens` → the model rejects `max_tokens`. */
+function isMaxTokensRejection(status: number, body: string): boolean {
+  return status === 400 && /max_completion_tokens/i.test(body);
+}
+
+// Proactive layer: best-effort name hints for well-known reasoning models so the
+// common ones send the right body on the FIRST call instead of learning via a
+// wasted 400. These patterns rot as new models ship — that's fine: the
+// learn-on-400 retry above is the real backstop and catches whatever they miss.
+// Kept conservative so a hint can't wrongly break a model:
+//  - omitting temperature is harmless (falls back to the model default);
+//  - max_completion_tokens is applied ONLY to OpenAI's o-series / gpt-5, whose
+//    ids are unambiguous.
+const OPENAI_REASONING_RE = /^(o[1-9]|gpt-5)/i;                                  // reject max_tokens + temperature
+const ANTHROPIC_THINKING_RE = /claude-(opus-4|(sonnet|opus|haiku)-[5-9])/i;      // reject temperature
+
+/** Should this model use `max_completion_tokens` (learned, or a known reasoner)? */
+function usesMaxCompletionTokens(model: string): boolean {
+  return maxCompletionTokensModels.has(model) || OPENAI_REASONING_RE.test(model);
+}
+
+/** Should this model omit `temperature` (learned, or a known reasoner)? */
+function omitsTemperature(model: string): boolean {
+  return noTemperatureModels.has(model) || OPENAI_REASONING_RE.test(model) || ANTHROPIC_THINKING_RE.test(model);
+}
+
 export interface LLMConfig {
   apiUrl: string;
   apiKey: string;
@@ -204,9 +248,12 @@ export class LLMClient {
       model,
       messages: request.messages,
       stream,
-      temperature: request.temperature ?? 0.7,
-      max_tokens: maxTokens,
     };
+    // OpenAI reasoning models (gpt-5, o-series) reject `max_tokens` and require
+    // `max_completion_tokens`; use whichever the model accepts.
+    body[usesMaxCompletionTokens(model) ? 'max_completion_tokens' : 'max_tokens'] = maxTokens;
+    // Omit temperature for models that reject it (reasoning / gpt-5 / o-series).
+    if (!omitsTemperature(model)) body.temperature = request.temperature ?? 0.7;
     const effort = this.resolveReasoningEffort(model, request.reasoning_effort);
     if (effort) body.reasoning_effort = effort;
     return body;
@@ -242,6 +289,17 @@ export class LLMClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      const model = request.model || this.config.defaultModel;
+      // Learn each provider quirk from the 400 and retry (each at most once).
+      // gpt-5 rejects BOTH max_tokens and temperature, so this can chain twice.
+      let retry = false;
+      if (isMaxTokensRejection(response.status, errorText) && !maxCompletionTokensModels.has(model)) {
+        maxCompletionTokensModels.add(model); retry = true;
+      }
+      if (isTemperatureRejection(response.status, errorText) && !noTemperatureModels.has(model)) {
+        noTemperatureModels.add(model); retry = true;
+      }
+      if (retry) return this.chatOpenAI(request); // buildOpenAIBody now adapts the body
       throw new LLMError(
         `LLM API error: ${response.status} ${response.statusText}`,
         response.status,
@@ -255,13 +313,16 @@ export class LLMClient {
   private async chatAnthropic(request: Omit<ChatCompletionRequest, 'model'> & { model?: string }): Promise<ChatCompletionResponse> {
     const systemMessage = request.messages.find(m => m.role === 'system');
     const nonSystemMessages = request.messages.filter(m => m.role !== 'system');
+    const model = request.model || this.config.defaultModel;
 
     const body: Record<string, unknown> = {
-      model: request.model || this.config.defaultModel,
+      model,
       messages: nonSystemMessages,
-      temperature: request.temperature ?? 0.7,
       max_tokens: request.max_tokens ?? 2048,
     };
+    // Newer thinking-enabled Claude models (claude-sonnet-5, …) reject
+    // `temperature`; omit it for models known to reject it.
+    if (!omitsTemperature(model)) body.temperature = request.temperature ?? 0.7;
 
     if (systemMessage) {
       body.system = systemMessage.content;
@@ -280,6 +341,10 @@ export class LLMClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      if (isTemperatureRejection(response.status, errorText) && !noTemperatureModels.has(model)) {
+        noTemperatureModels.add(model);
+        return this.chatAnthropic(request); // retry once without temperature
+      }
       throw new LLMError(
         `LLM API error: ${response.status} ${response.statusText}`,
         response.status,

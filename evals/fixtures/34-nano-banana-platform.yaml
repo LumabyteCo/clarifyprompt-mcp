@@ -1,0 +1,16 @@
+name: nano-banana-platform
+description: 'Nano Banana (Google Gemini 2.5 Flash Image) is a built-in image platform (1.15.0). Verify it resolves from packs/platforms/image.yaml and injects its declared syntax hints, and that its hand-written strategy guidance reaches the rendered system prompt. Deterministic surfaces (platform resolution + grounding source + system prompt) — not the model-dependent output.'
+tags: [platform, image, nano-banana, regression]
+input:
+  prompt: 'a cozy coffee shop on a rainy afternoon'
+  category: image
+  platform: nano-banana
+  mode: detailed
+  skip_intent_resolution: true
+expected:
+  category: image
+  platform: nano-banana
+  grounding_sources_must_include: ['platform-hints']
+  # Hand-written guidance block must be present (non-compact model shapes).
+  system_prompt_must_contain: ['NANO BANANA']
+  no_error: true

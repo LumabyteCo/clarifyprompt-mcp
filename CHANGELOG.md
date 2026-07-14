@@ -4,6 +4,29 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] — 2026-07-03
+
+Minor — **latest-model compatibility across every provider, plus Nano Banana as a built-in image platform.**
+
+### Added
+
+- **Nano Banana (Google Gemini 2.5 Flash Image) is a built-in image platform** (`platform: "nano-banana"`, category `image`) — 59 of 61 built-in platforms now carry hand-written tuning. `optimize_prompt` / `compose_prompt` compile image prompts in its native style: natural-language scene direction (not keyword piles), photographic terminology for camera/lens/depth, explicit lighting, edit-preserving-identity phrasing, multi-reference character consistency, and in-image text. (As with every image platform, ClarifyPrompt compiles the prompt; you send it to the model.)
+
+### Fixed
+
+- **Newer models that reject `temperature` now work.** clarifyprompt always sent `temperature`, but thinking-enabled models return `400` for it — `claude-sonnet-5` responds *"temperature is deprecated for this model,"* and OpenAI's GPT-5 / o-series only accept `temperature: 1`. Every call silently degraded to the original prompt. The client now **retries without `temperature`** on that `400` (name-agnostic — matched from the error body) and **learns** the model so later calls omit it up front. Models that accept `temperature` are byte-identical — no change. Verified live against `claude-sonnet-5`.
+- **OpenAI reasoning models (GPT-5, o-series) now work.** They reject `max_tokens` and require `max_completion_tokens`; clarifyprompt always sent `max_tokens`, so these `400`ed before the request even reached the temperature issue. The client now retries with `max_completion_tokens` on that `400` and learns the model. This **chains** with the temperature retry — GPT-5 rejects both. Verified live against `gpt-5` on the real OpenAI API. (Reasoning models think extensively — bump `LLM_TIMEOUT_MS` for them; the 30s default can be too short.)
+- **Two-layer, so it's both fast and robust.** A proactive hint sends the right body on the *first* call for well-known reasoning ids (`gpt-5`, `o1`–`o9`, `claude-*-5+`/`opus-4`) — no wasted round-trip — while the learn-on-400 retry remains the backstop for anything the hints miss, including models that don't exist yet. Name hints rot; the retry doesn't, so correctness never depends on the hints being current. Models that accept the standard params are byte-identical either way.
+
+### Docs
+
+- README Provider Examples: refreshed the Anthropic model id to `claude-sonnet-5` (verified working end-to-end).
+- Documented `LLM_TIMEOUT_MS` in the environment-variable table — big local models (e.g. a 50 GB `qwen3-next:80b` at ~120s/call) exceed the 30s default and need it bumped. Verified across `qwen2.5:14b`, `qwen3-next:80b`, `gemma4:31b-cloud`, and `glm-5.2:cloud`.
+
+### Tests
+
+- `test:thinking` T8–T10 lock the behavior: a `temperature` `400` retries once dropping `temperature`; a `max_tokens` `400` retries with `max_completion_tokens`; the two chain (GPT-5's both-quirks case → two retries → success); the proactive layer sends the right body for known reasoning ids on the *first* call (no retry); and the normal path is byte-identical.
+
 ## [1.14.1] — 2026-07-03
 
 Patch — **portable-by-default output for text categories, and a clearer compose panel.**

@@ -23,7 +23,7 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
-const VERSION = "1.14.1";
+const VERSION = "1.15.0";
 
 // MCP Apps (extension io.modelcontextprotocol/ui): compose_prompt renders an
 // interactive result panel in hosts that support it (Claude Desktop, ChatGPT,

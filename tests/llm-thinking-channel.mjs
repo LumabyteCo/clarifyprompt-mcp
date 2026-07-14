@@ -215,9 +215,99 @@ sep('T7: model characterization is robust, not a locked-in name list');
   _resetThinkingCache();
 }
 
+// ───────────────────────────────────────────── T8: temperature-rejection retry
+sep('T8: a 400 "temperature" rejection → retry without temperature, then learn the model');
+{
+  const bodies = [];
+  let call = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('/api/show')) return { ok: false, json: async () => ({}) };
+    if (String(url).includes('/chat/completions')) {
+      bodies.push(JSON.parse(opts.body));
+      if (++call === 1) return { ok: false, status: 400, statusText: 'Bad Request', text: async () => JSON.stringify({ error: { message: 'temperature is deprecated for this model.' } }) };
+      return { ok: true, json: async () => msg({ content: 'ok', finish_reason: 'stop' }) };
+    }
+    return { ok: true, json: async () => msg({ content: 'ok', finish_reason: 'stop' }) };
+  };
+  try {
+    _resetThinkingCache();
+    const client = new LLMClient({ apiUrl: 'http://x/v1', apiKey: '', defaultModel: 'temp-rejecting-model-z1' });
+    const res = await client.simpleGenerate('s', 'u', { model: 'temp-rejecting-model-z1' });
+    (bodies.length === 2) ? ok('retried exactly once after the temperature 400') : bad('retry', `made ${bodies.length} request(s)`);
+    (bodies[0]?.temperature !== undefined) ? ok('first attempt sent temperature (normal path untouched)') : bad('retry', 'first body had no temperature');
+    (bodies[1]?.temperature === undefined) ? ok('retry omitted temperature') : bad('retry', `retry body still had temperature=${bodies[1]?.temperature}`);
+    (res.content === 'ok') ? ok('retry succeeded → real content returned (no silent degradation)') : bad('retry', `content was "${res.content}"`);
+    // learned: subsequent calls skip temperature up front — no repeat 400
+    bodies.length = 0;
+    await client.simpleGenerate('s', 'u', { model: 'temp-rejecting-model-z1' });
+    (bodies.length === 1 && bodies[0]?.temperature === undefined) ? ok('subsequent calls skip temperature up front (learned, no wasted 400)') : bad('learn', `re-sent temperature or extra calls: ${JSON.stringify(bodies.map(b => b.temperature))}`);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+// ───────────────────────────────────────────── T9: max_completion_tokens + chained retries
+sep('T9: a 400 for max_tokens → retry with max_completion_tokens; chains with the temperature retry (gpt-5 case)');
+{
+  const bodies = [];
+  let call = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('/api/show')) return { ok: false, json: async () => ({}) };
+    if (String(url).includes('/chat/completions')) {
+      bodies.push(JSON.parse(opts.body));
+      call++;
+      if (call === 1) return { ok: false, status: 400, statusText: 'Bad Request', text: async () => JSON.stringify({ error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } }) };
+      if (call === 2) return { ok: false, status: 400, statusText: 'Bad Request', text: async () => JSON.stringify({ error: { message: "Unsupported value: 'temperature' does not support 0.7. Only the default (1) value is supported." } }) };
+      return { ok: true, json: async () => msg({ content: 'ok', finish_reason: 'stop' }) };
+    }
+    return { ok: true, json: async () => msg({ content: 'ok', finish_reason: 'stop' }) };
+  };
+  try {
+    _resetThinkingCache();
+    const client = new LLMClient({ apiUrl: 'http://x/v1', apiKey: '', defaultModel: 'reasoning-model-w2' });
+    const res = await client.simpleGenerate('s', 'u', { model: 'reasoning-model-w2' });
+    (bodies.length === 3) ? ok('chained exactly two retries (max_tokens, then temperature)') : bad('chain', `made ${bodies.length} request(s)`);
+    (bodies[0]?.max_tokens !== undefined && bodies[0]?.max_completion_tokens === undefined) ? ok('attempt 1: sent max_tokens (normal)') : bad('chain', 'attempt 1 token param wrong');
+    (bodies[1]?.max_completion_tokens !== undefined && bodies[1]?.max_tokens === undefined) ? ok('attempt 2: switched to max_completion_tokens') : bad('chain', `attempt 2 token param: ${JSON.stringify({ mt: bodies[1]?.max_tokens, mct: bodies[1]?.max_completion_tokens })}`);
+    (bodies[1]?.temperature !== undefined) ? ok('attempt 2: still sent temperature (only the token param was fixed)') : bad('chain', 'attempt 2 dropped temperature prematurely');
+    (bodies[2]?.max_completion_tokens !== undefined && bodies[2]?.temperature === undefined) ? ok('attempt 3: max_completion_tokens + no temperature → both quirks applied') : bad('chain', 'attempt 3 body wrong');
+    (res.content === 'ok') ? ok('final retry succeeded (no degradation)') : bad('chain', `content "${res.content}"`);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
+// ───────────────────────────────────────────── T10: proactive hints (no wasted first call)
+sep('T10: known reasoning models (gpt-5 / o-series) send the right body on the FIRST call — no retry');
+{
+  const bodies = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    if (String(url).includes('/api/show')) return { ok: false, json: async () => ({}) };
+    if (String(url).includes('/chat/completions')) bodies.push(JSON.parse(opts.body));
+    return { ok: true, json: async () => msg({ content: 'ok', finish_reason: 'stop' }) };  // never 400s
+  };
+  try {
+    _resetThinkingCache();
+    const client = new LLMClient({ apiUrl: 'http://x/v1', apiKey: '', defaultModel: 'gpt-5-mini' });
+    await client.simpleGenerate('s', 'u', { model: 'gpt-5-mini' });
+    (bodies.length === 1) ? ok('gpt-5-mini: single call, no wasted retry (proactive hint hit)') : bad('proactive', `made ${bodies.length} calls`);
+    (bodies[0]?.max_completion_tokens !== undefined && bodies[0]?.max_tokens === undefined) ? ok('first call used max_completion_tokens up front') : bad('proactive', `token param: ${JSON.stringify({ mt: bodies[0]?.max_tokens, mct: bodies[0]?.max_completion_tokens })}`);
+    (bodies[0]?.temperature === undefined) ? ok('first call omitted temperature up front') : bad('proactive', `temperature=${bodies[0]?.temperature}`);
+    // a normal model is still byte-identical (max_tokens + temperature)
+    bodies.length = 0;
+    await client.simpleGenerate('s', 'u', { model: 'qwen2.5:7b' });
+    (bodies[0]?.max_tokens !== undefined && bodies[0]?.temperature !== undefined) ? ok('non-reasoning model still sends max_tokens + temperature (untouched)') : bad('proactive', 'normal model body changed');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+}
+
 console.log('');
 if (failures === 0) {
-  console.log(c.green('✔ thinking-channel battery passed (issue #3 regression locked).'));
+  console.log(c.green('✔ thinking-channel battery passed (issue #3 + temperature + max_completion_tokens + proactive hints locked).'));
 } else {
   console.log(c.red(`✖ thinking-channel battery: ${failures} failure(s).`));
   process.exitCode = 1;

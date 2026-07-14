@@ -92,6 +92,18 @@ platforms:
       - "size: 1024x1024"
       - aspect ratios
 
+  - id: nano-banana
+    label: Nano Banana (Gemini 2.5 Flash Image)
+    description: Natural-language scene direction; character consistency, multi-image edits, in-image text
+    syntaxHints:
+      - describe the whole scene in natural language (direct the scene, don't list keywords)
+      - photographic terminology to control the look (camera/lens, angle, depth of field)
+      - explicit lighting (e.g. "three-point softbox setup", "golden-hour backlight")
+      - editing — state what CHANGES and what STAYS the same (preserves subject identity)
+      - combine multiple reference images for character consistency / product placement
+      - reliable in-image text rendering
+      - specify aspect ratio
+
   - id: recraft
     label: Recraft
     description: Vector design, brand assets

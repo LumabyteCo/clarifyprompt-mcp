@@ -118,6 +118,17 @@ Platform-Specific Guidance for GOOGLE IMAGEN 3:
 - Available via Gemini and Vertex AI
 - Good for product photography and realistic scenes`,
 
+      'nano-banana': `
+Platform-Specific Guidance for NANO BANANA (Google Gemini 2.5 Flash Image):
+- Direct the whole scene in natural language — describe subject, setting, and mood in full sentences, not a pile of keywords
+- Use professional photographic terminology to control the look (camera/lens, angle, depth of field)
+- Control lighting explicitly (e.g. "three-point softbox setup", "soft golden-hour backlight")
+- For EDITING an existing image, say what should CHANGE and what should STAY the same — it preserves subject/character identity across edits
+- Reference multiple images to keep a character consistent or place a product into a new scene
+- Reliable at rendering readable text inside the image
+- State the aspect ratio; iterate by changing one variable at a time
+- Strong for consistent characters, iterative edits, and text-in-image work`,
+
       recraft: `
 Platform-Specific Guidance for RECRAFT:
 - Specialized in vector and design output
