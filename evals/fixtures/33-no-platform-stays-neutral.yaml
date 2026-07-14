@@ -1,0 +1,13 @@
+name: no-platform-stays-neutral
+description: 'A text-category prompt with NO explicit platform must produce platform-neutral output — it must not fall back to a vendor default (e.g. Claude) and inject vendor-specific guidance like XML-tag instructions into the system prompt. Guards the portableByDefault behavior for chat/document/code.'
+tags: [optimize, platform, neutral, regression]
+input:
+  prompt: 'write a product update email about our new dashboard'
+  category: document
+expected:
+  # No platform requested → no vendor-specific guidance in the system prompt.
+  # (Asserting ABSENCE holds across model shapes: on compact budgets the whole
+  # guidance section is trimmed anyway; on richer budgets it must be the neutral
+  # block, never Claude's XML-tag guidance.)
+  system_prompt_must_not_contain: ['Platform-Specific Guidance for CLAUDE']
+  no_error: true

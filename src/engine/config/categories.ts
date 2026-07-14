@@ -25,6 +25,15 @@ export interface CategoryConfig {
   defaultPlatform?: string;
   defaultMode: Mode;
   hasPlatforms: boolean;
+  /**
+   * When true, an optimization with NO explicit platform produces
+   * platform-neutral output instead of falling back to `defaultPlatform`.
+   * Set on text categories (chat/document/code) whose output is portable
+   * prose — so the result isn't silently shaped to one vendor's syntax.
+   * Creative categories (image/video/…) leave this off: their output needs
+   * a concrete platform format to be usable, so the flagship default stands.
+   */
+  portableByDefault?: boolean;
 }
 
 const IMAGE_PLATFORMS: PlatformConfig[] = [
@@ -117,13 +126,13 @@ const DOCUMENT_PLATFORMS: PlatformConfig[] = [
  * changes.
  */
 const FALLBACK_CATEGORIES: CategoryConfig[] = [
-  { id: 'chat', label: 'Chat', description: 'General conversation & Q&A', platforms: CHAT_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true },
+  { id: 'chat', label: 'Chat', description: 'General conversation & Q&A', platforms: CHAT_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true, portableByDefault: true },
   { id: 'image', label: 'Image', description: 'Image generation', platforms: IMAGE_PLATFORMS, defaultPlatform: 'midjourney', defaultMode: 'detailed', hasPlatforms: true },
   { id: 'voice', label: 'Voice', description: 'Voice & speech synthesis', platforms: VOICE_PLATFORMS, defaultPlatform: 'elevenlabs', defaultMode: 'detailed', hasPlatforms: true },
   { id: 'video', label: 'Video', description: 'Video generation', platforms: VIDEO_PLATFORMS, defaultPlatform: 'runway', defaultMode: 'detailed', hasPlatforms: true },
   { id: 'music', label: 'Music', description: 'Music generation', platforms: MUSIC_PLATFORMS, defaultPlatform: 'suno', defaultMode: 'detailed', hasPlatforms: true },
-  { id: 'code', label: 'Code', description: 'Programming & development', platforms: CODE_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true },
-  { id: 'document', label: 'Document', description: 'Writing & documents', platforms: DOCUMENT_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true },
+  { id: 'code', label: 'Code', description: 'Programming & development', platforms: CODE_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true, portableByDefault: true },
+  { id: 'document', label: 'Document', description: 'Writing & documents', platforms: DOCUMENT_PLATFORMS, defaultPlatform: 'claude', defaultMode: 'detailed', hasPlatforms: true, portableByDefault: true },
 ];
 
 /**

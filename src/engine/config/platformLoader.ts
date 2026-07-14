@@ -153,9 +153,15 @@ export function mergeWithFallback(
   loaded: CategoryConfig[],
   fallback: CategoryConfig[],
 ): CategoryConfig[] {
-  const byId = new Map<Category, CategoryConfig>();
-  for (const c of fallback) byId.set(c.id, c);
-  for (const c of loaded) byId.set(c.id, c);
+  const fb = new Map<Category, CategoryConfig>(fallback.map(c => [c.id, c]));
+  const byId = new Map<Category, CategoryConfig>(fb);
+  // Field-level merge: a loaded pack wins on the fields it declares, but
+  // fallback-only fields (e.g. portableByDefault, which YAML packs don't
+  // carry) are preserved rather than clobbered by whole-object replacement.
+  for (const c of loaded) {
+    const base = fb.get(c.id);
+    byId.set(c.id, base ? { ...base, ...c } : c);
+  }
   // Preserve the canonical ordering from the fallback array.
   return fallback.map(f => byId.get(f.id)!).filter(Boolean);
 }

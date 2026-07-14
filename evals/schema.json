@@ -128,6 +128,11 @@
           "items": { "type": "string" },
           "description": "Substrings in the rendered system prompt (read from the trace, not the response). Case-insensitive."
         },
+        "system_prompt_must_not_contain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Substrings that must NOT appear in the rendered system prompt (read from the trace). Case-insensitive."
+        },
         "no_error": { "type": "boolean", "description": "When true, result.error must be absent." },
         "clarification_needed": { "type": "boolean", "description": "clarify_with_user: result.clarificationNeeded must equal this." },
         "min_questions": { "type": "integer", "minimum": 0, "description": "clarify_with_user: at least N questions returned." },

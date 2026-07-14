@@ -42,6 +42,7 @@
   .badge.accept { color: var(--cp-ok); border-color: currentColor; }
   .badge.revise { color: var(--cp-warn); border-color: currentColor; }
   .badge.reject { color: var(--cp-bad); border-color: currentColor; }
+  .badge.target { color: var(--cp-accent); border-color: currentColor; }
   h2 { font-size: 13px; font-weight: 600; margin: 14px 0 6px; }
   .prompt-box {
     background: var(--cp-bg-2); border: 1px solid var(--cp-border);
@@ -49,8 +50,11 @@
     font-family: var(--cp-mono); font-size: 12px; white-space: pre-wrap;
     word-break: break-word; max-height: 320px; overflow-y: auto;
   }
+  .prompt-box.original { background: transparent; border-style: dashed; color: var(--cp-fg-2); }
   .diff ins { background: color-mix(in srgb, var(--cp-ok) 18%, transparent); text-decoration: none; border-radius: 2px; }
   .diff del { background: color-mix(in srgb, var(--cp-bad) 14%, transparent); border-radius: 2px; }
+  .toggle { font-size: 12px; font-weight: 400; color: var(--cp-accent); cursor: pointer; margin-left: 4px; }
+  .toggle:hover { text-decoration: underline; }
   .dims { display: grid; grid-template-columns: max-content 1fr max-content; gap: 4px 10px; align-items: center; }
   .dims .bar { height: 6px; border-radius: 3px; background: var(--cp-bg-2); border: 1px solid var(--cp-border); overflow: hidden; }
   .dims .bar > span { display: block; height: 100%; background: var(--cp-accent); }

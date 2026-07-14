@@ -11,7 +11,9 @@ A **context-aware MCP prompt compiler** that transforms vague prompts into platf
 
 Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
-> **New in 1.14.0:** **An interactive compose panel via MCP Apps.** In hosts that speak the `io.modelcontextprotocol/ui` extension (Claude Desktop, ChatGPT, Cursor, VS Code, …), `compose_prompt` renders a live panel: original-vs-optimized **diff**, all six **critique scores**, the pipeline **stages**, and **Accept / Revise** actions — Accept records the outcome into ClarifyPrompt's memory loop, Revise sends your feedback back into the chat. One self-contained `ui://` resource; hosts without the extension see zero change. See [CHANGELOG.md](./CHANGELOG.md).
+> **New in 1.14.1:** **Portable-by-default text output** — a `chat`/`document`/`code` prompt with no explicit platform now stays platform-neutral instead of quietly defaulting to Claude's idioms (XML tags); name a platform to opt into vendor-specific tuning. Plus the MCP Apps compose panel now shows a `for <platform>` badge and a clean **Your prompt → Optimized** before/after (with a `show changes` toggle) instead of an always-on diff. See [CHANGELOG.md](./CHANGELOG.md).
+>
+> **New in 1.14.0:** **An interactive compose panel via MCP Apps.** In hosts that speak the `io.modelcontextprotocol/ui` extension (Claude Desktop, ChatGPT, Cursor, VS Code, …), `compose_prompt` renders a live panel: original-vs-optimized view, all six **critique scores**, the pipeline **stages**, and **Accept / Revise** actions — Accept records the outcome into ClarifyPrompt's memory loop, Revise sends your feedback back into the chat. One self-contained `ui://` resource; hosts without the extension see zero change. See [CHANGELOG.md](./CHANGELOG.md).
 >
 > **New in 1.13.0:** **Plain-language rewrites.** Optimized prompts now stick to common, everyday words instead of drifting into formal vocabulary ("use", never "utilize") — specificity comes from concrete details, not fancier synonyms. `critique_prompt` gained a 6th default dimension, **`plain_language`**, so `auto_revise` loops correct register drift automatically. Also fixed: an explicit `mode` (e.g. `simple`) is no longer silently dropped for small local models under compact system-prompt shaping. See [CHANGELOG.md](./CHANGELOG.md).
 
@@ -63,6 +65,12 @@ Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming conv
 **3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
 
 > <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22. ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+
+## What's new in 1.14.1
+
+**Portable by default.** When you optimize a text prompt (`chat`, `document`, `code`) **without naming a platform**, ClarifyPrompt now returns platform-neutral output — clean, portable structure that works in any assistant — instead of quietly defaulting to Claude's idioms (its `<task>`/`<context>` XML tags). Name a platform (`platform: "claude"`, `"chatgpt"`, … any of the 60) to opt into that platform's specific tuning. Creative categories (image/video/voice/music) are unchanged: their output needs a concrete platform format, so the flagship default (Midjourney, Runway, …) still applies.
+
+**Clearer compose panel.** The MCP Apps panel now shows a `for <platform>` (or `general purpose`) badge, renders your original prompt as a labeled **Your prompt** block above the optimized output, and shows the optimized prompt plainly — with a `show changes` toggle for the word-level diff — instead of an always-on diff.
 
 ## What's new in 1.14.0
 
@@ -519,7 +527,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.14.0)
+## What's in the box (cumulative through 1.14.1)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -678,6 +686,58 @@ The full integration walkthrough — including all 11 tools driven from
 chat, configuration options, and natural-language usage examples —
 is in the AI Butler docs:
 **[Integrate an MCP Server](https://docs.aibutler.dev/ecosystem/integrate-mcp/)**.
+
+## Configuration & the compose panel
+
+Everything you need to run the full pipeline and (in supporting hosts) see the interactive result panel.
+
+### The model that does the work
+
+ClarifyPrompt calls **one** OpenAI-compatible or Anthropic endpoint, set via env:
+
+```bash
+LLM_API_URL=http://localhost:11434/v1     # Ollama shown; any OpenAI-compatible URL works
+LLM_API_KEY=                              # empty for local Ollama; a key for hosted providers
+LLM_MODEL=qwen2.5:7b                      # the model that rewrites and judges
+```
+
+Output is **model-dependent** — the *structure* (a platform's syntax, the critique dimensions) is consistent across models; the exact wording and scores vary by model.
+
+### Run the whole pipeline in one call
+
+```jsonc
+compose_prompt({
+  "prompt": "write a product update email about our new dashboard",
+  "platform": "claude",     // target a platform's tuning; omit for portable, neutral output
+  "pre_clarify": "never",   // "auto" | "always" | "never"
+  "post_critique": true     // adds the LLM-as-judge pass (verdict + the six score dimensions)
+})
+```
+
+Returns `{ optimization: { id, sessionId, originalPrompt, platform, … }, finalPrompt, critique: { verdict, overallScore, dimensions[] }, stages[] }`.
+
+### Targeting a platform
+
+`platform:` (on `optimize_prompt` or `compose_prompt`) selects a platform's tuning — e.g. `midjourney`, `dall-e`, `sora`, `suno`, `claude`, `chatgpt`, `cursor` (58 built-in + any you register). For chat, the platforms **are** the models (`claude`, `chatgpt`, `gemini`, `llama`, `deepseek`, …). **Text categories** (`chat`/`document`/`code`) produce portable, platform-neutral output when you *omit* `platform` — name one to opt into that platform's specific idioms.
+
+### Per-stage models (e.g. a stronger model as the critic)
+
+`compose_prompt` can route each stage to a different model *name*:
+
+```jsonc
+compose_prompt({
+  "prompt": "…",
+  "optimize_model": "qwen2.5:14b",   // rewrite on a cheaper model
+  "critique_model": "gpt-4o",        // judge on a stronger one
+  "clarify_model":  "qwen2.5:7b"
+})
+```
+
+> **Important:** all per-stage names hit the **same `LLM_API_URL`** — the override changes only the model *name*, not the endpoint. So with `LLM_API_URL` pointed at Ollama, every per-stage model must be an Ollama model; pointed at OpenAI, every model must be an OpenAI model. To genuinely **mix providers** (e.g. a local model to optimize + `gpt-4o` to critique), point `LLM_API_URL` at a gateway that serves both names — OpenRouter, a LiteLLM proxy, or any OpenAI-compatible router. (`optimize_prompt` on its own has no per-call model override; it uses `LLM_MODEL`.)
+
+### The interactive compose panel (MCP Apps)
+
+In hosts that support the `io.modelcontextprotocol/ui` extension — Claude Desktop, Cursor, VS Code, … — `compose_prompt` renders a live panel next to the result: your original prompt, the optimized output (with a *show changes* diff toggle), a `for <platform>` / `general purpose` badge, the six critique score bars, and **Accept** / **Revise** actions. Accept records the outcome via `save_outcome` (feeding the few-shot memory loop); Revise sends your feedback back into the chat. Hosts without the extension are unaffected — they get the same text + `structuredContent` result and no panel.
 
 ## Supported Platforms (58+ built-in, unlimited custom)
 
@@ -1445,7 +1505,7 @@ clarifyprompt-mcp/
       composition/compose.ts           (1.4.0) compose_prompt — canonical clarify→ground/opt→critique pipeline
   evals/                                Eval harness v0 (1.3.0; setup: multi-call in 1.5.0)
     run.mjs                            YAML fixtures → MCP server → scored HTML report
-    fixtures/*.yaml                    32 deterministic fixtures
+    fixtures/*.yaml                    33 deterministic fixtures
     schema.json                        Fixture schema
   scripts/build-panel.mjs               (1.14.0) bundles the MCP Apps panel into dist/apps/
   packs/                                Knowledge packs + platform packs (single source of truth, 1.6.4+)

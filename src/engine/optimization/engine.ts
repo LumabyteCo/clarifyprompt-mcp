@@ -97,8 +97,13 @@ export class OptimizationEngine {
     );
     const mode = modeChoice.mode;
 
-    // Auto-select default platform if not provided
-    const platform = request.platform || getCategoryById(category)?.defaultPlatform;
+    // Platform resolution when none was explicitly requested:
+    //   - portableByDefault categories (chat/document/code) stay UNSET so the
+    //     output is platform-neutral prose, not shaped to one vendor's syntax.
+    //   - everyone else (image/video/voice/music) falls back to the category's
+    //     flagship, since that output needs a concrete platform format.
+    const cat = getCategoryById(category);
+    const platform = request.platform || (cat?.portableByDefault ? undefined : cat?.defaultPlatform);
 
     const strategy = getStrategy(category);
     const registry = getPlatformRegistry();

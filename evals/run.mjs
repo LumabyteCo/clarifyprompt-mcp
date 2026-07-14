@@ -191,6 +191,7 @@ const CHECK_WEIGHTS = {
   grounding_sources_must_include: 1.5,
   grounding_sources_must_exclude: 1.5,
   system_prompt_must_contain: 1.5,
+  system_prompt_must_not_contain: 1.5,
   no_error: 2.0,
   // clarify_with_user checks
   clarification_needed: 2.0,
@@ -301,7 +302,8 @@ function scoreCheck(name, expected, actual, opts = {}) {
       const missing = expected.filter((needle) => !haystack.includes(String(needle).toLowerCase()));
       return { passed: missing.length === 0, detail: missing.length === 0 ? `all ${expected.length} found` : `missing: ${missing.join(', ')}` };
     }
-    case 'must_not_contain': {
+    case 'must_not_contain':
+    case 'system_prompt_must_not_contain': {
       const haystack = (actual || '').toLowerCase();
       const found = expected.filter((needle) => haystack.includes(String(needle).toLowerCase()));
       return { passed: found.length === 0, detail: found.length === 0 ? `none of the ${expected.length} forbidden phrases found` : `found forbidden: ${found.join(', ')}` };
@@ -515,7 +517,8 @@ function evaluateFixture(fixture, result, systemPrompt, tool) {
       case 'max_reading_grade':              actual = isCompose ? result.finalPrompt : result.optimizedPrompt; break;
       case 'grounding_sources_must_include':
       case 'grounding_sources_must_exclude': actual = result.grounding?.sources || []; break;
-      case 'system_prompt_must_contain':     actual = systemPrompt || ''; break;
+      case 'system_prompt_must_contain':
+      case 'system_prompt_must_not_contain': actual = systemPrompt || ''; break;
       case 'no_error':                       opts = { error: result.error }; break;
       // clarify_with_user
       case 'clarification_needed':           actual = result.clarificationNeeded; break;
@@ -616,7 +619,7 @@ async function runFixture(fixture) {
     // Pull system prompt from the trace if any check needs it (optimize/ground only — they emit traces).
     // compose_prompt nests these under .optimization or .grounding; pull the inner trace id.
     let systemPrompt = '';
-    if (fixture.expected?.system_prompt_must_contain) {
+    if (fixture.expected?.system_prompt_must_contain || fixture.expected?.system_prompt_must_not_contain) {
       let traceId = null;
       if (tool === 'optimize_prompt' || tool === 'ground_prompt') traceId = result.id;
       else if (tool === 'compose_prompt') traceId = result.optimization?.id ?? result.grounding?.id ?? null;

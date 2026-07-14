@@ -4,6 +4,24 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.1] — 2026-07-03
+
+Patch — **portable-by-default output for text categories, and a clearer compose panel.**
+
+### Changed
+
+- **A text-category optimization with no explicit platform now produces platform-neutral output** instead of silently falling back to a vendor default. Previously `chat`/`document`/`code` with no `platform` defaulted to `claude`, so the result carried Claude-specific idioms (XML `<task>`/`<context>` tags) that aren't portable to other assistants. Now these categories stay neutral unless you name a platform — pass `platform: "claude"` (or any of the 60) to opt back into vendor-specific tuning. Creative categories (image/video/voice/music) are unchanged: their output needs a concrete platform format, so the flagship default stands. New `portableByDefault` flag on `CategoryConfig` drives this.
+
+### Fixed
+
+- **The MCP Apps compose panel now shows the target platform and a clean before/after.** It gained a `for <platform>` (or `general purpose`) badge in the header, renders your original prompt as a labeled "Your prompt" block above the optimized output, and shows the optimized prompt plainly by default with a `show changes` toggle for the word-level diff — instead of an always-on diff that was easy to misread.
+- **`mergeWithFallback` now does a field-level merge** so category fields that live only in the built-in defaults (like `portableByDefault`) survive when a YAML platform pack overrides a category, instead of being clobbered by whole-object replacement.
+- **Friendlier panel errors when a host doesn't forward panel actions.** If Accept/Revise can't reach the server (e.g. a host that doesn't route panel `tools/call`), the panel now says so plainly instead of surfacing a raw `-32601: Method not found`.
+
+### Evals
+
+- New check **`system_prompt_must_not_contain`** (asserts substrings absent from the rendered system prompt) and fixture `33-no-platform-stays-neutral` — a text prompt with no platform must not carry vendor-specific guidance.
+
 ## [1.14.0] — 2026-07-03
 
 Minor — **an interactive compose panel via MCP Apps.** In hosts that support the `io.modelcontextprotocol/ui` extension (Claude Desktop, ChatGPT, Cursor, VS Code, …), `compose_prompt` now renders a live result panel: original-vs-optimized diff, per-dimension critique scores, pipeline stages, and Accept / Revise actions. Hosts without the extension see zero change.

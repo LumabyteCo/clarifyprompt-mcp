@@ -16,8 +16,8 @@ type ComposeResult = {
   finalPrompt?: string;
   clarificationRequired?: boolean;
   clarification?: { questions?: Array<{ question?: string; suggestedAnswer?: string; dimension?: string }> };
-  optimization?: { id?: string; sessionId?: string; originalPrompt?: string };
-  grounding?: { id?: string; sessionId?: string; originalPrompt?: string };
+  optimization?: { id?: string; sessionId?: string; originalPrompt?: string; platform?: string; category?: string };
+  grounding?: { id?: string; sessionId?: string; originalPrompt?: string; platform?: string; category?: string };
   critique?: { verdict?: string; overallScore?: number; summary?: string; dimensions?: Dim[] };
   stages?: Array<{ name?: string; stage?: string } | string>;
   revised?: boolean;
@@ -80,19 +80,26 @@ function render(res: ComposeResult) {
   const opt = res.optimization ?? res.grounding ?? {};
   const original = opt.originalPrompt ?? "";
   const final_ = res.finalPrompt ?? "";
+  const platform = opt.platform ?? "";
   const crit = res.critique;
   const verdictCls = crit?.verdict === "accept" ? "accept" : crit?.verdict === "revise" ? "revise" : crit?.verdict ? "reject" : "";
+  const targetLabel = platform ? `for ${platform}` : "general purpose";
 
   root.innerHTML = `
     <div class="row">
+      <span class="badge target">${esc(targetLabel)}</span>
       ${crit?.verdict ? `<span class="badge ${verdictCls}">${esc(crit.verdict)}</span>` : ""}
       ${typeof crit?.overallScore === "number" ? `<span class="badge">score ${esc(crit.overallScore.toFixed(1))}/10</span>` : ""}
       ${res.revised ? `<span class="badge">revised</span>` : ""}
       ${stageNames(res.stages).map((s) => `<span class="badge">${esc(s)}</span>`).join("")}
     </div>
 
-    <h2>Optimized prompt ${original ? '<span class="muted">(diff vs original)</span>' : ""}</h2>
-    <div class="prompt-box diff">${original ? diffHtml(original, final_) : esc(final_)}</div>
+    ${original ? `
+      <h2>Your prompt</h2>
+      <div class="prompt-box original">${esc(original)}</div>` : ""}
+
+    <h2>Optimized${platform ? ` ${esc(targetLabel)}` : ""}${original ? ` <a id="toggle-diff" class="toggle" role="button" tabindex="0">show changes</a>` : ""}</h2>
+    <div class="prompt-box" id="opt-box">${esc(final_)}</div>
 
     ${crit?.dimensions?.length ? `
       <h2>Critique</h2>
@@ -114,6 +121,20 @@ function render(res: ComposeResult) {
       <div class="actions"><button id="send-revision" class="primary">Send to chat</button></div>
     </div>
     <div id="status" class="muted"></div>`;
+
+  // "show changes" swaps the optimized block between the plain output and a
+  // word-level diff against the original — the plain view is the default so
+  // the before/after reads clearly.
+  let showingDiff = false;
+  document.getElementById("toggle-diff")?.addEventListener("click", () => {
+    const box = document.getElementById("opt-box");
+    const link = document.getElementById("toggle-diff");
+    if (!box || !link) return;
+    showingDiff = !showingDiff;
+    box.classList.toggle("diff", showingDiff);
+    box.innerHTML = showingDiff ? diffHtml(original, final_) : esc(final_);
+    link.textContent = showingDiff ? "hide changes" : "show changes";
+  });
 
   document.getElementById("copy")?.addEventListener("click", async () => {
     try {
@@ -145,7 +166,7 @@ function render(res: ComposeResult) {
       } catch { /* optional host capability */ }
     } catch (e) {
       btn.disabled = false;
-      setStatus(`Could not record outcome: ${(e as Error).message ?? e}`, "muted");
+      setStatus(friendlyToolError(e, "record the outcome"), "muted");
     }
   });
 
@@ -165,9 +186,23 @@ function render(res: ComposeResult) {
       setStatus("Sent to chat.");
       document.getElementById("revise-box")?.classList.add("hidden");
     } catch (e) {
-      setStatus(`Could not send: ${(e as Error).message ?? e}`);
+      setStatus(friendlyToolError(e, "send this to the chat"), "muted");
     }
   });
+}
+
+/**
+ * Turn a raw MCP/bridge error into something a person can read. The common one
+ * is JSON-RPC -32601 ("Method not found"), which a panel hits when the host
+ * doesn't forward the action to the server (or isn't wired to one) — that's a
+ * host capability gap, not a user error, so say so plainly.
+ */
+function friendlyToolError(e: unknown, action: string): string {
+  const msg = String((e as Error)?.message ?? e ?? "");
+  if (/-32601|method not found/i.test(msg)) {
+    return `This host can't ${action} from the panel yet (it didn't forward the action to ClarifyPrompt).`;
+  }
+  return `Couldn't ${action}: ${msg}`;
 }
 
 function applyHostContext(ctx: { theme?: string } | null | undefined) {
