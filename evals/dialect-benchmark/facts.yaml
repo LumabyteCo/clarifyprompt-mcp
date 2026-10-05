@@ -1,0 +1,128 @@
+# Dialect-currency benchmark — raw-model probe (NOT an engine eval).
+#
+# The question: can today's models, unprompted, write prompts in the CURRENT
+# dialect of the platforms they target — or do they emit the frozen dialect
+# of their training data?
+#
+# Each fact = a natural ask + the verified current truth + the stale
+# signature expected from frozen weights. All facts verified against
+# current platform docs / vendor pages on 2026-10-05 (source URLs inline).
+#
+# Sora 2 is included DELIBERATELY as the retired-platform probe: OpenAI
+# discontinued the consumer app on 2026-04-26 and shut the Videos API on
+# 2026-09-24 with no replacement. A model that fluently writes a Sora prompt
+# is hallucinating currency — that is the point.
+#
+# Grading (case-insensitive substring markers on the model's reply):
+#   current  — reply contains a current-dialect marker, no stale marker
+#   mixed    — contains both (e.g. names Veo 3 but describes 2-minute clips)
+#   stale    — contains a stale marker; or (missing_means_stale) wrote the
+#              prompt fluently with no disclaimer at all
+#   unknown  — model says it doesn't know the platform / hedges on cutoff
+#              (honest, but still useless to a user asking today)
+#   none     — no markers either way (no evidence of dialect knowledge)
+#   empty    — model returned no content (thinking-channel exhaustion)
+
+facts:
+  - id: midjourney-version
+    platform: Midjourney
+    ask: "Write a Midjourney prompt for: a dragon flying over a castle at sunset."
+    verified: "Current default is V8.2; V7 shipped 2025-04-03 and was default through 2026-06-09; V8.x adds the Edit Model and --hd/--sd. Frozen 2024 weights emit --v 6 / --v 6.1."
+    verifiedAt: "2026-10-05"
+    source: "https://docs.midjourney.com/hc/en-us/articles/32199405667853-Version"
+    current: ["--v 7", "--v 8", "--version 7", "--version 8", "version 7", "version 8", "v7", "v8"]
+    stale: ["--v 6", "--v 5", "version 6", "version 5", "v6"]
+
+  - id: sora-retired
+    platform: OpenAI Sora 2
+    ask: "Write a prompt for OpenAI's Sora 2 video model: a timelapse of a city at night."
+    verified: "Sora web/app discontinued 2026-04-26; Videos API + sora-2 model ids shut down 2026-09-24, no replacement named. Any fluent Sora prompt written after that date is hallucinated currency."
+    verifiedAt: "2026-10-05"
+    source: "https://help.openai.com/en/articles/20001152-what-to-know-about-the-sora-discontinuation"
+    current: ["discontinu", "shut down", "no longer", "retired", "deprecat", "closed", "sunset", "was removed"]
+    stale: []
+    unknown: ["not familiar", "don't know", "do not know", "cannot find", "no information", "since my training", "knowledge cutoff", "may have changed", "as of my last"]
+    missing_means_stale: true
+
+  - id: veo-audio
+    platform: Google Veo
+    ask: "Write a Google Veo prompt for: an athlete sprinting through the rain, with audio."
+    verified: "Current line is Veo 3.1 (Standard/Fast/Lite; 4K, native/spatial audio, 8s clips extendable). Veo 2 (2024) had no native audio and the old 'up to 2 minutes' claim does not describe any current tier."
+    verifiedAt: "2026-10-05"
+    source: "https://ai.google.dev/gemini-api/docs/video"
+    current: ["veo 3", "veo3", "3.1", "native audio", "spatial audio", "ambient sound", "8 second", "8s"]
+    stale: ["veo 2", "veo 1", "up to 2 minutes", "two minutes", "2-minute"]
+
+  - id: suno-version
+    platform: Suno
+    ask: "Write a Suno prompt for: a chill lo-fi beat for studying."
+    verified: "Current family is v6 / v6-wild / v6-mini (released 2026-09-09; v5/v5.5 retired the same week). Anything naming v3/v4 is 2024-frozen."
+    verifiedAt: "2026-10-05"
+    source: "https://suno.com/blog/v6"
+    current: ["v6", "v5", "version 6", "version 5", "suno 6", "suno 5"]
+    stale: ["v3", "v4", "version 3", "version 4"]
+
+  - id: kling-3
+    platform: Kling
+    ask: "Write a Kling prompt for: a martial-arts action scene."
+    verified: "Kling 3.0 (2026-02) / Omni: native audio, lip-synced dialogue in five languages, multi-shot storyboards (up to 6 shots), native 4K/60fps. The 'up to 2 minutes' phrasing is 2024-era Kling 1.x marketing."
+    verifiedAt: "2026-10-05"
+    source: "https://klingai.com"
+    current: ["kling 3", "3.0", "native audio", "storyboard", "multi-shot", "4k"]
+    stale: ["kling 1", "up to 2 minutes", "two minutes", "2 min"]
+
+  - id: elevenlabs-v3
+    platform: ElevenLabs
+    ask: "Write an ElevenLabs text-to-speech prompt for: a weary detective narrating a noir scene."
+    verified: "Eleven v3 (2025) accepts inline audio tags — [laughs], [whispers], [sighs] — for expressive delivery; v2 stability/similarity sliders are the older API surface."
+    verifiedAt: "2026-10-05"
+    source: "https://elevenlabs.io/docs"
+    current: ["[laughs", "[whispers", "[sighs", "[pause", "audio tag", "eleven v3", "v3 expressive"]
+    stale: []
+
+  - id: openai-tts
+    platform: OpenAI TTS
+    ask: "Write an OpenAI text-to-speech prompt for: a friendly customer-service greeting."
+    verified: "gpt-4o-mini-tts (2025) is instruction-following — tone/delivery steered by natural-language directions. The six fixed voices (alloy/echo/fable/onyx/nova/shimmer) are the 2024-era surface, still legacy-available."
+    verifiedAt: "2026-10-05"
+    source: "https://platform.openai.com/docs/guides/text-to-speech"
+    current: ["gpt-4o-mini-tts", "gpt-4o-mini-tts-voice", "instruction", "steer", "voice directions"]
+    stale: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+
+  - id: openai-image
+    platform: OpenAI image
+    ask: "Write an image-generation prompt for OpenAI's current image model: a cozy coffee shop on a rainy afternoon."
+    verified: "GPT Image 2 is OpenAI's current image model (DALL-E 3 remains only as ChatGPT legacy). A 2024-frozen model answers 'DALL-E 3'."
+    verifiedAt: "2026-10-05"
+    source: "https://platform.openai.com/docs/models"
+    current: ["gpt image", "gpt-image", "image 2", "image-2"]
+    stale: ["dall-e 3", "dall-e3", "dalle-3", "dall·e 3", "dall e 3"]
+
+  - id: runway-gen45
+    platform: Runway
+    ask: "Write a Runway prompt for: a fashion model walking through neon-lit Tokyo streets."
+    verified: "Current is Gen-4.5 / Gen-4 Turbo (References for character consistency, Act-Two motion capture). Gen-2/Gen-3 are the 2024-era answers."
+    verifiedAt: "2026-10-05"
+    source: "https://runway.com/product/models/gen-4.5"
+    current: ["gen-4", "gen 4", "gen-4.5", "references", "act-two", "act two"]
+    stale: ["gen-3", "gen 3", "gen-2", "gen 2", "gen-3 alpha", "gen-3a"]
+
+  - id: seedance
+    platform: ByteDance Seedance
+    ask: "Write a prompt for ByteDance's Seedance video model: a dance battle in an underground club."
+    verified: "Seedance 1.0 shipped mid-2025; 2.0 (2026) supports ~20s clips, up to 12 reference files, multi-shot storyboards. Never hearing of Seedance marks a pre-2025-mid cutoff; knowing 2.0 features marks 2026 currency."
+    verifiedAt: "2026-10-05"
+    source: "https://seed.bytedance.com"
+    current: ["seedance 1", "seedance 2", "seedance", "multi-reference", "reference images", "storyboard"]
+    stale: []
+    unknown: ["not familiar", "don't know", "do not know", "cannot find", "no information", "since my training", "knowledge cutoff"]
+
+  - id: nano-banana
+    platform: Google Nano Banana
+    ask: "Write a prompt for Google's Nano Banana image model: a cozy coffee shop on a rainy afternoon."
+    verified: "Nano Banana = Gemini 2.5 Flash Image (launched 2025-08). Not knowing it at all marks a pre-Aug-2025 cutoff."
+    verifiedAt: "2026-10-05"
+    source: "https://blog.google/technology/google-deepmind/nano-banana-image-model/"
+    current: ["nano banana", "gemini 2.5 flash image", "flash image", "gemini 2.5"]
+    stale: []
+    unknown: ["not familiar", "don't know", "do not know", "cannot find", "no information", "since my training", "knowledge cutoff"]

@@ -1,0 +1,192 @@
+Dialect-currency benchmark — raw-model probe (Ollama Cloud)
+API: http://localhost:11434/v1  timeout: 180000ms  budget: $10
+
+
+━━━ DeepSeek V4.1 Flash (deepseek-v4.1-flash:cloud) — newest (3 wk) — tool-use specialist
+  ✗ midjourney-version   stale    41.3s  $0.000
+  ✗ sora-retired         stale    40.5s  $0.002
+  · veo-audio            none     7.3s  $0.002
+  · suno-version         none     13.1s  $0.003
+  ✓ kling-3              current  46.7s  $0.004
+  ✓ elevenlabs-v3        current  10.5s  $0.005
+  ~ openai-tts           mixed    8.4s  $0.006
+  · openai-image         none     13.7s  $0.007
+  · runway-gen45         none     24.5s  $0.007
+  · seedance             none     58.0s  $0.008
+  ✓ nano-banana          current  56.5s  $0.009
+
+━━━ GLM-5.3 Flash (glm-5.3-flash:cloud) — newest — 18B-active multimodal
+  ✗ midjourney-version   stale    3.5s  $0.010
+  ✗ sora-retired         stale    8.2s  $0.010
+  ✓ veo-audio            current  5.4s  $0.011
+  · suno-version         none     5.1s  $0.011
+  ✓ kling-3              current  6.2s  $0.011
+  ✓ elevenlabs-v3        current  10.5s  $0.012
+  ~ openai-tts           mixed    3.9s  $0.013
+  · openai-image         none     7.2s  $0.013
+  · runway-gen45         none     5.1s  $0.013
+  ✓ seedance             current  14.3s  $0.014
+  ✓ nano-banana          current  5.7s  $0.015
+
+━━━ GLM-5.3 (glm-5.3:cloud) — Z.ai flagship
+  ✗ midjourney-version   stale    7.2s  $0.017
+  ✗ sora-retired         stale    8.6s  $0.024
+  ✓ veo-audio            current  8.1s  $0.029
+  · suno-version         none     5.0s  $0.032
+  ✓ kling-3              current  12.2s  $0.041
+  ✓ elevenlabs-v3        current  18.0s  $0.053
+  ~ openai-tts           mixed    7.0s  $0.059
+  ✓ openai-image         current  9.1s  $0.066
+  · runway-gen45         none     4.0s  $0.068
+  ✓ seedance             current  8.6s  $0.075
+  ✓ nano-banana          current  6.4s  $0.080
+
+━━━ DeepSeek V4 Pro (deepseek-v4-pro:cloud) — frontier MoE, 3 reasoning modes
+  ✗ midjourney-version   stale    1.5s  $0.080
+  ✗ sora-retired         stale    2.4s  $0.080
+  · veo-audio            none     2.7s  $0.081
+  · suno-version         none     4.6s  $0.081
+  ✓ kling-3              current  2.4s  $0.082
+  · elevenlabs-v3        none     3.6s  $0.082
+  ✗ openai-tts           stale    8.4s  $0.083
+  · openai-image         none     2.1s  $0.084
+  · runway-gen45         none     1.3s  $0.084
+  · seedance             none     2.6s  $0.085
+  · nano-banana          none     1.6s  $0.085
+
+━━━ Kimi K3 (kimi-k3:cloud) — Moonshot flagship (2.8T)
+  ✗ midjourney-version   stale    8.8s  $0.096
+  ✗ sora-retired         stale    16.6s  $0.112
+  ✓ veo-audio            current  13.9s  $0.129
+  · suno-version         none     9.8s  $0.140
+  · kling-3              none     8.8s  $0.150
+  ✓ elevenlabs-v3        current  16.5s  $0.171
+  ~ openai-tts           mixed    12.4s  $0.184
+  · openai-image         none     11.3s  $0.199
+  ✗ runway-gen45         stale    10.9s  $0.213
+  ✓ seedance             current  16.6s  $0.230
+  ✓ nano-banana          current  8.4s  $0.241
+
+━━━ Kimi K2.7 Code (kimi-k2.7-code:cloud) — coding agentic
+  ✗ midjourney-version   stale    3.0s  $0.242
+  ✗ sora-retired         stale    4.5s  $0.243
+  · veo-audio            none     4.9s  $0.244
+  · suno-version         none     4.5s  $0.245
+  · kling-3              none     3.7s  $0.246
+  · elevenlabs-v3        none     8.8s  $0.248
+  ✗ openai-tts           stale    4.2s  $0.249
+  · openai-image         none     4.0s  $0.250
+  · runway-gen45         none     3.0s  $0.251
+  ✓ seedance             current  4.9s  $0.253
+  ✓ nano-banana          current  6.7s  $0.255
+
+━━━ MiniMax M3 (minimax-m3:cloud) — 1M ctx, native multimodal
+  ✗ midjourney-version   stale    5.9s  $0.256
+  ✗ sora-retired         stale    7.7s  $0.257
+  ✓ veo-audio            current  9.5s  $0.259
+  · suno-version         none     12.2s  $0.260
+  ✓ kling-3              current  10.7s  $0.261
+  ! elevenlabs-v3        error    19.0s  $0.261
+  ~ openai-tts           mixed    17.8s  $0.263
+  · openai-image         none     8.9s  $0.264
+  ~ runway-gen45         mixed    21.6s  $0.266
+  ✓ seedance             current  8.5s  $0.267
+  ✓ nano-banana          current  8.4s  $0.268
+
+━━━ Gemma 4 31B (gemma4:31b-cloud) — frontier-at-size, newest weights (5 days)
+  ✗ midjourney-version   stale    2.9s  $0.269
+  ✗ sora-retired         stale    3.0s  $0.269
+  · veo-audio            none     3.2s  $0.269
+  · suno-version         none     2.4s  $0.269
+  ✓ kling-3              current  3.2s  $0.269
+  ✓ elevenlabs-v3        current  2.5s  $0.270
+  ~ openai-tts           mixed    2.8s  $0.270
+  ✗ openai-image         stale    2.8s  $0.270
+  ✗ runway-gen45         stale    3.9s  $0.270
+  ✓ seedance             current  2.5s  $0.271
+  · nano-banana          none     2.4s  $0.271
+
+━━━ Nemotron 3 Ultra (nemotron-3-ultra:cloud) — NVIDIA reasoning
+  ✗ midjourney-version   stale    115.2s  $0.274
+  ✗ sora-retired         stale    14.3s  $0.276
+  · veo-audio            none     55.4s  $0.277
+  ✗ suno-version         stale    50.5s  $0.279
+  ✓ kling-3              current  79.3s  $0.285
+  · elevenlabs-v3        none     25.7s  $0.287
+  ✗ openai-tts           stale    23.4s  $0.290
+  · openai-image         none     33.6s  $0.292
+  ✗ runway-gen45         stale    34.8s  $0.295
+  ✓ seedance             current  93.8s  $0.298
+  ✓ nano-banana          current  29.8s  $0.300
+
+━━━ Mistral Large 3 (mistral-large-3:cloud) — enterprise MoE
+  ! midjourney-version   error    0.1s  $0.300
+  ! sora-retired         error    0.1s  $0.300
+  ! veo-audio            error    0.1s  $0.300
+  ! suno-version         error    0.2s  $0.300
+  ! kling-3              error    0.1s  $0.300
+  ! elevenlabs-v3        error    0.1s  $0.300
+  ! openai-tts           error    0.1s  $0.300
+  ! openai-image         error    0.1s  $0.300
+  ! runway-gen45         error    0.1s  $0.300
+  ! seedance             error    0.1s  $0.300
+  ! nano-banana          error    0.1s  $0.300
+
+━━━ GPT-OSS 120B (gpt-oss:120b-cloud) — OpenAI open weights — does it know its owner killed Sora?
+  ✗ midjourney-version   stale    1.0s  $0.300
+  ✗ sora-retired         stale    6.1s  $0.301
+  · veo-audio            none     4.7s  $0.301
+  · suno-version         none     4.5s  $0.302
+  · kling-3              none     5.9s  $0.302
+  · elevenlabs-v3        none     3.8s  $0.303
+  · openai-tts           none     2.1s  $0.303
+  ✗ openai-image         stale    1.9s  $0.303
+  · runway-gen45         none     3.4s  $0.304
+  ✓ seedance             current  6.2s  $0.304
+  · nano-banana          none     2.5s  $0.305
+
+━━━ GLM-5.2 (glm-5.2:cloud) — control: prev-gen Z.ai flagship
+  ✗ midjourney-version   stale    5.4s  $0.307
+  ✗ sora-retired         stale    5.5s  $0.310
+  · veo-audio            none     5.2s  $0.312
+  · suno-version         none     6.9s  $0.315
+  · kling-3              none     8.7s  $0.319
+  · elevenlabs-v3        none     6.2s  $0.322
+  ✗ openai-tts           stale    7.2s  $0.326
+  · openai-image         none     5.2s  $0.328
+  · runway-gen45         none     8.4s  $0.330
+  ✓ seedance             current  8.8s  $0.334
+  · nano-banana          none     19.1s  $0.337
+
+━━━ Qwen3.5 397B (qwen3.5:397b-cloud) — control: prev-gen Qwen frontier
+  ! midjourney-version   error    0.1s  $0.337
+  ! sora-retired         error    0.2s  $0.337
+  ! veo-audio            error    0.1s  $0.337
+  ! suno-version         error    0.2s  $0.337
+  ! kling-3              error    0.2s  $0.337
+  ! elevenlabs-v3        error    0.1s  $0.337
+  ! openai-tts           error    0.1s  $0.337
+  ! openai-image         error    0.1s  $0.337
+  ! runway-gen45         error    0.1s  $0.337
+  ! seedance             error    0.1s  $0.337
+  ! nano-banana          error    0.1s  $0.337
+
+======================================================================
+SUMMARY (per model, 11 facts)
+======================================================================
+DeepSeek V4.1 Flash    current: 3  stale: 2  mixed: 1  unknown: 0  none: 5  empty: 0  err: 0
+GLM-5.3 Flash          current: 5  stale: 2  mixed: 1  unknown: 0  none: 3  empty: 0  err: 0
+GLM-5.3                current: 6  stale: 2  mixed: 1  unknown: 0  none: 2  empty: 0  err: 0
+DeepSeek V4 Pro        current: 1  stale: 3  mixed: 0  unknown: 0  none: 7  empty: 0  err: 0
+Kimi K3                current: 4  stale: 3  mixed: 1  unknown: 0  none: 3  empty: 0  err: 0
+Kimi K2.7 Code         current: 2  stale: 3  mixed: 0  unknown: 0  none: 6  empty: 0  err: 0
+MiniMax M3             current: 4  stale: 2  mixed: 2  unknown: 0  none: 2  empty: 0  err: 1
+Gemma 4 31B            current: 3  stale: 4  mixed: 1  unknown: 0  none: 3  empty: 0  err: 0
+Nemotron 3 Ultra       current: 3  stale: 5  mixed: 0  unknown: 0  none: 3  empty: 0  err: 0
+Mistral Large 3        current: 0  stale: 0  mixed: 0  unknown: 0  none: 0  empty: 0  err:11
+GPT-OSS 120B           current: 1  stale: 3  mixed: 0  unknown: 0  none: 7  empty: 0  err: 0
+GLM-5.2                current: 1  stale: 3  mixed: 0  unknown: 0  none: 7  empty: 0  err: 0
+Qwen3.5 397B           current: 0  stale: 0  mixed: 0  unknown: 0  none: 0  empty: 0  err:11
+======================================================================
+Total: 143 calls · 0.0 min · $0.337
+Full audit: /Users/ar/Code/clarifyprompt-mcp/evals/dialect-benchmark/out/dialect-benchmark-2026-10-05-15-13.json
