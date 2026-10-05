@@ -9,7 +9,7 @@
 
 A **context-aware MCP prompt compiler** that transforms vague prompts into platform-optimized prompts for 60+ AI platforms across 7 categories — grounded in your workspace signals (CLAUDE.md, AGENTS.md, .cursorrules, package.json), resolved intent, and the capabilities of the target model.
 
-Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, DALL-E, Sora, Runway, Higgsfield, ElevenLabs, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
+Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, GPT Image 2, Veo, Runway, Kling, Seedance, Higgsfield, ElevenLabs, Suno, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
 
 > **New in 1.15.0:** **Nano Banana** (Google Gemini 2.5 Flash Image) is now a **built-in image platform** — `optimize_prompt(platform: "nano-banana")` compiles image prompts in its native style (natural-language scene direction, photographic terms, edit-preserving-identity phrasing, in-image text). Plus **latest-model compatibility across every provider**: `claude-sonnet-5`, `gpt-5`/o-series, and Gemini reject `temperature` and/or `max_tokens`; the client now sends the right parameters (proactively for known reasoning ids, and learns the rest from a `400`). Verified live against Anthropic, OpenAI, Gemini, and Ollama Cloud. See [CHANGELOG.md](./CHANGELOG.md).
 >
@@ -46,6 +46,8 @@ You write:    "a dragon flying over a castle at sunset"
 ```
 
 Midjourney gets `--ar/--v/--s/--q` flags; DALL-E and Nano Banana get flag-free natural language — and Nano Banana layers in photographic direction (lens, f-stop, camera angle) and explicit mood, its documented style. Same idea, each platform's native dialect.
+
+> **Notice `--v 6.1` in the Midjourney capture above.** That capture is real (2026-06-22) — and the model reached for a version flag that was *already two major versions stale*; Midjourney's current default is V8.2. Model weights are frozen at training time; platform dialects mutate monthly. That gap is exactly what ClarifyPrompt's **verified platform packs** (`verifiedAt`-dated, refreshed against current docs) exist to close — see [the staleness story](#why-a-prompt-compiler).
 
 **2 — It knows what you're working on.** This is the part a template can't fake. Drop a vague one-liner while editing `src/transport.ts` *in this very repo*, and the engine grounds it in your real workspace — `package.json`, git state, the active file — and resolves intent **before** it shapes the output:
 
@@ -408,7 +410,7 @@ Patch release. Adds **[Higgsfield](https://higgsfield.ai)** as a target platform
 Higgsfield is a multi-model creative platform that exposes its own MCP server at `https://mcp.higgsfield.ai/mcp`. Inside one connection you get:
 
 - **Image**: Soul 2.0, Soul Cinema, Soul Cast (character-consistent), Flux 2, Seedream 5, Nano Banana Pro, GPT Image 2
-- **Video**: Cinema Studio, Sora 2, Veo 3.1, Kling 3.0, WAN 2.6, Seedance 2.0
+- **Video**: Cinema Studio, Veo 3.1, Kling 3.0, WAN 2.6, Seedance 2.0 (Sora 2 dropped 2026-09-24 — OpenAI shut the Videos API with no replacement)
 - **Workflows**: Soul ID character training, Lipsync Studio, UGC Factory, Marketing Studio, virality_predictor
 
 The 1.6.1 ClarifyPrompt platform entries surface Higgsfield's model identifiers and prompt-style conventions (long-form natural-language prose; composition + lighting + textures + mood; up to 4K images / 15 s video / Soul ID for character consistency) as syntax hints to the curator.
@@ -687,7 +689,7 @@ optimization) using `inspect_context`:
 
 Then run the actual optimizer for any of the 60+ supported platforms:
 
-![optimize_prompt response — Midjourney-shaped optimized prompt for "a dragon flying over a castle at sunset" with --ar 16:9 and --v 6 parameters, plus the analysis section showing Resolved Intent="creative-media", Mode Source, and the grounding sources used](docs/screenshots/aibutler/04-optimize-image.png)
+![optimize_prompt response — Midjourney-shaped optimized prompt for "a dragon flying over a castle at sunset" with --ar 16:9 and --v 6 parameters (2026-06 capture; current default is --v 8.2), plus the analysis section showing Resolved Intent="creative-media", Mode Source, and the grounding sources used](docs/screenshots/aibutler/04-optimize-image.png)
 
 Every optimization gets a single JSONL line in
 `~/.clarifyprompt/traces/YYYY-MM-DD.jsonl` — strictly local, never
@@ -732,7 +734,7 @@ Returns `{ optimization: { id, sessionId, originalPrompt, platform, … }, final
 
 ### Targeting a platform
 
-`platform:` (on `optimize_prompt` or `compose_prompt`) selects a platform's tuning — e.g. `midjourney`, `dall-e`, `sora`, `suno`, `claude`, `chatgpt`, `cursor` (58 built-in + any you register). For chat, the platforms **are** the models (`claude`, `chatgpt`, `gemini`, `llama`, `deepseek`, …). **Text categories** (`chat`/`document`/`code`) produce portable, platform-neutral output when you *omit* `platform` — name one to opt into that platform's specific idioms.
+`platform:` (on `optimize_prompt` or `compose_prompt`) selects a platform's tuning — e.g. `midjourney`, `dall-e`, `veo`, `suno`, `claude`, `chatgpt`, `cursor` (58 built-in + any you register). For chat, the platforms **are** the models (`claude`, `chatgpt`, `gemini`, `llama`, `deepseek`, …). **Text categories** (`chat`/`document`/`code`) produce portable, platform-neutral output when you *omit* `platform` — name one to opt into that platform's specific idioms.
 
 ### Per-stage models (e.g. a stronger model as the critic)
 
@@ -757,13 +759,13 @@ In hosts that support the `io.modelcontextprotocol/ui` extension — Claude Desk
 
 | Category | Platforms | Default |
 |----------|-----------|---------|
-| **Image** (11) | Midjourney, DALL-E 3, Stable Diffusion, Flux, Ideogram, Leonardo AI, Adobe Firefly, Grok Aurora, Google Imagen 3, Recraft, **Higgsfield** | Midjourney |
-| **Video** (12) | Sora, Runway Gen-3, Pika Labs, Kling AI, Luma, Minimax/Hailuo, Google Veo 2, Wan, HeyGen, Synthesia, CogVideoX, **Higgsfield** | Runway |
+| **Image** (12) | Midjourney (V8.x), OpenAI image (GPT Image 2/DALL-E 3), Stable Diffusion, Flux (2), Ideogram, Leonardo AI, Adobe Firefly, Grok Aurora, Google Imagen (4), Nano Banana, Recraft, **Higgsfield** | Midjourney |
+| **Video** (12) | Runway (Gen-4.5), Pika (2.2), Kling (3.0/Omni), Luma (Ray 2), Minimax/Hailuo (2.3), Google Veo (3.1), Seedance (2.0/2.5), Wan (2.6), HeyGen, Synthesia, CogVideoX, **Higgsfield** | Runway |
 | **Chat** (9) | Claude, ChatGPT, Gemini, Llama, DeepSeek, Qwen, Kimi, GLM, Minimax | Claude |
 | **Code** (9) | Claude, ChatGPT, Cursor, GitHub Copilot, Windsurf, DeepSeek Coder, Qwen Coder, Codestral, Gemini | Claude |
 | **Document** (8) | Claude, ChatGPT, Gemini, Jasper, Copy.ai, Notion AI, Grammarly, Writesonic | Claude |
-| **Voice** (7) | ElevenLabs, OpenAI TTS, Fish Audio, Sesame, Google TTS, PlayHT, Kokoro | ElevenLabs |
-| **Music** (4) | Suno AI, Udio, Stable Audio, MusicGen | Suno |
+| **Voice** (7) | ElevenLabs (v3), OpenAI TTS (gpt-4o-mini-tts), Fish Audio, Sesame, Google TTS, PlayHT, Kokoro | ElevenLabs |
+| **Music** (6) | Suno (v6), Udio, ElevenLabs Music (v2.5), Google Lyria (3.5), Stable Audio, MusicGen | Suno |
 
 ## Tools
 
@@ -796,7 +798,7 @@ Three calling modes:
 |-----------|----------|-------------|
 | `prompt` | Yes | The prompt to optimize |
 | `category` | No | `chat`, `image`, `video`, `voice`, `music`, `code`, `document`. Auto-detected when omitted. |
-| `platform` | No | Platform ID (e.g. `midjourney`, `dall-e`, `sora`, `claude`). Uses category default when omitted. |
+| `platform` | No | Platform ID (e.g. `midjourney`, `dall-e`, `veo`, `claude`). Uses category default when omitted. |
 | `mode` | No | Output style: `concise`, `detailed`, `structured`, `step-by-step`, `bullet-points`, `technical`, `simple`. Default: `detailed`. |
 | `enrich_context` | No | Set `true` to use web search for context enrichment. Default: `false`. |
 | `session_id` | No | Stitches related optimizations together so session memory can bias subsequent calls. Auto-generated when omitted. |
@@ -816,7 +818,7 @@ Three calling modes:
   "id": "opt_mo9vlg9i_foohjx",
   "sessionId": "sess_mo9vlfn3_abc123",
   "originalPrompt": "a dragon flying over a castle at sunset",
-  "optimizedPrompt": "a majestic dragon flying over a medieval castle at sunset --ar 16:9 --v 6.1 --style raw --q 2 --s 700",
+  "optimizedPrompt": "a majestic dragon flying over a medieval castle at sunset --ar 16:9 --v 8.2 --style raw --q 2 --s 700",
   "category": "image",
   "platform": "midjourney",
   "mode": "concise",
@@ -1117,7 +1119,7 @@ For **built-in platforms** (e.g. Midjourney, Claude), you can add custom instruc
 {
   "id": "midjourney",
   "category": "image",
-  "instructions": "Always use --v 6.1, prefer --style raw",
+  "instructions": "Always pin the current version (--v 8.2), prefer --style raw",
   "syntax_hints_append": ["--no plants", "--tile for patterns"]
 }
 ```
@@ -1179,7 +1181,7 @@ Example instruction file (`my-llm.md`):
 
 ### Override Built-in Platforms
 
-You can add custom instructions to any of the 58 built-in platforms using `update_platform`. This lets you customize how prompts are optimized for platforms like Midjourney, Claude, or Sora without modifying the defaults.
+You can add custom instructions to any of the 58 built-in platforms using `update_platform`. This lets you customize how prompts are optimized for platforms like Midjourney, Claude, or Veo without modifying the defaults.
 
 ### Config Directory
 
@@ -1359,10 +1361,10 @@ Before: "a cat sitting on a windowsill"
 After:  "a tabby cat sitting on a sunlit windowsill, warm golden hour
          lighting, shallow depth of field, dust particles in light beams,
          cozy interior background, shot on 35mm film, warm amber color
-         palette --ar 16:9 --v 6.1 --style raw --q 2"
+         palette --ar 16:9 --v 8.2 --style raw --q 2"
 ```
 
-### Video (Sora)
+### Video (Veo 3.1)
 
 ```
 Before: "a timelapse of a city"
@@ -1371,8 +1373,9 @@ After:  "Cinematic timelapse of a sprawling metropolitan skyline
          transitioning from golden hour to blue hour to full night.
          Camera slowly dollies forward from an elevated vantage point.
          Light trails from traffic appear as the city illuminates.
-         Clouds move rapidly overhead. Duration: 10s.
-         Style: documentary cinematography, 4K."
+         Clouds move rapidly overhead. Ambient city soundscape builds
+         as the lights come on (native audio). Duration: 8s, extendable.
+         Style: documentary cinematography, 4K, 16:9."
 ```
 
 ### Code (Claude)

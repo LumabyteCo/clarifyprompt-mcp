@@ -129,7 +129,7 @@ When the user's intent involves marketing or ad content (signaled by keywords li
 
 ## Common pitfalls
 
-- **Don't translate Midjourney syntax verbatim.** `--ar 16:9 --v 6.1 --style raw` doesn't work in Higgsfield. Drop the flags; describe the aspect ratio in prose ("widescreen 16:9 composition") if it matters at all, or leave it for the API parameter.
+- **Don't translate Midjourney syntax verbatim.** `--ar 16:9 --v 8.2 --style raw` doesn't work in Higgsfield. Drop the flags; describe the aspect ratio in prose ("widescreen 16:9 composition") if it matters at all, or leave it for the API parameter.
 - **Don't use Stable-Diffusion-style negative prompts.** Higgsfield doesn't parse `negative prompt:` — describe what you DO want; the model handles avoidance.
 - **Don't redescribe a Soul ID character in prose.** If you've passed a Soul ID, the model has the face. Describing it again in the prompt fights the trained identity and produces inconsistent output.
 - **Don't pack > 150 words.** Higgsfield's models lose signal beyond ~120-150 words. Compress.
