@@ -23,7 +23,7 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
-const VERSION = "1.15.0";
+const VERSION = "1.16.0";
 
 // MCP Apps (extension io.modelcontextprotocol/ui): compose_prompt renders an
 // interactive result panel in hosts that support it (Claude Desktop, ChatGPT,
@@ -261,13 +261,13 @@ server.registerTool(
   "optimize_prompt",
   {
     title: "Optimize a prompt for a platform",
-    description: "Optimize a prompt for a specific AI platform. Context-aware: auto-gathers workspace signals (CLAUDE.md / AGENTS.md / .cursorrules / package.json), resolves intent + category + recommended mode in a single analysis step, shapes the system prompt to the target model's capabilities, and grounds the rewrite in a priority-ordered Grounding Context. Supports 58+ platforms across 7 categories, plus custom registered platforms. Category, platform, and mode are all optional — the engine chooses sane defaults from the analysis.",
+    description: "Optimize a prompt for a specific AI platform. Context-aware: auto-gathers workspace signals (CLAUDE.md / AGENTS.md / .cursorrules / package.json), resolves intent + category + recommended mode in a single analysis step, shapes the system prompt to the target model's capabilities, and grounds the rewrite in a priority-ordered Grounding Context. Supports 61 platforms across 7 categories (verifiedAt-dated packs), plus custom registered platforms. Category, platform, and mode are all optional — the engine chooses sane defaults from the analysis.",
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     outputSchema: OPTIMIZATION_OUT,
     inputSchema: {
     prompt: z.string().describe("The prompt to optimize"),
     category: CATEGORY_ENUM.optional().describe("Prompt category. Auto-detected via the analyzer when omitted. When provided, the analyzer can still override if it's confident the hint is wrong."),
-    platform: z.string().optional().describe("Target platform ID (e.g. midjourney, dall-e, sora, suno, claude, cursor, or a custom platform ID). Uses category default when omitted."),
+    platform: z.string().optional().describe("Target platform ID (e.g. midjourney, dall-e, veo, runway, suno, claude, cursor, or a custom platform ID). Uses category default when omitted."),
     mode: MODE_ENUM.optional().describe("Output mode. When omitted, the engine uses the analyzer's intent-derived recommendation (e.g. production-code → technical, quick-draft → concise). When passed, user choice wins."),
     enrich_context: z.boolean().optional().default(false).describe("Use web search for context enrichment (Tavily/Brave/Serper/SerpAPI/Exa/SearXNG). Results merge into the single Grounding Context block."),
     session_id: z.string().optional().describe("Session ID to stitch related optimizations so the engine can reuse accepted prior outputs as few-shot examples. Auto-generated when omitted."),

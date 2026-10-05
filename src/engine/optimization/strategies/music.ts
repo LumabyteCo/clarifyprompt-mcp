@@ -34,16 +34,32 @@ ${modeInstructions}`;
   private getPlatformGuidance(platform?: string): string {
     const guidance: Record<string, string> = {
       suno: `
-Platform-Specific Guidance for SUNO AI:
-- Specify the music genre/style clearly
-- Include mood and energy level
-- Add tempo hints (slow, medium, fast)
-- Use style tags: [Verse], [Chorus], [Bridge], [Outro]
-- Include lyrics in quotes if needed
-- Add "instrumental" for no vocals
-- Specify instruments or sounds to include
-- Can reference artist styles but not directly
-- Use metatags for fine control: [Genre: rock], [Tempo: 120]`,
+Platform-Specific Guidance for SUNO (v6 family — Sept 2026):
+- Current models: v6 (flagship), v6-wild (looser), v6-mini (free tier); v5/v5.5 retired
+- Specify the music genre/style clearly in the style field
+- Include mood, energy level, and tempo hints
+- 'Custom Mode lyrics with section tags: [Verse], [Chorus], [Bridge], [Outro]'
+- Plain-language edits: rewrite one section or swap a lyric without regenerating the song
+- Max Mode for vocal/style consistency on songs longer than 2 minutes
+- Add "instrumental" for no vocals; up to 8 minutes per generation
+- No public API — app only (third-party wrappers are unsanctioned)`,
+
+      'eleven-music': `
+Platform-Specific Guidance for ELEVENLABS MUSIC (v2.5):
+- Natural-language prompt for a full track (genre, mood, instrumentation, vocal style)
+- API: model_id="music_v2_5"; composition plans build section-by-section (30 lines x 200 chars)
+- Up to 5 minutes prompted, ~10 via composition plans
+- Supports inpainting, audio reference, video-to-music
+- Creator-owned tracks, lossless downloads; native-language vocals, fast rap, mid-track genre changes
+- Licensed/commercial-cleared output — the pick for client and brand work`,
+
+      lyria: `
+Platform-Specific Guidance for GOOGLE LYRIA (3.5):
+- Natural-language description of genre, mood, instruments, and structure
+- 30 seconds to ~3 minutes per generation
+- Selective Section Painting: rewrite one section, swap instruments
+- Lyric rewrite support; image-to-music via the Gemini API (preview)
+- Access via Flow Music, Gemini app, or Gemini API`,
 
       udio: `
 Platform-Specific Guidance for UDIO:

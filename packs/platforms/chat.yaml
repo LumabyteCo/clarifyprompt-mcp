@@ -5,30 +5,39 @@ category:
   defaultPlatform: claude
   defaultMode: detailed
 
+# Currency policy (1.16.0): entries touched by a fact-verification pass carry
+# `verifiedAt`. Entries without a date have not been re-verified recently.
+# Note: chat/document/code categories are portable-by-default — naming a
+# platform opts into that vendor's specific idioms.
+
 platforms:
   - id: claude
-    label: Claude
-    description: Anthropic, strong reasoning and analysis
+    label: Claude (Sonnet 5 / Opus 4 line)
+    description: "Anthropic — XML-tagged structure, extended thinking, artifacts; latest: claude-sonnet-5"
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - system prompts
       - XML tags
-      - chain of thought
+      - extended thinking (thinking budgets)
       - long context
       - artifacts
+      - temperature is rejected on thinking-enabled models (use default)
 
   - id: chatgpt
-    label: ChatGPT
-    description: OpenAI, versatile conversation
+    label: ChatGPT (GPT-5)
+    description: OpenAI — reasoning models; GPT-5 current flagship, custom GPTs, web browsing
+    verifiedAt: "2026-10-05"
     syntaxHints:
-      - system prompts
+      - system prompts / custom instructions
       - browsing
       - code interpreter
-      - DALL-E integration
       - custom GPTs
+      - reasoning models: max_completion_tokens (not max_tokens), temperature fixed at 1
 
   - id: gemini
-    label: Gemini
-    description: Google, multimodal reasoning
+    label: Gemini (Flash latest / Pro)
+    description: Google — multimodal, long context, grounding with Google Search
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - multimodal input
       - Google integration
@@ -75,8 +84,9 @@ platforms:
       - file upload
 
   - id: glm
-    label: GLM
-    description: Zhipu AI, ChatGLM series, open weights
+    label: GLM (Z.ai)
+    description: Z.ai (formerly Zhipu AI), GLM-4.6+ line, open weights
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - open weights
       - system prompts

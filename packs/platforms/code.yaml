@@ -44,12 +44,13 @@ platforms:
 
   - id: windsurf
     label: Windsurf
-    description: Codeium, flow-based
+    description: Codeium/Windsurf, flow-based agentic IDE
     syntaxHints:
       - cascade flows
       - multi-file edits
       - codebase awareness
       - natural language
+      - rules files (.windsurfrules / .cursor/rules conventions)
 
   - id: deepseek-coder
     label: DeepSeek Coder

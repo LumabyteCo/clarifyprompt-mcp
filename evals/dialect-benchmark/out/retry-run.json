@@ -1,0 +1,248 @@
+{
+  "results": [
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "grade": "none",
+      "ms": 0,
+      "tokens": {
+        "in": 33,
+        "out": 182
+      },
+      "reply": "Here’s a detailed and evocative Midjourney prompt for your scene:\n\n**\"A majestic, fire-breathing dragon with iridescent emerald and gold scales soaring gracefully over a medieval stone castle at sunset, its wings casting dramatic shadows on the turreted towers. The sky is ablaze with warm hues of orange, pink, and deep purple, with wispy clouds reflecting the fading light. The castle, perched on a cliffside, is bathed in golden twilight, its banners fluttering in the wind. The dragon’s eyes glow with intelligence, and embers flicker from its nostrils as it lets out a triumphant roar. Hyper-detailed, cinematic lighting, fantasy realism, 8K resolution, inspired by Frank Frazetta and John Howe.\"**\n\nAdjust any elements (e.g., dragon color, castle style) to fit your vision!"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "sora-retired",
+      "platform": "OpenAI Sora 2",
+      "grade": "stale",
+      "ms": 0,
+      "tokens": {
+        "in": 40,
+        "out": 490
+      },
+      "reply": "Here’s a detailed and creative prompt you can use for OpenAI’s Sora 2 to generate a timelapse of a city at night:\n\n---\n\n**Prompt:**\n*\"Generate a hyper-detailed, cinematic timelapse of a bustling futuristic metropolis at night, viewed from a high vantage point like a skyscraper or drone. The scene begins at dusk, with the sky transitioning from deep orange and purple hues to a star-studded night. The cityscape is alive with neon lights—vibrant blues, pinks, and golds—illuminating towering skyscrapers, holographic billboards, and winding elevated highways.\n\nAs the timelapse progresses, watch the city’s rhythm unfold: cars streak into light trails along the roads, their colors shifting like liquid metal. Pedestrians blur into streams of movement in busy districts, while quieter neighborhoods glow softly with warm streetlights. The camera subtly zooms or pans to reveal hidden details—a rooftop garden blooming under artificial moonlight, a river reflecting the city’s glow, or a sudden rain shower creating shimmering reflections on the pavement.\n\nThe atmosphere should feel dynamic and immersive, with subtle lens flares, depth of field, and a slight fisheye distortion to enhance the scale. Include occasional bursts of activity, like fireworks exploding over a park or a sudden surge of traffic during rush hour. The final shot should dissolve into dawn, with the first light of sunrise painting the skyline in soft pastels, signaling the end of the night’s magic.\n\nStyle: A blend of cyberpunk realism and dreamlike cinematography, inspired by Blade Runner 2049 and Ghost in the Shell. Ultra-high resolution, 8K, with smooth motion and no artifacts.\"*\n\n---\n\n### **Optional Add-Ons for Customization:**\n- **Mood:** *\"Add a sense of nostalgia or melancholy, with slower transitions and muted colors in residential areas.\"*\n- **Weather:** *\"Include a sudden thunderstorm halfway through, with lightning illuminating the skyscrapers.\"*\n- **Era:** *\"Make it a retro-futuristic city from the 1980s, with analog neon signs and vintage cars.\"*\n- **Fantasy Element:** *\"Add floating airships or bioluminescent trees lining the streets.\"*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "veo-audio",
+      "platform": "Google Veo",
+      "grade": "none",
+      "ms": 0,
+      "tokens": {
+        "in": 35,
+        "out": 134
+      },
+      "reply": "**Google Veo Prompt:**\n\n*\"A hyper-realistic, cinematic shot of a determined athlete sprinting through a heavy downpour. The camera follows in slow motion from a low angle, capturing every powerful stride as rain splashes dramatically around them. Water droplets glisten on their skin and clothing, illuminated by soft, diffused lighting. The scene is intense and dynamic, with the sound of pounding rain, deep breaths, and the rhythmic slapping of wet shoes on pavement. The athlete’s focused expression and the raw energy of the moment are palpable. Shot in 4K, ultra-detailed, with cinematic color grading and immersive audio.\"*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "suno-version",
+      "platform": "Suno",
+      "grade": "none",
+      "ms": 0,
+      "tokens": {
+        "in": 31,
+        "out": 278
+      },
+      "reply": "**Suno AI Prompt for a Chill Lo-Fi Beat for Studying:**\n\n*\"Create a smooth, relaxing lo-fi hip-hop instrumental perfect for studying or focusing. The beat should have a laid-back, jazzy vibe with a slow to mid-tempo (70-90 BPM). Include warm, muffled vinyl crackles and subtle background noise for an authentic lo-fi texture.\n\nUse soft, mellow piano chords or Rhodes electric piano with gentle, swinging rhythms. Add a deep, warm bassline (preferably upright or synth bass) for groove. Include light, airy synth pads or strings for atmosphere, and occasional vinyl scratches or tape hiss for character.\n\nThe drums should be minimal and groovy—use a soft, rounded kick drum, crisp but not overpowering snare, and light hi-hats with a slightly swung rhythm. Optional: Add a distant, dreamy melody with a flute, saxophone, or music box for extra coziness.\n\nKeep the mix warm and slightly compressed, with a low-pass filter on the high end to create a cozy, intimate feel. The overall mood should be calm, nostalgic, and conducive to concentration—ideal for studying, reading, or unwinding.\"*\n\n*(Optional: Specify length, e.g., \"3-4 minutes\" or \"loopable for extended play.\")*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "kling-3",
+      "platform": "Kling",
+      "grade": "current",
+      "ms": 0,
+      "tokens": {
+        "in": 30,
+        "out": 395
+      },
+      "reply": "**Kling Prompt for a Martial-Arts Action Scene:**\n\n*\"Generate a hyper-dynamic, cinematic martial-arts action sequence in ultra-high definition (4K). The scene features a lone warrior, clad in traditional yet battle-worn attire, facing off against a horde of skilled adversaries in a rain-soaked, neon-lit alleyway. The fight should be a masterclass in fluid, bone-crushing combat—blending brutal hand-to-hand strikes, acrobatic flips, and improvised weaponry (broken pipes, chains, shattered glass). The camera moves with relentless energy: sweeping tracking shots, slow-motion mid-air kicks, and close-ups of sweat, blood, and clenched fists. The lighting is moody and dramatic—flickering streetlights, neon reflections on wet pavement, and the occasional flash of lightning. The warrior’s movements are a mix of disciplined forms and raw, instinctive brawling, with each strike landing with visceral impact. The enemies are diverse—some wielding blades, others using brute strength—creating a relentless, escalating battle. The scene culminates in a climactic, one-on-one duel atop a precarious rooftop, where the warrior executes a devastating finishing move, sending their final opponent crashing through a skylight. The tone is gritty, intense, and visually stunning—think 'The Raid' meets 'John Wick' with a touch of cyberpunk flair. No dialogue, just pure, adrenaline-fueled action.\"*\n\n**Optional Add-Ons for Specific Styles:**\n- *\"Add a supernatural element: the warrior’s fists glow with energy as they strike, leaving trails of light in the air.\"*\n- *\"Incorporate parkour-inspired movement, with the warrior leaping between rooftops and walls.\"*\n- *\"Make it a sword-fighting duel, with clashing blades and precise, elegant footwork.\"*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "elevenlabs-v3",
+      "platform": "ElevenLabs",
+      "grade": "none",
+      "ms": 0,
+      "tokens": {
+        "in": 37,
+        "out": 275
+      },
+      "reply": "**ElevenLabs Text-to-Speech Prompt:**\n\n*\"Generate a deep, gravelly, and weary male voice with a slow, deliberate pace—like a detective who’s seen too much. The tone should be low, slightly raspy, and dripping with cynicism, as if every word is laced with exhaustion and the weight of the world. Add subtle pauses, a hint of a sigh between sentences, and a dry, world-weary humor. The delivery should feel like a noir monologue: smooth but rough around the edges, with a rhythm that mimics the slow drag of a cigarette and the clink of ice in a whiskey glass. Think Humphrey Bogart in *The Maltese Falcon* meets a modern-day burnout—jaded, but still sharp enough to notice the lies. Emphasize the grit, the fatigue, and the quiet defiance in the voice, as if the words themselves are tired of being spoken.\"*\n\n**Example Delivery Style (for reference):**\n*\"The rain never stopped in this town. It just changed its mind about where to fall. Tonight, it was my turn. The neon sign outside my office flickered like a dying man’s last breath—red, then nothing. I lit a cigarette, but the match burned out before I could. Figures. Even the damn flame had given up on me.\"*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "openai-tts",
+      "platform": "OpenAI TTS",
+      "grade": "stale",
+      "ms": 0,
+      "tokens": {
+        "in": 33,
+        "out": 325
+      },
+      "reply": "Here’s a well-crafted OpenAI text-to-speech (TTS) prompt for a friendly customer-service greeting:\n\n---\n**Prompt:**\n*\"Generate a warm, professional, and friendly customer-service greeting in a natural, conversational tone. The voice should sound approachable, enthusiastic, and helpful—like a trusted assistant eager to assist. The greeting should include:*\n\n1. *A polite welcome (e.g., 'Hello!' or 'Welcome!')*\n2. *A brief introduction (e.g., 'This is [Your Company Name] support.')*\n3. *An offer of assistance (e.g., 'How can I help you today?')*\n4. *A reassuring closing (e.g., 'I’m happy to assist with anything you need.')*\n\n*Keep the tone cheerful but not overly casual, and ensure the pacing is clear and easy to follow. Avoid sounding robotic or scripted—aim for a genuine, human-like delivery.\"*\n\n---\n**Example Output (for reference):**\n*\"Hello and welcome to [Your Company Name]! This is Alex from customer support. How can I make your day a little easier? I’m here to help with anything you need—just let me know!\"*\n\n---\n**Notes:**\n- Adjust the company name or agent name as needed.\n- For OpenAI’s TTS (e.g., via API), specify the voice style (e.g., \"alloy,\" \"echo,\" or \"shimmer\") if desired.\n- Test variations to match your brand’s tone (e.g., more formal for finance, playful for retail)."
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "openai-image",
+      "platform": "OpenAI image",
+      "grade": "stale",
+      "ms": 0,
+      "tokens": {
+        "in": 39,
+        "out": 467
+      },
+      "reply": "Here’s a detailed and vivid image-generation prompt for OpenAI’s DALL·E 3 (or similar model) to create a cozy coffee shop scene on a rainy afternoon:\n\n---\n**Prompt:**\n*\"A warm, inviting coffee shop on a rainy afternoon, bathed in soft golden light. The scene is ultra-detailed, cinematic, and hyper-realistic, with a cozy, hygge-inspired atmosphere. Outside, rain streaks down the large, foggy windows, blurring the view of a quiet, misty street lined with vintage lampposts and umbrellas. Inside, the shop is filled with the glow of warm Edison bulbs and flickering candles on wooden tables. The counter is made of reclaimed wood, topped with a gleaming espresso machine and a display of artisanal pastries under glass cloches. Patrons sit in plush armchairs or at small tables, wrapped in knitted blankets, sipping steaming mugs of coffee or tea. The walls are adorned with framed vintage posters, shelves of books, and potted ferns. The air feels thick with the aroma of freshly ground coffee, cinnamon, and vanilla. The overall mood is nostalgic, peaceful, and deeply comforting—like a scene from a Studio Ghibli film or a cozy mystery novel. Ultra-high resolution, 8K, photorealistic, cinematic lighting, depth of field, rich textures, and a warm color palette of amber, deep browns, and muted greens.\"*\n\n**Optional Additions (for style/artistic direction):**\n- *\"In the style of a watercolor painting with soft edges and a dreamy, impressionistic feel.\"*\n- *\"Hyper-detailed digital painting with the warmth of a Norman Rockwell illustration.\"*\n- *\"Cyberpunk-meets-cozy: neon signs reflecting on wet pavement outside, but the interior remains rustic and warm.\"*\n- *\"Minimalist and modern: clean lines, neutral tones, and a single pop of color (e.g., a bright red teapot).\"*\n\n---\nThis prompt balances specificity with creativity to guide the model toward a rich, atmospheric result. Adjust details (e.g., cultural elements, architectural style) to fit your vision!"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "runway-gen45",
+      "platform": "Runway",
+      "grade": "none",
+      "ms": 0,
+      "tokens": {
+        "in": 34,
+        "out": 172
+      },
+      "reply": "**Runway ML Prompt:**\n\n*\"A hyper-stylish fashion model confidently struts down a rain-slicked, neon-lit Tokyo street at night. The scene is cinematic, with vibrant holographic billboards, glowing pink and blue signs in Japanese kanji, and reflections shimmering on wet pavement. The model wears an avant-garde, futuristic outfit—think metallic fabrics, asymmetrical cuts, and bold accessories—with a mix of high fashion and cyberpunk aesthetics. The camera follows in a smooth tracking shot, capturing dynamic movement, dramatic lighting, and a moody, atmospheric vibe. Ultra-detailed, 8K resolution, cinematic color grading, inspired by Blade Runner and high-end fashion editorials. Style: Cyberpunk fashion photography, neon noir, dynamic motion blur, ultra-realistic textures.\"*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "seedance",
+      "platform": "ByteDance Seedance",
+      "grade": "current",
+      "ms": 0,
+      "tokens": {
+        "in": 36,
+        "out": 482
+      },
+      "reply": "Here’s a detailed and vivid prompt you can use for ByteDance’s **Seedance** video model to generate an **underground dance battle** in a gritty, high-energy club setting:\n\n---\n\n**Prompt:**\n*\"Generate a hyper-realistic, cinematic video of an underground dance battle in a neon-lit, smoke-filled club. The atmosphere is electric—pulsing bass, flickering strobe lights, and a crowd of hyped spectators forming a tight circle around the dancers. The camera moves dynamically, capturing every sharp movement with slow-motion close-ups and wide-angle shots of the entire battle.*\n\n*Two rival dancers face off in the center: one is a fluid, acrobatic contemporary dancer with sharp, controlled movements, while the other is a high-energy hip-hop breaker with explosive power moves (windmills, flares, freezes). The crowd reacts with cheers, claps, and occasional gasps as the dancers trade jaw-dropping combos. The lighting shifts between deep blues, fiery reds, and blinding whites, syncing with the beat of the music.*\n\n*Details to emphasize:*\n- *The sweat glistening on the dancers’ skin under the club lights.*\n- *The way their clothes (baggy pants, sleeveless hoodies, sneakers) flow with their movements.*\n- *The intensity in their eyes as they lock into battle.*\n- *The underground club’s gritty aesthetic: exposed brick walls, graffiti, flickering LED panels, and a DJ booth in the background.*\n- *The crowd’s energy—some filming on phones, others shouting encouragement.*\n\n*Style: A mix of ‘Step Up’ meets ‘Street Dance 3D’ with a raw, documentary-like feel. High contrast, shallow depth of field, and a slight film-grain texture for authenticity. The video should feel immersive, like the viewer is right in the middle of the action.\"*\n\n---\n\n**Optional Add-Ons for More Control:**\n- *\"Add a slow-motion shot of a dancer’s hand slapping the ground during a freeze, with dust particles suspended in the air.\"*\n- *\"Include a split-screen moment where both dancers mirror each other’s moves.\"*\n- *\"End with a dramatic freeze-frame as the crowd erupts, then fade to black with the sound of the bass still thumping.\"*"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "nano-banana",
+      "platform": "Google Nano Banana",
+      "grade": "current",
+      "ms": 0,
+      "tokens": {
+        "in": 38,
+        "out": 399
+      },
+      "reply": "Here’s a detailed and evocative prompt you can use for Google's Nano Banana image model (or any text-to-image AI) to generate a cozy coffee shop scene on a rainy afternoon:\n\n---\n\n**Prompt:**\n*\"A warm, inviting coffee shop on a rainy afternoon, bathed in soft golden light. The large front window is fogged up with condensation, streaked by raindrops sliding down the glass. Inside, the space is cozy and intimate, with wooden tables, mismatched vintage chairs, and plush armchairs near a crackling fireplace. The counter is adorned with a display of freshly baked pastries—croissants, cinnamon rolls, and muffins—under a glass case. A barista with a friendly smile prepares a latte, steam rising from the cup. Warm string lights and Edison bulbs cast a gentle glow, while shelves lined with books and potted plants add charm. Outside, the street is slick with rain, reflecting the soft lights of the shop, and a few pedestrians hurry by under umbrellas. The atmosphere is peaceful, nostalgic, and full of hygge—perfect for curling up with a book or chatting with a friend. Hyper-detailed, cinematic lighting, warm color palette, ultra-realistic, 8K resolution.\"*\n\n**Optional Additions (if you want to refine further):**\n- *\"Art style: A blend of Studio Ghibli’s warmth and the realism of a Wes Anderson film.\"*\n- *\"Mood: Whimsical, nostalgic, and deeply comforting.\"*\n- *\"Details: A cat napping on a windowsill, a chessboard mid-game, a chalkboard menu with handwritten specials.\"*\n\n---\n\nThis prompt balances atmosphere, lighting, and specific details to guide the model toward a rich, immersive result. Adjust based on your preferences (e.g., more modern/minimalist, brighter/darker tones, etc.)."
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: def7b59f-30a0-4f59-8431-c703fba92774)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "sora-retired",
+      "platform": "OpenAI Sora 2",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: 9843385b-ab4d-4114-99c6-54d759861765)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "veo-audio",
+      "platform": "Google Veo",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: 216f91db-78a5-416b-ac8c-cd65873401cd)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "suno-version",
+      "platform": "Suno",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: 32169cd2-ea96-4e1a-bbd8-27347dd516dc)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "kling-3",
+      "platform": "Kling",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: 5e0a7340-30ce-456b-8e14-6abd93a17fbb)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "elevenlabs-v3",
+      "platform": "ElevenLabs",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: f168bf35-c152-4a35-828d-c8c57f911362)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "openai-tts",
+      "platform": "OpenAI TTS",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: 67f664a2-ceb5-4166-ba95-28d35589a6b7)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "openai-image",
+      "platform": "OpenAI image",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: c7bebfd9-08bd-4076-b2cb-7fe390957e0d)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "runway-gen45",
+      "platform": "Runway",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: 61f56aad-3842-4c6e-be0c-26f089f86f23)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "seedance",
+      "platform": "ByteDance Seedance",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: a3100d7b-444c-4025-99af-236fbad28011)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "qwen3-next:80b-cloud",
+      "label": "Qwen3 Next 80B",
+      "fact": "nano-banana",
+      "platform": "Google Nano Banana",
+      "grade": "error",
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3-next:80b was retired at 2026-06-16 00:00:00 -0700 PDT (ref: da83db94-b69c-430b-883b-2d60e61003cc)\",\"type\":\"api_error\",\"param\":null,\"code\":null}"
+    },
+    {
+      "model": "minimax-m3:cloud",
+      "label": "MiniMax M3",
+      "fact": "elevenlabs-v3",
+      "platform": "ElevenLabs",
+      "grade": "none",
+      "ms": 0,
+      "tokens": {
+        "in": 200,
+        "out": 919
+      },
+      "reply": "# ElevenLabs Prompt — Weary Detective Noir Narration\n\n## Voice Direction\n\n**Voice profile:** Middle-aged, deep, slightly gravelly baritone. Think a 1940s–50s hardboiled P.I. — Bogart-esque cadence, but world-worn and softer around the edges. Speak slowly, deliberately, with the weight of someone who has seen too much and slept too little.\n\n**Delivery notes:**\n- Tone is sardonic, melancholic, dry-witted — the kind of voice that lights a cigarette between sentences.\n- Allow slight breathiness and tired pauses, especially after reflective lines.\n- Emphasize metaphors and similes; let descriptions of the city breathe.\n- Lower the volume slightly on introspective moments; raise it only slightly on cynical asides, as if smirking to himself.\n\n---\n\n## Narration Text\n\n> The rain hadn't stopped in three days, and neither had I. Not drinking, no — I'd given that up after the Ashford case — just sitting. Watching the neon bleed across the wet sidewalk. Outside, the city writes its own kind of poetry. Mine just got the punctuation wrong.\n>\n> She walked in at quarter past eleven. Blonde hair, red dress, and a story that smelled like trouble and cheap perfume. I didn't want to take the case. I never do. But trouble has a way of finding a man who owes it money, and I was three months behind on what I owed her.\n>\n> She said her husband was missing. I told her most husbands are. She didn't find that funny. A dame like that rarely does.\n>\n> I poured two fingers of bourbon I said I wasn't drinking and lit a cigarette I said I'd quit. The lamp on my desk flickered like it was trying to tell me something. It should've tried harder.\n>\n> Outside, a siren wailed down the alley. Inside, she sat down across from me, crossed her legs, and waited for an answer I didn't have yet.\n>\n> I took a long drag and stared at the rain.\n>\n> \"Tell me about your husband,\" I said. \"And start with the lie.\"\n\n---\n\n**Tip for ElevenLabs:** Paste the *Voice Direction* block into the \"Voice Settings\" prompt or style notes field, and the scene text into the main input. For added effect, enable \"Stability\" around 35–45% and \"Similarity\" around 70% to encourage natural, slightly raspy expressiveness rather than flat delivery."
+    }
+  ]
+}

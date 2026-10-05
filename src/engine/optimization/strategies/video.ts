@@ -32,46 +32,37 @@ ${modeInstructions}`;
 
   private getPlatformGuidance(platform?: string): string {
     const guidance: Record<string, string> = {
-      sora: `
-Platform-Specific Guidance for SORA (OpenAI):
-- Use detailed, cinematic scene descriptions
-- Describe motion naturally ("the camera slowly pans across...")
-- Include duration preferences (up to 60 seconds supported)
-- Specify camera movement types (tracking shot, crane shot, etc.)
-- Add lighting and atmosphere details
-- Describe character movements and emotions clearly
-- Use natural language - no special syntax needed`,
-
+      // NOTE (1.16.0): `sora` guidance removed — OpenAI shut down the Sora 2
+      // Videos API on 2026-09-24 (consumer app April 26) with no replacement.
+      // The platform entry was retired from the packs; unknown ids fall back
+      // to the general guidance below, so legacy callers degrade gracefully.
       runway: `
-Platform-Specific Guidance for RUNWAY GEN-3:
-- Describe the starting frame clearly
-- Use motion amount controls (subtle, moderate, dynamic)
-- Specify camera movements (pan left/right, zoom in/out, orbit)
-- Include extend functionality for longer clips
-- Add motion brush concepts for specific area movement
-- Keep descriptions focused on achievable motion
-- Consider image-to-video workflows`,
+Platform-Specific Guidance for RUNWAY (Gen-4.5):
+- Describe the starting frame clearly; strongest prompt adherence in the category
+- Use References — upload a character/object image for consistency across generations
+- Act-Two: apply recorded human motion to a character reference
+- Camera controls: pan, tilt, zoom, orbit; motion brush for area-specific movement
+- Include extend functionality for longer clips; up to 4K output
+- Editor-first workflow (timeline, keyframing) — describe shots, not edits`,
 
       pika: `
-Platform-Specific Guidance for PIKA LABS:
-- Use concise, action-focused descriptions
-- Include camera motion parameters (-camera zoom in, -camera pan left)
-- Add motion strength with -gs (guidance scale)
-- Specify -motion parameter for movement intensity
-- Keep prompts relatively short and focused
-- Good for stylized and artistic motion`,
+Platform-Specific Guidance for PIKA (2.2):
+- Use concise, action-focused descriptions; fastest generation in the category
+- Pikaframes: interpolate between first and last keyframes
+- Pikaswaps (replace objects), Pikadditions (insert elements), Pikaffects (stylized effects)
+- Pikaformance: fast lip-synced talking images
+- Keep prompts short and focused; up to 1080p`,
 
       kling: `
-Platform-Specific Guidance for KLING AI:
-- Use natural language descriptions
-- Can generate longer clips (up to 2 minutes)
-- Use professional mode for higher quality
-- Describe character expressions and movements
-- Include scene continuity for multi-shot videos
-- Good for human motion and complex scenes`,
+Platform-Specific Guidance for KLING (3.0 / Omni):
+- Use natural-language cinematic prose
+- Best physics and complex motion (fluids, dance, sports); native 4K at 60fps
+- Omni variant: native audio with lip-synced dialogue in five languages
+- Multi-shot storyboards — up to 6 shots per clip
+- Extend to ~60 seconds; strong character consistency from reference images`,
 
       luma: `
-Platform-Specific Guidance for LUMA DREAM MACHINE:
+Platform-Specific Guidance for LUMA DREAM MACHINE (Ray 2):
 - Use natural language scene descriptions
 - Include keyframe concepts for control
 - Specify camera motion type (orbit, push in, etc.)
@@ -80,24 +71,32 @@ Platform-Specific Guidance for LUMA DREAM MACHINE:
 - Works well with simple, clear motion requests`,
 
       minimax: `
-Platform-Specific Guidance for MINIMAX / HAILUO:
+Platform-Specific Guidance for MINIMAX / HAILUO (2.3):
 - Use detailed character animation descriptions
 - Good for expressive facial animations
 - Include emotional context for characters
 - Specify movement style (realistic, exaggerated)
-- Works well for character-focused content
+- Native audio generation
 - Use natural language descriptions`,
 
       veo: `
-Platform-Specific Guidance for GOOGLE VEO 2:
-- Use cinematic, detailed scene descriptions
-- Supports 4K output with high visual fidelity
-- Can generate up to 2 minutes of video
-- Describe camera movements naturally (dolly, crane, tracking)
-- Include lighting and atmosphere details
-- Strong at realistic physics and motion
+Platform-Specific Guidance for GOOGLE VEO (3.1):
+- Use cinematic, detailed scene descriptions; strongest prompt adherence
+- Tiers: Standard (4K, spatial audio) / Fast / Lite (720p-1080p volume tier)
+- 8-second clips, extendable; reference images and start/end frame control
+- Native audio generation (ambient, dialogue on Omni-class models)
+- Text within video stays legible while the camera moves
 - Specify aspect ratio (16:9, 9:16, 1:1)
 - Good for professional and cinematic content`,
+
+      seedance: `
+Platform-Specific Guidance for SEEDANCE (2.0 / 2.5):
+- Long-form natural-language prose: action + camera + lighting + mood
+- Up to 20 seconds per clip — longer than most competitors
+- "aspect ratios: 16:9, 9:16, 1:1, 4:3, 3:4, custom"
+- Up to 12 reference files (images, video, audio) for identity/brand consistency
+- Native audio-video sync; multi-shot storyboarding
+- Strong on dance, sports, action, and product/logo consistency`,
 
       wan: `
 Platform-Specific Guidance for WAN:

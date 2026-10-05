@@ -32,26 +32,29 @@ ${modeInstructions}`;
   private getPlatformGuidance(platform?: string): string {
     const guidance: Record<string, string> = {
       midjourney: `
-Platform-Specific Guidance for MIDJOURNEY:
-- Use descriptive, artistic language
+Platform-Specific Guidance for MIDJOURNEY (V8.x — current default V8.2):
+- Use descriptive, artistic language; subject first, parameters last
 - Include aspect ratio with --ar (e.g., --ar 16:9)
-- Add version flag if needed (--v 6.1)
-- Use --style raw for photorealistic or --style scenic for landscapes
-- Add quality flag --q 2 for higher quality
-- Use --chaos for variation (0-100)
-- Add --weird for unusual results (0-3000)
-- Use --s (stylize) for artistic interpretation (0-1000)
-- Format: "prompt text --ar 16:9 --v 6.1 --style raw"`,
+- Pin the version: --v 8.2 (V7 introduced --draft and --oref; Omni Reference replaced by the Edit Model in V8.x)
+- Use --style raw for photorealistic work
+- --stylize / --s 0-1000 (default 100); low = literal, high = house aesthetic
+- --chaos / --c 0-100 for grid variation
+- --quality / --q (V7+: 1, 2, 4; no --q 3)
+- --hd / --sd on V8.1: 2048px vs 1024px output
+- --sref <url|code> for style reference, --sw for style weight
+- --edit (V8.x Edit Model): modify an image with written instructions + up to 4 references
+- --p / --profile for personalization
+- Format: "prompt text --ar 16:9 --v 8.2 --style raw"`,
 
       'dall-e': `
-Platform-Specific Guidance for DALL-E 3:
-- Use clear, natural language descriptions
+Platform-Specific Guidance for OPENAI IMAGE (GPT Image 2 / DALL-E 3):
+- Use clear, natural language, full-sentence descriptions (no flags)
+- Describe the scene conversationally — GPT Image 2 is instruction-following
 - Be very specific about what you want to see
-- Describe the scene in complete sentences
-- Include art style, medium, and mood
-- Specify size in the API call (1024x1024, 1792x1024, 1024x1792)
-- Avoid using commands or flags - use descriptive prose
-- Can request specific text to appear in images`,
+- Include art style, medium, lighting, camera, and mood
+- State aspect ratio in words ("wide 16:9 landscape composition")
+- Quote any text that should appear in the image
+- Avoid commands or flags — descriptive prose only`,
 
       'stable-diffusion': `
 Platform-Specific Guidance for STABLE DIFFUSION / SDXL:

@@ -5,23 +5,32 @@ category:
   defaultPlatform: elevenlabs
   defaultMode: detailed
 
+# Currency policy (1.16.0): entries touched by a fact-verification pass carry
+# `verifiedAt`. Entries without a date have not been re-verified recently.
+
 platforms:
   - id: elevenlabs
-    label: ElevenLabs
-    description: Voice cloning, realistic TTS
+    label: ElevenLabs (v3)
+    description: Eleven v3 — expressive TTS with audio tags and emotion control; voice cloning from 10s of audio; Flash/Turbo v2.5 for low latency
+    verifiedAt: "2026-10-05"
+    source: elevenlabs.io
     syntaxHints:
-      - voice settings
-      - stability
-      - clarity
-      - style
+      - 'audio tags in v3: [laughs], [whispers], [excited], [sad] — inline emotion/sound direction'
+      - voice settings: stability, similarity, style (v2 API); v3 uses tag-driven expressiveness
+      - conversational v3 model for real-time agents
+      - voice cloning — instant (seconds) or professional
+      - 32+ languages (v2 multilingual)
+      - pronunciation control via respellings/phonetics
 
   - id: openai-tts
-    label: OpenAI TTS
-    description: Simple, reliable voices
+    label: OpenAI TTS (gpt-4o-mini-tts)
+    description: Instruction-following voices — steer tone and delivery with natural-language directions; legacy alloy/echo/nova set still available
+    verifiedAt: "2026-10-05"
     syntaxHints:
-      - voice selection
-      - speed
-      - alloy/echo/fable/onyx/nova/shimmer
+      - 'natural-language voice instructions (steer tone, pacing, emotion: "speak like a sympathetic customer-service agent")'
+      - 'voices: the gpt-4o-mini-tts instruction-following set (plus legacy alloy/echo/fable/onyx/nova/shimmer)'
+      - speed adjustment (0.25-4.0)
+      - no SSML — describe the delivery in words
 
   - id: fish-audio
     label: Fish Audio

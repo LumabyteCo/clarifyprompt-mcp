@@ -1,0 +1,525 @@
+{
+  "ranAt": "2026-10-05T16:52:44.585Z",
+  "condition": "grounded",
+  "api": "http://localhost:11434/v1",
+  "factsFile": "facts.yaml",
+  "roster": [
+    {
+      "tag": "deepseek-v4.1-flash:cloud",
+      "label": "DeepSeek V4.1 Flash",
+      "inPerM": 0.15,
+      "outPerM": 0.6,
+      "note": "newest (3 wk) — tool-use specialist"
+    },
+    {
+      "tag": "glm-5.3-flash:cloud",
+      "label": "GLM-5.3 Flash",
+      "inPerM": 0.15,
+      "outPerM": 0.5,
+      "note": "newest — 18B-active multimodal"
+    },
+    {
+      "tag": "glm-5.3:cloud",
+      "label": "GLM-5.3",
+      "inPerM": 1.4,
+      "outPerM": 4.4,
+      "note": "Z.ai flagship"
+    },
+    {
+      "tag": "deepseek-v4-pro:cloud",
+      "label": "DeepSeek V4 Pro",
+      "inPerM": 0.66,
+      "outPerM": 1.98,
+      "note": "frontier MoE, 3 reasoning modes"
+    },
+    {
+      "tag": "kimi-k3:cloud",
+      "label": "Kimi K3",
+      "inPerM": 3,
+      "outPerM": 15,
+      "note": "Moonshot flagship (2.8T)"
+    },
+    {
+      "tag": "kimi-k2.7-code:cloud",
+      "label": "Kimi K2.7 Code",
+      "inPerM": 0.95,
+      "outPerM": 4,
+      "note": "coding agentic"
+    },
+    {
+      "tag": "minimax-m3:cloud",
+      "label": "MiniMax M3",
+      "inPerM": 0.6,
+      "outPerM": 2.4,
+      "note": "1M ctx, native multimodal"
+    },
+    {
+      "tag": "gemma4:31b-cloud",
+      "label": "Gemma 4 31B",
+      "inPerM": 0.14,
+      "outPerM": 0.4,
+      "note": "frontier-at-size, newest weights (5 days)"
+    },
+    {
+      "tag": "nemotron-3-ultra:cloud",
+      "label": "Nemotron 3 Ultra",
+      "inPerM": 0.1,
+      "outPerM": 3,
+      "note": "NVIDIA reasoning"
+    },
+    {
+      "tag": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "inPerM": 0.5,
+      "outPerM": 1.5,
+      "note": "enterprise MoE"
+    },
+    {
+      "tag": "gpt-oss:120b-cloud",
+      "label": "GPT-OSS 120B",
+      "inPerM": 0.15,
+      "outPerM": 0.6,
+      "note": "OpenAI open weights — does it know its owner killed Sora?"
+    },
+    {
+      "tag": "glm-5.2:cloud",
+      "label": "GLM-5.2",
+      "inPerM": 1.4,
+      "outPerM": 4.4,
+      "note": "control: prev-gen Z.ai flagship"
+    },
+    {
+      "tag": "qwen3.5:397b-cloud",
+      "label": "Qwen3.5 397B",
+      "inPerM": 0.6,
+      "outPerM": 3.6,
+      "note": "control: prev-gen Qwen frontier"
+    }
+  ],
+  "totalMs": 88558,
+  "costUsd": 0.0213,
+  "summary": {
+    "perModel": [
+      {
+        "label": "DeepSeek V4.1 Flash",
+        "model": "deepseek-v4.1-flash:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "GLM-5.3 Flash",
+        "model": "glm-5.3-flash:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "GLM-5.3",
+        "model": "glm-5.3:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "DeepSeek V4 Pro",
+        "model": "deepseek-v4-pro:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "Kimi K3",
+        "model": "kimi-k3:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "Kimi K2.7 Code",
+        "model": "kimi-k2.7-code:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "MiniMax M3",
+        "model": "minimax-m3:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "Gemma 4 31B",
+        "model": "gemma4:31b-cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "Nemotron 3 Ultra",
+        "model": "nemotron-3-ultra:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "Mistral Large 3",
+        "model": "mistral-large-3:675b-cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "GPT-OSS 120B",
+        "model": "gpt-oss:120b-cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "GLM-5.2",
+        "model": "glm-5.2:cloud",
+        "current": 1,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 0
+      },
+      {
+        "label": "Qwen3.5 397B",
+        "model": "qwen3.5:397b-cloud",
+        "current": 0,
+        "stale": 0,
+        "mixed": 0,
+        "unknown": 0,
+        "none": 0,
+        "empty": 0,
+        "error": 1
+      }
+    ],
+    "total": {
+      "current": 12,
+      "stale": 0,
+      "mixed": 0,
+      "unknown": 0,
+      "none": 0,
+      "empty": 0,
+      "error": 1
+    },
+    "totalMs": 0
+  },
+  "results": [
+    {
+      "model": "deepseek-v4.1-flash:cloud",
+      "label": "DeepSeek V4.1 Flash",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 3981,
+      "tokens": {
+        "in": 184,
+        "out": 878
+      },
+      "hits": {
+        "current": [
+          "--v 8",
+          "v8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "## Main prompt\n\n```\nA colossal ember-scaled dragon with wings spread wide, gliding low over a medieval stone castle with tall spires and fluttering banners, sunset sky burning orange, magenta, and deep violet, the sun low behind the towers, volumetric god rays, mist pooling in the valley below, cinematic wide shot, epic fantasy concept art, intricate scale detail, dramatic backlighting --ar 16:9 --v 8.2 --stylize 250\n```\n\n**Why these settings:** `--ar 16:9` gives the wide cinematic framing the scene wants. `--stylize 250` pushes Midjourney toward the more artistic, painterly interpretation of \"concept art\" without losing the prompt's literal content. `--v 8.2` pins the current default model so results stay reproducible.\n\n## Variants\n\n**Photoreal / cinematic still**\n```\nA dragon flying over a castle at sunset, shot on 35mm anamorphic, golden hour backlight rimming the wings, atmospheric haze, lens flare, shallow depth of field, photorealistic --ar 21:9 --v 8.2 --style raw --stylize 100\n```\n\n**Painterly / storybook**\n```\nA dragon soaring above a castle at sunset, oil painting, thick impasto brushwork, warm amber and rose palette, romanticism, Turner-esque sky --ar 3:2 --v 8.2 --stylize 600\n```\n\n**Silhouette / minimal**\n```\nSilhouette of a dragon in flight above a castle skyline, sunset gradient sky, negative space, flat graphic poster style, two-tone --ar 2:3 --v 8.2 --stylize 400 --chaos 15\n```\n\n## Parameter notes\n\n- **`--chaos 15`** (in the silhouette variant) adds variety across the four grid images — useful when you want options rather than a single tight interpretation. Range is 0–100.\n- **`--q 2`** or **`--q 4`** if you plan to upscale or print; costs more GPU time but holds detail in the scales and stonework.\n- **`--sref <url|code>`** to lock a consistent look across a series — e.g. reuse one image's style code for every scene in a set.\n- **`--edit`** if you already have a draft image: the V8.x Edit Model takes written instructions plus up to 4 reference images, so you can say \"make the dragon larger and shift the sun lower\" instead of re-rolling from scratch.\n\n**Tip:** if the dragon keeps coming out too small or the castle dominates, lead with the dragon and demote the castle — Midjourney weights earlier tokens more heavily."
+    },
+    {
+      "model": "glm-5.3-flash:cloud",
+      "label": "GLM-5.3 Flash",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 7888,
+      "tokens": {
+        "in": 167,
+        "out": 1056
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "Here's a ready-to-use prompt:\n\n```\nmajestic dragon with crimson and obsidian scales soaring over a medieval stone castle, towering spires and fluttering banners, dramatic sunset with burning orange and violet clouds, golden light rimming the dragon's wings, epic fantasy concept art, cinematic wide shot, intricate detail, atmospheric haze --ar 16:9 --stylize 250 --q 2 --v 8.2\n```\n\n**Quick notes:**\n- `--ar 16:9` gives a cinematic widescreen frame that suits the sweeping composition.\n- `--stylize 250` pushes artistic interpretation above the default 100 — lower it to 50 for something closer to your literal description.\n- `--q 2` boosts detail/render quality.\n\n**Photorealistic variant** (if you want it to look like a film still rather than fantasy art):\n\n```\nphotorealistic cinematic shot, dragon flying over a hilltop castle at sunset, backlit silhouette against a fiery orange sky, volumetric golden light, shot on 70mm film, dramatic sense of scale --ar 16:9 --style raw --stylize 50 --q 2 --v 8.2\n```\n\nThe `--style raw` flag reduces Midjourney's default beautification for a more naturalistic look."
+    },
+    {
+      "model": "glm-5.3:cloud",
+      "label": "GLM-5.3",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 17475,
+      "tokens": {
+        "in": 167,
+        "out": 574
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "```\nA majestic dragon with vast outstretched wings soaring above a medieval stone castle at sunset, golden-hour light bathing the towers, dramatic orange and violet clouds, glowing embers drifting on the wind, epic fantasy atmosphere, cinematic wide shot, highly detailed --ar 16:9 --stylize 250 --v 8.2\n```\n\nA couple of quick notes:\n\n- **For photorealism**, add `--style raw` and lower the stylize value (e.g., `--stylize 50`).\n- **For more painterly/interpretive results**, raise stylize toward 500–750.\n- Swap `--ar 16:9` for `--ar 3:2` (classic photo) or `--ar 21:9` (ultra-wide cinematic) depending on the framing you want."
+    },
+    {
+      "model": "deepseek-v4-pro:cloud",
+      "label": "DeepSeek V4 Pro",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 1964,
+      "tokens": {
+        "in": 158,
+        "out": 295
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "A majestic dragon with iridescent scales flying over a medieval stone castle at sunset, warm orange and pink sky, dramatic clouds, castle towers and battlements below, cinematic lighting, highly detailed --ar 16:9 --v 8.2 --style raw"
+    },
+    {
+      "model": "kimi-k3:cloud",
+      "label": "Kimi K3",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 8163,
+      "tokens": {
+        "in": 309,
+        "out": 690
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "Here's a Midjourney prompt for that scene:\n\n```\nEpic cinematic fantasy scene, a massive dragon with outstretched wings soaring over a medieval stone castle perched on a rocky cliff, golden hour sunset sky ablaze with orange, crimson and violet clouds, warm rim light glinting off the dragon's scales, castle towers silhouetted against the glowing horizon, volumetric light, atmospheric haze, dramatic wide-angle composition, highly detailed --ar 16:9 --v 8.2 --stylize 250\n```\n\n**Why it's built this way:**\n- **--ar 16:9** gives a wide cinematic frame that suits a sweeping aerial scene\n- **--stylize 250** pushes a bit beyond the default (100) for a more dramatic, artistic interpretation\n- **--v 8.2** pins the current model version\n\n**Variations to try:**\n- For a more photorealistic look, add `--style raw` and lower stylize to ~50–100\n- For more unexpected, varied compositions across the grid, add `--chaos 20`\n- Swap the mood by changing the lighting: \"blood-red sunset,\" \"stormy dusk sky,\" or \"last rays of sunlight breaking through clouds\""
+    },
+    {
+      "model": "kimi-k2.7-code:cloud",
+      "label": "Kimi K2.7 Code",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 2009,
+      "tokens": {
+        "in": 168,
+        "out": 137
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "A majestic dragon with iridescent scales soaring above a towering medieval castle, golden sunset light flooding the sky, dramatic clouds, vast mountain valley below, cinematic atmosphere, epic fantasy art, highly detailed, volumetric lighting --ar 16:9 --stylize 250 --v 8.2"
+    },
+    {
+      "model": "minimax-m3:cloud",
+      "label": "MiniMax M3",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 7610,
+      "tokens": {
+        "in": 324,
+        "out": 367
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "Here's a Midjourney prompt for that scene:\n\n---\n\n**Prompt:**\na majestic dragon with iridescent scales soaring through golden-hour clouds above a sprawling medieval stone castle, dramatic wingspan casting shadows on turret rooftops, glowing embers trailing from its mouth, sunset sky painted in deep orange and violet hues, volumetric god rays piercing through the clouds, epic fantasy atmosphere, hyper-detailed cinematic composition --ar 16:9 --stylize 250 --v 8.2\n\n---\n\n**Breakdown of choices:**\n\n- **Subject clarity:** \"majestic dragon with iridescent scales\" + \"sprawling medieval stone castle\" grounds the scene immediately.\n- **Lighting:** \"golden-hour clouds,\" \"glowing embers,\" and \"volumetric god rays\" push Midjourney toward rich, painterly sunset lighting.\n- **Composition cues:** \"wingspan casting shadows on turret rooftops\" tells the model how the two subjects relate spatially.\n- **Stylize 250:** Slightly above the 100 default — adds artistic drama without going full abstraction.\n- **16:9 aspect ratio:** Ideal for a wide cinematic landscape.\n- **No `--style raw`:** Keeps the fantasy painterly quality rather than photorealism (add `--style raw` if you want a more photographic look).\n\n**Optional tweaks:**\n- Add `--chaos 15` for a little variation between generations.\n- Swap `--ar 9:16` for a vertical poster format.\n- Add `--sref` with a fantasy art URL if you have a specific style reference."
+    },
+    {
+      "model": "gemma4:31b-cloud",
+      "label": "Gemma 4 31B",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 1971,
+      "tokens": {
+        "in": 184,
+        "out": 419
+      },
+      "hits": {
+        "current": [
+          "--v 8",
+          "v8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "Depending on the artistic style you are looking for, here are three different prompt options. All are optimized for the current **V8.2** model.\n\n### Option 1: Cinematic Photorealism\nUse this for a movie-still look with realistic lighting and textures.\n> **A massive, ancient dragon with iridescent scales soaring majestically over a sprawling gothic stone castle, dramatic sunset sky with deep orange and purple hues, cinematic lighting, volumetric clouds, hyper-realistic textures, wide angle shot --ar 16:9 --style raw --v 8.2**\n\n### Option 2: Epic Digital Fantasy Art\nUse this for a polished, \"concept art\" look similar to high-end gaming or book covers.\n> **Epic fantasy illustration of a dragon gliding above a towering medieval fortress, golden hour sunset, glowing embers in the air, intricate castle architecture, vibrant colors, sweeping composition, digital art style, highly detailed --ar 3:2 --stylize 250 --v 8.2**\n\n### Option 3: Dark & Moody Atmospheric\nUse this for a more ominous, dramatic, and high-contrast scene.\n> **A silhouette of a colossal dragon flying across a blood-red sunset, overlooking a lonely castle perched on a jagged cliff, gothic atmosphere, high contrast, moody lighting, ethereal mist --ar 16:9 --chaos 20 --v 8.2**\n\n***\n\n**Quick Tips for Customizing:**\n*   **Change the Dragon:** Replace \"ancient dragon\" with \"frost dragon\" (blue/white) or \"fire dragon\" (red/gold).\n*   **Change the Castle:** Replace \"gothic stone castle\" with \"floating crystal palace\" or \"ruined fortress.\"\n*   **Adjust the \"Vibe\":** Increase `--stylize` (up to 1000) if you want Midjourney to be more artistic, or use `--style raw` if you want it to look more like a real photograph."
+    },
+    {
+      "model": "nemotron-3-ultra:cloud",
+      "label": "Nemotron 3 Ultra",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 15313,
+      "tokens": {
+        "in": 183,
+        "out": 185
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "**A majestic dragon soaring above a medieval castle at golden hour, massive scaled wings catching the last amber light, iridescent scales shimmering in copper and crimson, ancient stone towers silhouetted against a blazing sky streaked with rose, violet, and molten gold, warm volumetric light rays piercing through clouds, cinematic composition, epic fantasy realism --ar 16:9 --stylize 250 --chaos 15 --q 2 --v 8.2**"
+    },
+    {
+      "model": "mistral-large-3:675b-cloud",
+      "label": "Mistral Large 3",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 6607,
+      "tokens": {
+        "in": 172,
+        "out": 411
+      },
+      "hits": {
+        "current": [
+          "--v 8",
+          "v8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "Here’s a detailed Midjourney prompt for your scene, optimized for **V8.2** (current default as of 2026-10-05):\n\n---\n**Prompt:**\n*A majestic, fire-breathing dragon with iridescent emerald and gold scales soaring gracefully over a medieval stone castle at sunset, dramatic golden-hour lighting casting long shadows, warm amber and crimson skies with wispy clouds, the castle’s towers and battlements illuminated by the fading sun, intricate architectural details, a moat reflecting the fiery sky, cinematic composition with depth of field, hyper-detailed textures, ultra-realistic fantasy art, --v 8.2 --ar 16:9 --stylize 200 --chaos 30 --q 2 --style raw*\n\n**Optional Additions (if desired):**\n- For a specific dragon style: *\"European dragon with bat-like wings and a spiked tail\"* or *\"Oriental dragon with serpentine body and flowing mane.\"*\n- For mood: *\"Epic, awe-inspiring, slightly ominous\"* or *\"Serene, magical, dreamlike.\"*\n- For extra detail: *\"Volumetric fog swirling around the castle, embers glowing in the dragon’s breath, distant silhouettes of knights on the ramparts.\"*\n\n---\n**Key Parameters Explained:**\n- `--v 8.2`: Ensures the latest model version.\n- `--ar 16:9`: Widescreen cinematic ratio.\n- `--stylize 200`: Balances creativity and realism (default is 100; higher = more artistic).\n- `--chaos 30`: Adds controlled variation (0–100; higher = more unpredictable).\n- `--q 2`: Quality boost (1 = fast, 2 = balanced, 4 = max detail).\n- `--style raw`: Photorealistic output (remove for a more painterly look)."
+    },
+    {
+      "model": "gpt-oss:120b-cloud",
+      "label": "GPT-OSS 120B",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 770,
+      "tokens": {
+        "in": 230,
+        "out": 202
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "**Midjourney Prompt**\n\n```\na majestic dragon soaring over an ancient stone castle at sunset, golden light bathing the turrets, dramatic clouds, epic fantasy atmosphere, highly detailed, cinematic lighting --ar 16:9 --stylize 250 --chaos 15 --q 2 --v 8.2\n```"
+    },
+    {
+      "model": "glm-5.2:cloud",
+      "label": "GLM-5.2",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "current",
+      "ms": 14632,
+      "tokens": {
+        "in": 167,
+        "out": 413
+      },
+      "hits": {
+        "current": [
+          "--v 8"
+        ],
+        "stale": [],
+        "unknown": []
+      },
+      "reply": "A majestic dragon with a massive wingspan soaring over a towering medieval castle at sunset, glowing orange and deep purple clouds, epic fantasy landscape, cinematic lighting, dramatic shadows, highly detailed, photorealistic --ar 16:9 --style raw --stylize 200 --v 8.2"
+    },
+    {
+      "model": "qwen3.5:397b-cloud",
+      "label": "Qwen3.5 397B",
+      "fact": "midjourney-version",
+      "platform": "Midjourney",
+      "condition": "grounded",
+      "grade": "error",
+      "ms": 170,
+      "error": "HTTP 410: {\"error\":{\"message\":\"qwen3.5:397b was retired at 2026-09-25 00:00:00 -0700 PDT (ref: a3f53518-4a8e-4c83-9fef-7423cf6da124)\",\"type\":\"api_error\",\"param\":null,\"code\":null}}\n"
+    }
+  ]
+}
