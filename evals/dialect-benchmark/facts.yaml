@@ -96,12 +96,12 @@ facts:
   - id: openai-tts
     platform: OpenAI TTS
     ask: "Write an OpenAI text-to-speech prompt for: a friendly customer-service greeting."
-    verified: "gpt-4o-mini-tts (2025) is instruction-following — tone/delivery steered by natural-language directions. The six fixed voices (alloy/echo/fable/onyx/nova/shimmer) are the 2024-era surface, still legacy-available."
+    verified: "gpt-4o-mini-tts (2025) is instruction-following — tone/delivery steered by natural-language directions. The six fixed 2024-era tts-1 voices include fable/onyx/nova/shimmer, which are NOT in the gpt-4o-mini-tts voice set (alloy/echo carried over and ARE current)."
     verifiedAt: "2026-10-05"
     source: "https://platform.openai.com/docs/guides/text-to-speech"
-    groundedContext: "OpenAI's current TTS model is gpt-4o-mini-tts: instruction-following voices steered with natural-language directions (tone, pacing, emotion). Speed 0.25-4.0. No SSML. Older fixed-voice sets are legacy."
+    groundedContext: "OpenAI's current TTS model is gpt-4o-mini-tts: instruction-following voices steered with natural-language directions (tone, pacing, emotion). Speed 0.25-4.0. No SSML."
     current: ["gpt-4o-mini-tts", "gpt-4o-mini-tts-voice", "instruction", "steer", "voice directions"]
-    stale: ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+    stale: ["fable", "onyx", "nova", "shimmer"]
 
   - id: openai-image
     platform: OpenAI image
