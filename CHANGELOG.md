@@ -4,6 +4,43 @@ All notable changes to **ClarifyPrompt MCP** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] — 2026-10-05
+
+Minor — **the platform-currency release: every built-in pack fact-verified against current vendor docs, Sora retired, and a public dialect-currency benchmark proving why it matters.**
+
+### Changed — platform-pack currency refresh (all verified 2026-10-05)
+
+The packs had rotted — the exact failure this project exists to fix. Refreshed against current vendor docs, and every verified entry now carries a `verifiedAt` date so staleness is visible and trackable:
+
+- **Midjourney** `--v 6.1` → **V8.2** (current default; V7's `--oref`/`--draft`, V8.x's `--edit`/`--hd`/`--sd` documented)
+- **Runway** "Gen-3" → **Gen-4.5** (References, Act-Two, up to 4K)
+- **Google Veo** "2" → **3.1** (Standard/Fast/Lite, native/spatial audio, 8s extendable)
+- **Kling** "up to 2 minutes" → **3.0/Omni** (native 4K/60fps, 5-language lip-sync, 6-shot storyboards)
+- **Pika** stale `-gs`/`-motion` flags → **2.2** (Pikaframes, Pikaswaps, Pikadditions, Pikaformance)
+- **Luma** → **Ray 2**; **Minimax/Hailuo** → **2.3**; **Wan** → **2.6**
+- **Suno** generic tags → **v6 family** (v6/v6-wild/v6-mini, 2026-09-09; v5/v5.5 retired)
+- **ElevenLabs** v2 sliders → **v3 audio tags** (`[laughs]`, `[whispers]`, …); **OpenAI TTS** fixed voices → **gpt-4o-mini-tts** instruction-following
+- **OpenAI image** "DALL-E 3" → **GPT Image 2** (DALL-E legacy-only); **Imagen 3** → **Imagen 4**; **GLM "Zhipu"** → **Z.ai**
+
+### Removed
+
+- **Sora — retired everywhere.** OpenAI discontinued the consumer app 2026-04-26 and shut the Videos API + `sora-2` ids on **2026-09-24** with no replacement. Removed from the video packs, strategy guidance, A2A card, tool docs, README (all surfaces), and npm keywords. The Higgsfield entry no longer routes to it. Remaining references are deliberate dated tombstones.
+
+### Added
+
+- **New first-class platforms:** `seedance` (video — 20s clips, up to 12 reference files, multi-shot storyboards), `eleven-music` (ElevenLabs Music v2.5 — public API, composition plans), `lyria` (Google Lyria 3.5 — Flow Music / Gemini API).
+- **Dialect-currency benchmark** (`evals/dialect-benchmark/`): a raw-model probe asking 12 of the newest Ollama Cloud models to write platform prompts unprompted, graded against the same verified facts. Raw-condition results (2026-10-05, $0.35): **12 of 13 answering models emit stale Midjourney `--v 6.x`**; **12 of 12 write fluent prompts for dead Sora 2** — including GPT-OSS, OpenAI's own open weights; **zero models hedged**. A grounded mode (`BENCH_GROUNDED=1`) injects the same pack data the engine ships and re-runs the identical asks — the before/after delta is the product thesis made measurable. Full JSON audit + `RESULTS.md`.
+- **Benchmark hygiene finding:** both benchmark control models returned **HTTP 410 retired** mid-run (`qwen3.5:397b` retired from Ollama Cloud 2026-09-25; `qwen3-next:80b` retired 2026-06-16) — models rotate too, not just dialects.
+
+### Fixed
+
+- `packs/higgsfield-creative-handbook.md` negative-example updated (`--v 8.2`), Sora routing note added.
+- Windsurf syntax hints note current rules-file conventions.
+
+### Compatibility
+
+No tool-surface changes (still 23 tools). No removed tools. `platform: "sora"` now resolves to nothing — unknown platform ids fail soft to general guidance (documented behavior). Full back-compat otherwise.
+
 ## [1.15.0] — 2026-07-03
 
 Minor — **latest-model compatibility across every provider, plus Nano Banana as a built-in image platform.**

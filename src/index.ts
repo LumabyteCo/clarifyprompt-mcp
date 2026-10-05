@@ -23,7 +23,7 @@ import { critiquePrompt } from "./engine/critique/critique.js";
 import { composePrompt } from "./engine/composition/compose.js";
 import { startTransport } from "./transport.js";
 
-const VERSION = "1.15.0";
+const VERSION = "1.16.0";
 
 // MCP Apps (extension io.modelcontextprotocol/ui): compose_prompt renders an
 // interactive result panel in hosts that support it (Claude Desktop, ChatGPT,
@@ -261,7 +261,7 @@ server.registerTool(
   "optimize_prompt",
   {
     title: "Optimize a prompt for a platform",
-    description: "Optimize a prompt for a specific AI platform. Context-aware: auto-gathers workspace signals (CLAUDE.md / AGENTS.md / .cursorrules / package.json), resolves intent + category + recommended mode in a single analysis step, shapes the system prompt to the target model's capabilities, and grounds the rewrite in a priority-ordered Grounding Context. Supports 58+ platforms across 7 categories, plus custom registered platforms. Category, platform, and mode are all optional — the engine chooses sane defaults from the analysis.",
+    description: "Optimize a prompt for a specific AI platform. Context-aware: auto-gathers workspace signals (CLAUDE.md / AGENTS.md / .cursorrules / package.json), resolves intent + category + recommended mode in a single analysis step, shapes the system prompt to the target model's capabilities, and grounds the rewrite in a priority-ordered Grounding Context. Supports 61 platforms across 7 categories (verifiedAt-dated packs), plus custom registered platforms. Category, platform, and mode are all optional — the engine chooses sane defaults from the analysis.",
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     outputSchema: OPTIMIZATION_OUT,
     inputSchema: {

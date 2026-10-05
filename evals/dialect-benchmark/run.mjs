@@ -31,6 +31,11 @@ const API_KEY = process.env.LLM_API_KEY || '';
 const TIMEOUT_MS = Number(process.env.BENCH_TIMEOUT_MS || 180_000);
 const BUDGET_USD = Number(process.env.BENCH_BUDGET_USD || 10);
 const FILTER = process.env.BENCH_FILTER || null;
+// GROUNDED mode: inject each fact's verified current-dialect reference
+// (the same pack data clarifyprompt-mcp ships) into the system prompt.
+// Raw condition = what models KNOW alone; grounded = what they can DO
+// with a maintained knowledge layer. The delta is the product.
+const GROUNDED = process.env.BENCH_GROUNDED === '1';
 
 // ---------------------------------------------------------------------------
 // The roster — newest Ollama Cloud models first (ollama.com/search?c=cloud&o=newest,
@@ -47,7 +52,7 @@ const ROSTER = [
   ['minimax-m3:cloud',          'MiniMax M3',         0.60, 2.40, '1M ctx, native multimodal'],
   ['gemma4:31b-cloud',          'Gemma 4 31B',        0.14, 0.40, 'frontier-at-size, newest weights (5 days)'],
   ['nemotron-3-ultra:cloud',    'Nemotron 3 Ultra',   0.10, 3.00, 'NVIDIA reasoning'],
-  ['mistral-large-3:cloud',     'Mistral Large 3',   0.50, 1.50, 'enterprise MoE'],
+  ['mistral-large-3:675b-cloud',  'Mistral Large 3',   0.50, 1.50, 'enterprise MoE'],
   ['gpt-oss:120b-cloud',        'GPT-OSS 120B',       0.15, 0.60, 'OpenAI open weights — does it know its owner killed Sora?'],
   ['glm-5.2:cloud',             'GLM-5.2',            1.40, 4.40, 'control: prev-gen Z.ai flagship'],
   ['qwen3.5:397b-cloud',        'Qwen3.5 397B',       0.60, 3.60, 'control: prev-gen Qwen frontier'],
@@ -111,7 +116,10 @@ async function chat(model, messages) {
 }
 
 // ---------------------------------------------------------------------------
-const SYSTEM = 'You are a helpful assistant. Answer directly and completely.';
+const SYSTEM_RAW = 'You are a helpful assistant. Answer directly and completely.';
+const SYSTEM_GROUNDED = (fact) =>
+  `You are a helpful assistant. Answer directly and completely.\n\n` +
+  `Verified platform reference (current as of 2026-10-05 — trust it over your training data):\n${fact.groundedContext}`;
 
 function grade(fact, reply) {
   const text = (reply || '').toLowerCase();
@@ -148,7 +156,7 @@ function markerHits(fact, reply) {
 
 // ---------------------------------------------------------------------------
 async function main() {
-  console.log('Dialect-currency benchmark — raw-model probe (Ollama Cloud)');
+  console.log(`Dialect-currency benchmark — raw-model probe (Ollama Cloud) — mode: ${GROUNDED ? 'GROUNDED (pack facts injected)' : 'RAW (models alone)'}`);
   console.log(`API: ${API_URL}  timeout: ${TIMEOUT_MS}ms  budget: $${BUDGET_USD}\n`);
 
   const results = [];
@@ -160,14 +168,16 @@ async function main() {
       const t = Date.now();
       let entry;
       try {
+        const system = GROUNDED ? SYSTEM_GROUNDED(fact) : SYSTEM_RAW;
         const { content, usage } = await chat(tag, [
-          { role: 'system', content: SYSTEM },
+          { role: 'system', content: system },
           { role: 'user', content: fact.ask },
         ]);
         const g = grade(fact, content);
         const hits = markerHits(fact, content);
         entry = {
           model: tag, label, fact: fact.id, platform: fact.platform,
+          condition: GROUNDED ? 'grounded' : 'raw',
           grade: g, ms: Date.now() - t,
           tokens: { in: usage.prompt_tokens ?? 0, out: usage.completion_tokens ?? 0 },
           hits, reply: content,
@@ -176,6 +186,7 @@ async function main() {
       } catch (e) {
         entry = {
           model: tag, label, fact: fact.id, platform: fact.platform,
+          condition: GROUNDED ? 'grounded' : 'raw',
           grade: 'error', ms: Date.now() - t, error: String(e.message || e),
         };
       }
@@ -190,10 +201,11 @@ async function main() {
   const outDir = join(HERE, 'out');
   if (!existsSync(outDir)) mkdirSync(outDir);
   const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
-  const outPath = join(outDir, `dialect-benchmark-${stamp}.json`);
+  const outPath = join(outDir, `dialect-benchmark-${GROUNDED ? 'grounded' : 'raw'}-${stamp}.json`);
   const summary = summarize(results);
   writeFileSync(outPath, JSON.stringify({
     ranAt: new Date().toISOString(),
+    condition: GROUNDED ? 'grounded' : 'raw',
     api: API_URL,
     factsFile: 'facts.yaml',
     roster: ROSTER.map(([tag, label, pin, pout, note]) => ({ tag, label, inPerM: pin, outPerM: pout, note })),
@@ -204,7 +216,7 @@ async function main() {
   }, null, 2));
 
   console.log('\n' + '='.repeat(70));
-  console.log('SUMMARY (per model, 11 facts)');
+  console.log(`SUMMARY (${GROUNDED ? 'GROUNDED' : 'RAW'} condition, per model, ${FACTS.length} facts)`);
   console.log('='.repeat(70));
   for (const row of summary.perModel) {
     const score = row.current + '/' + FACTS.length;

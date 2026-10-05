@@ -9,8 +9,10 @@
 
 A **context-aware MCP prompt compiler** that transforms vague prompts into platform-optimized prompts for 60+ AI platforms across 7 categories — grounded in your workspace signals (CLAUDE.md, AGENTS.md, .cursorrules, package.json), resolved intent, and the capabilities of the target model.
 
-Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, GPT Image 2, Veo, Runway, Kling, Seedance, Higgsfield, ElevenLabs, Suno, Claude, ChatGPT, Cursor, or any of the 60+ supported platforms — with the right syntax, parameters, structure, and grounding.
+Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're actually trying to do, and returns a version specifically optimized for Midjourney, GPT Image 2, Veo, Runway, Kling, Seedance, Higgsfield, ElevenLabs, Suno, Claude, ChatGPT, Cursor, or any of the 61 supported platforms — with the right syntax, parameters, structure, and grounding.
 
+> **New in 1.16.0:** **the platform-currency release.** Every built-in pack fact-verified against current vendor docs (2026-10-05) — Midjourney V8.x, Runway Gen-4.5, Veo 3.1, Kling 3.0/Omni, Pika 2.2, Suno v6, ElevenLabs v3, gpt-4o-mini-tts, GPT Image 2 — each entry now carries a `verifiedAt` date. **Sora retired everywhere** (OpenAI shut the Videos API 2026-09-24, no replacement); new platforms: Seedance, ElevenLabs Music v2.5, Lyria 3.5. Plus the **dialect-currency benchmark**: 12 of the newest Ollama Cloud models asked to write platform prompts unprompted — 12/13 emit stale Midjourney flags, 12/12 write fluent prompts for dead Sora, zero hedge. Grounded mode re-runs the same asks with the pack facts injected and the scores flip. See [the benchmark](./evals/dialect-benchmark/RESULTS.md) and [CHANGELOG.md](./CHANGELOG.md).
+>
 > **New in 1.15.0:** **Nano Banana** (Google Gemini 2.5 Flash Image) is now a **built-in image platform** — `optimize_prompt(platform: "nano-banana")` compiles image prompts in its native style (natural-language scene direction, photographic terms, edit-preserving-identity phrasing, in-image text). Plus **latest-model compatibility across every provider**: `claude-sonnet-5`, `gpt-5`/o-series, and Gemini reject `temperature` and/or `max_tokens`; the client now sends the right parameters (proactively for known reasoning ids, and learns the rest from a `400`). Verified live against Anthropic, OpenAI, Gemini, and Ollama Cloud. See [CHANGELOG.md](./CHANGELOG.md).
 >
 > **New in 1.14.1:** **Portable-by-default text output** — a `chat`/`document`/`code` prompt with no explicit platform now stays platform-neutral instead of quietly defaulting to Claude's idioms (XML tags); name a platform to opt into vendor-specific tuning. Plus the MCP Apps compose panel now shows a `for <platform>` badge and a clean **Your prompt → Optimized** before/after (with a `show changes` toggle) instead of an always-on diff. See [CHANGELOG.md](./CHANGELOG.md).
@@ -75,6 +77,19 @@ Nothing in that one-line prompt mentioned the `CLARIFYPROMPT_HTTP_*` naming conv
 **3 — It can run the whole pipeline.** clarify → ground/optimize → critique → revise, in one `compose_prompt` call — see **Previously in 1.4.0 — the composable pipeline** below.
 
 > <a name="provenance"></a>**Provenance.** Image outputs captured via `glm-5.2:cloud`, the grounded code output via `qwen3-coder:480b-cloud` — both [Ollama](https://ollama.com) cloud models served over Ollama's OpenAI-compatible endpoint (`LLM_API_URL=http://localhost:11434/v1`), run through `optimize_prompt` against this repo on 2026-06-22 (the Nano Banana capture added 2026-07-03, same `glm-5.2:cloud` model). ClarifyPrompt is model-agnostic (any OpenAI-compatible API, local or hosted); outputs are model-dependent — yours will differ in wording, not in structure.
+
+## What's new in 1.16.0
+
+**The platform-currency release.** The packs had rotted — Midjourney was still `--v 6.1` while the current default is V8.2, the video pack still described "Runway Gen-3" and "Google Veo 2", and the Higgsfield entry still routed to a dead model. Every built-in pack was fact-verified against current vendor docs on 2026-10-05, and every verified entry now carries a `verifiedAt` date so staleness is visible, trackable, and CI-able.
+
+**Sora retired everywhere.** OpenAI discontinued the Sora app on 2026-04-26 and shut the Videos API + all `sora-2` model ids on 2026-09-24, with no replacement named. Removed from the packs, strategy guidance, A2A card, tool docs, README, and npm keywords. New first-class platforms: `seedance`, `eleven-music` (ElevenLabs Music v2.5), `lyria` (Google 3.5).
+
+**The dialect-currency benchmark** ([`evals/dialect-benchmark/`](./evals/dialect-benchmark/RESULTS.md)) — the proof of why this project exists. We asked 12 of the newest Ollama Cloud models to write platform prompts, unprompted, and graded the replies against the same verified facts:
+
+- **12 of 13 answering models emitted stale Midjourney `--v 6.x`** (V8.2 has been default since June)
+- **12 of 12 wrote fluent prompts for Sora 2** — a product OpenAI shut down 11 days before the run. Including GPT-OSS, OpenAI's own open weights. **Zero models hedged or mentioned a knowledge cutoff.**
+- **Grounded mode** (`BENCH_GROUNDED=1`) re-runs the identical asks with the pack facts injected into the system prompt — the before/after delta on the same roster is the product thesis made measurable: models don't *know* current dialects, but with a maintained knowledge layer they execute.
+- Bonus finding: two benchmark control models returned **HTTP 410 retired** mid-run (`qwen3.5:397b`, 2026-09-25) — models rotate too, not just dialects.
 
 ## What's new in 1.15.0
 
@@ -543,7 +558,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 
 > Carried over from 1.3: persistent memory + knowledge packs + reflective learning. The curator continues to score and fit grounding sources into the target model's remaining window. `explain_last_curation` still gives you a per-call breakdown of selected vs. rejected candidates with reasons.
 
-## What's in the box (cumulative through 1.15.0)
+## What's in the box (cumulative through 1.16.0)
 
 - **Context Engine** — auto-gathers workspace rules (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.clinerules`, `clarify.md`), detects frameworks and languages from `package.json` and sibling manifests, tracks an active file excerpt, and maintains a per-session ring buffer of recent optimizations **and their outcomes**.
 - **Unified `PromptAnalyzer`** — one LLM call produces `{ category, intent, recommendedMode, confidence }` together. 10 intents: `production-code`, `brand-voice`, `stakeholder-comm`, `data-extract`, `creative-media`, `technical-spec`, `analysis`, `quick-draft`, `exploration`, `unknown`. Intent beats surface keywords on ambiguity.
@@ -553,7 +568,7 @@ Four core operations as first-class MCP tools that compose. Use any tool standal
 - **Local JSONL tracing** — every optimization writes a structured trace line (now with `shape`, `groundingSources`, `error` fields) to `$CLARIFYPROMPT_HOME/traces/YYYY-MM-DD.jsonl`. **Nothing is uploaded.** Toggle via `CLARIFYPROMPT_TRACE=off`.
 - **Unified `$CLARIFYPROMPT_HOME`** — one env var for everything ClarifyPrompt writes. Legacy `CLARIFYPROMPT_CONFIG_DIR` / `CLARIFYPROMPT_DATA_DIR` still work (deprecation hint, silenceable).
 - **Three transports** — `stdio` (default), `streamable-http` (MCP over Node `http`, stateful sessions + `/health`), and `a2a` (an **Agent-to-Agent** peer: agent card, JSON-RPC `message/send` + SSE `message/stream`, task cancellation, `input-required` clarification). One `CLARIFYPROMPT_TRANSPORT` env var; stdio behavior is byte-identical to before.
-- **60+ platforms, 7 categories, custom platforms** — the original core is unchanged and fully backward-compatible.
+- **61 platforms, 7 categories, `verifiedAt`-dated packs, custom platforms** — every built-in fact-verified against current vendor docs as of 2026-10-05, with new platforms (Seedance, ElevenLabs Music, Lyria) and Sora retired.
 - **Any LLM, any provider.** One code path works with **any OpenAI-compatible API** — Ollama (local + cloud), LM Studio, vLLM, OpenAI, Google Gemini, xAI Grok, Groq, Mistral, DeepSeek, Cohere, Perplexity, Together, Fireworks, OpenRouter — plus **Anthropic Claude** directly. Reasoning models (`o1/o3/o4`, `deepseek-reasoner`, `gpt-oss`, `*-thinking`) are auto-detected and given a larger token budget so they actually produce content. [See 15+ pre-configured provider examples below](#provider-examples).
 - **Apache-2.0, forever.** Open-source core, no relicensing.
 
@@ -734,7 +749,7 @@ Returns `{ optimization: { id, sessionId, originalPrompt, platform, … }, final
 
 ### Targeting a platform
 
-`platform:` (on `optimize_prompt` or `compose_prompt`) selects a platform's tuning — e.g. `midjourney`, `dall-e`, `veo`, `suno`, `claude`, `chatgpt`, `cursor` (58 built-in + any you register). For chat, the platforms **are** the models (`claude`, `chatgpt`, `gemini`, `llama`, `deepseek`, …). **Text categories** (`chat`/`document`/`code`) produce portable, platform-neutral output when you *omit* `platform` — name one to opt into that platform's specific idioms.
+`platform:` (on `optimize_prompt` or `compose_prompt`) selects a platform's tuning — e.g. `midjourney`, `dall-e`, `veo`, `suno`, `claude`, `chatgpt`, `cursor` (61 built-in, `verifiedAt`-dated, + any you register). For chat, the platforms **are** the models (`claude`, `chatgpt`, `gemini`, `llama`, `deepseek`, …). **Text categories** (`chat`/`document`/`code`) produce portable, platform-neutral output when you *omit* `platform` — name one to opt into that platform's specific idioms.
 
 ### Per-stage models (e.g. a stronger model as the critic)
 
@@ -755,7 +770,7 @@ compose_prompt({
 
 In hosts that support the `io.modelcontextprotocol/ui` extension — Claude Desktop, Cursor, VS Code, … — `compose_prompt` renders a live panel next to the result: your original prompt, the optimized output (with a *show changes* diff toggle), a `for <platform>` / `general purpose` badge, the six critique score bars, and **Accept** / **Revise** actions. Accept records the outcome via `save_outcome` (feeding the few-shot memory loop); Revise sends your feedback back into the chat. Hosts without the extension are unaffected — they get the same text + `structuredContent` result and no panel.
 
-## Supported Platforms (58+ built-in, unlimited custom)
+## Supported Platforms (61 built-in, verifiedAt-dated, unlimited custom)
 
 | Category | Platforms | Default |
 |----------|-----------|---------|
@@ -1181,7 +1196,7 @@ Example instruction file (`my-llm.md`):
 
 ### Override Built-in Platforms
 
-You can add custom instructions to any of the 58 built-in platforms using `update_platform`. This lets you customize how prompts are optimized for platforms like Midjourney, Claude, or Veo without modifying the defaults.
+You can add custom instructions to any of the 61 built-in platforms using `update_platform`. This lets you customize how prompts are optimized for platforms like Midjourney, Claude, or Veo without modifying the defaults.
 
 ### Config Directory
 
