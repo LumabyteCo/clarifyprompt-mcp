@@ -37,35 +37,35 @@ export interface CategoryConfig {
 }
 
 const IMAGE_PLATFORMS: PlatformConfig[] = [
-  { id: 'midjourney', label: 'Midjourney', description: 'Artistic, stylized imagery', syntaxHints: ['--ar', '--v 6.1', '--style raw', '--chaos', '--weird', '--q', '--s'] },
-  { id: 'dall-e', label: 'DALL-E 3', description: 'Natural language, versatile', syntaxHints: ['natural language', 'size: 1024x1024, 1792x1024, 1024x1792'] },
+  { id: 'midjourney', label: 'Midjourney (V8.x)', description: 'Artistic, stylized imagery; current default V8.2', syntaxHints: ['--ar', '--v 8.2', '--style raw', '--stylize 0-1000', '--chaos 0-100', '--q (1,2,4)', '--sref', '--edit'] },
+  { id: 'dall-e', label: 'OpenAI image (GPT Image 2 / DALL-E 3)', description: 'Natural language, versatile; GPT Image 2 current', syntaxHints: ['natural language', 'full sentences', 'aspect ratio in words'] },
   { id: 'stable-diffusion', label: 'Stable Diffusion', description: 'Open source, highly customizable', syntaxHints: ['negative prompts', 'CFG scale', 'steps', 'samplers', 'LoRA', 'embeddings'] },
-  { id: 'flux', label: 'Flux', description: 'High detail, photorealistic', syntaxHints: ['natural language', 'high detail focus', 'guidance scale'] },
+  { id: 'flux', label: 'Flux (2)', description: 'High detail, photorealistic', syntaxHints: ['natural language', 'high detail focus', 'guidance scale 3-7', 'multi-reference editing'] },
   { id: 'ideogram', label: 'Ideogram', description: 'Best for text in images', syntaxHints: ['magic prompt', 'text rendering', 'typography'] },
   { id: 'leonardo', label: 'Leonardo AI', description: 'Preset styles, game art', syntaxHints: ['preset styles', 'guidance scale', 'contrast', 'alchemy'] },
   { id: 'firefly', label: 'Adobe Firefly', description: 'Commercial safe, natural', syntaxHints: ['natural language', 'style references', 'effects'] },
   { id: 'grok-aurora', label: 'Grok Aurora', description: 'xAI, fast and creative', syntaxHints: ['natural language', 'creative interpretation', 'fast generation'] },
-  { id: 'imagen', label: 'Google Imagen 3', description: 'Photorealistic, via Gemini', syntaxHints: ['natural language', 'photorealistic', 'size: 1024x1024', 'aspect ratios'] },
+  { id: 'imagen', label: 'Google Imagen (4 / 4 Ultra)', description: 'Photorealistic, via Gemini/Vertex', syntaxHints: ['natural language', 'photorealistic', 'aspect ratios'] },
   { id: 'recraft', label: 'Recraft', description: 'Vector design, brand assets', syntaxHints: ['style selection', 'vector output', 'brand colors', 'SVG export'] },
 ];
 
 const VIDEO_PLATFORMS: PlatformConfig[] = [
-  { id: 'sora', label: 'Sora', description: 'OpenAI, cinematic quality', syntaxHints: ['natural language', 'duration', 'camera motion', 'scene description'] },
-  { id: 'runway', label: 'Runway Gen-3', description: 'Motion control, professional', syntaxHints: ['motion brush', 'camera controls', 'motion amount', 'extend'] },
-  { id: 'pika', label: 'Pika Labs', description: 'Quick iterations, stylized', syntaxHints: ['motion parameters', 'camera movements', '-gs', '-motion'] },
-  { id: 'kling', label: 'Kling AI', description: 'Long clips, high quality', syntaxHints: ['natural language', 'duration up to 2min', 'professional mode'] },
-  { id: 'luma', label: 'Luma Dream Machine', description: 'Fast, keyframe control', syntaxHints: ['natural language', 'keyframes', 'camera motion'] },
-  { id: 'minimax', label: 'Minimax / Hailuo', description: 'Expressive motion, Asian style', syntaxHints: ['natural language', 'character animation', 'expressions'] },
-  { id: 'veo', label: 'Google Veo 2', description: 'DeepMind, cinematic 4K', syntaxHints: ['natural language', 'cinematic quality', '4K output', 'up to 2 minutes'] },
-  { id: 'wan', label: 'Wan', description: 'Open source, versatile', syntaxHints: ['natural language', 'open source', 'image-to-video', 'text-to-video'] },
+  { id: 'runway', label: 'Runway (Gen-4.5)', description: 'Gen-4.5 Turbo flagship — best prompt adherence, References, Act-Two', syntaxHints: ['natural language', 'References (character/object consistency)', 'Act-Two motion capture', 'camera controls', 'extend', 'up to 4K'] },
+  { id: 'pika', label: 'Pika (2.2)', description: 'Fast social-first stylized video', syntaxHints: ['Pikaframes (first/last keyframe)', 'Pikaswaps', 'Pikadditions', 'Pikaformance lip-sync', 'up to 1080p'] },
+  { id: 'kling', label: 'Kling (3.0 / Omni)', description: 'Best physics and complex motion, native 4K/60fps', syntaxHints: ['natural language', 'native 4K 60fps', 'Omni: native audio + 5-language lip-sync', 'multi-shot storyboards (6 shots)', 'extend to ~60s'] },
+  { id: 'luma', label: 'Luma Dream Machine (Ray 2)', description: 'Fast, keyframe control', syntaxHints: ['natural language', 'keyframes', 'camera motion'] },
+  { id: 'minimax', label: 'Minimax / Hailuo (2.3)', description: 'Expressive motion, best value, native audio', syntaxHints: ['natural language', 'character animation', 'expressions', 'native audio'] },
+  { id: 'veo', label: 'Google Veo (3.1)', description: 'DeepMind flagship — 4K, native/spatial audio', syntaxHints: ['natural language', 'Standard/Fast/Lite tiers', '4K', '8s extendable', 'native audio', 'reference images', 'legible text-in-video'] },
+  { id: 'seedance', label: 'Seedance (2.0 / 2.5)', description: 'ByteDance flagship — 20s clips, multi-reference, product consistency', syntaxHints: ['long-form natural-language prose', 'up to 20s', 'aspect ratios 16:9/9:16/1:1/4:3/3:4/custom', 'up to 12 reference files', 'native audio sync', 'multi-shot storyboarding'] },
+  { id: 'wan', label: 'Wan (2.6)', description: 'Open source, versatile', syntaxHints: ['natural language', 'open source', 'image-to-video', 'text-to-video'] },
   { id: 'heygen', label: 'HeyGen', description: 'AI avatar videos, talking heads', syntaxHints: ['avatar selection', 'script input', 'voice pairing', 'gestures', 'background'] },
   { id: 'synthesia', label: 'Synthesia', description: 'Enterprise AI avatar videos', syntaxHints: ['avatar selection', 'script input', 'multi-language', 'brand templates', 'slides'] },
   { id: 'cogvideox', label: 'CogVideoX', description: 'Open weights, high quality text-to-video', syntaxHints: ['natural language', 'open weights', 'text-to-video', 'image-to-video', 'detailed descriptions'] },
 ];
 
 const VOICE_PLATFORMS: PlatformConfig[] = [
-  { id: 'elevenlabs', label: 'ElevenLabs', description: 'Voice cloning, realistic TTS', syntaxHints: ['voice settings', 'stability', 'clarity', 'style'] },
-  { id: 'openai-tts', label: 'OpenAI TTS', description: 'Simple, reliable voices', syntaxHints: ['voice selection', 'speed', 'alloy/echo/fable/onyx/nova/shimmer'] },
+  { id: 'elevenlabs', label: 'ElevenLabs (v3)', description: 'Expressive TTS with audio tags, voice cloning', syntaxHints: ['v3 audio tags: [laughs], [whispers], [excited]', 'voice settings: stability/similarity/style', 'conversational agents', 'cloning from 10s audio', '32+ languages'] },
+  { id: 'openai-tts', label: 'OpenAI TTS (gpt-4o-mini-tts)', description: 'Instruction-following voices', syntaxHints: ['natural-language voice instructions', 'steer tone/delivery/emotion', 'speed 0.25-4.0', 'no SSML'] },
   { id: 'fish-audio', label: 'Fish Audio', description: 'Voice cloning, multilingual', syntaxHints: ['voice cloning', 'multilingual', 'emotional control', 'reference audio'] },
   { id: 'sesame', label: 'Sesame', description: 'Conversational AI voices', syntaxHints: ['conversational style', 'emotional expression', 'natural dialogue', 'character voices'] },
   { id: 'google-tts', label: 'Google TTS', description: 'Cloud TTS, WaveNet voices', syntaxHints: ['SSML support', 'WaveNet voices', 'Neural2 voices', 'speaking rate', 'pitch'] },
@@ -74,8 +74,10 @@ const VOICE_PLATFORMS: PlatformConfig[] = [
 ];
 
 const MUSIC_PLATFORMS: PlatformConfig[] = [
-  { id: 'suno', label: 'Suno AI', description: 'Music from text prompts', syntaxHints: ['genre', 'mood', 'lyrics', 'instrumental', 'style tags'] },
+  { id: 'suno', label: 'Suno (v6)', description: 'Music from text prompts; v6 family Sept 2026', syntaxHints: ['models: v6 | v6-wild | v6-mini', 'genre + mood + tempo', '[Verse]/[Chorus]/[Bridge]/[Outro] section tags', 'plain-language section edits', 'Max Mode for 2min+ songs', 'up to 8 minutes', 'no public API'] },
   { id: 'udio', label: 'Udio', description: 'Music generation, remixing', syntaxHints: ['genre tags', 'mood', 'extend', 'remix'] },
+  { id: 'eleven-music', label: 'ElevenLabs Music (v2.5)', description: 'Licensed commercial tracks, public API', syntaxHints: ['natural-language prompt', 'API: music_v2_5, composition plans', 'up to 5min (10min via plans)', 'inpainting, audio reference', 'creator-owned'] },
+  { id: 'lyria', label: 'Google Lyria (3.5)', description: 'Google music model — Flow Music, Gemini API', syntaxHints: ['natural language', '30s to ~3min', 'Selective Section Painting', 'lyric rewrite', 'image-to-music (preview)'] },
   { id: 'stable-audio', label: 'Stable Audio', description: 'Stability AI, high-quality audio', syntaxHints: ['natural language', 'duration', 'genre', 'mood', 'instruments', 'BPM'] },
   { id: 'musicgen', label: 'MusicGen', description: 'Meta, open weights music generation', syntaxHints: ['open weights', 'natural language', 'melody conditioning', 'genre', 'tempo', 'local deployment'] },
 ];
@@ -93,14 +95,14 @@ const CODE_PLATFORMS: PlatformConfig[] = [
 ];
 
 const CHAT_PLATFORMS: PlatformConfig[] = [
-  { id: 'claude', label: 'Claude', description: 'Anthropic, strong reasoning and analysis', syntaxHints: ['system prompts', 'XML tags', 'chain of thought', 'long context', 'artifacts'] },
-  { id: 'chatgpt', label: 'ChatGPT', description: 'OpenAI, versatile conversation', syntaxHints: ['system prompts', 'browsing', 'code interpreter', 'DALL-E integration', 'custom GPTs'] },
-  { id: 'gemini', label: 'Gemini', description: 'Google, multimodal reasoning', syntaxHints: ['multimodal input', 'Google integration', 'long context', 'grounding'] },
+  { id: 'claude', label: 'Claude (Sonnet 5 / Opus 4 line)', description: 'Anthropic, strong reasoning and analysis', syntaxHints: ['system prompts', 'XML tags', 'extended thinking', 'long context', 'artifacts'] },
+  { id: 'chatgpt', label: 'ChatGPT (GPT-5)', description: 'OpenAI, versatile conversation', syntaxHints: ['system prompts', 'browsing', 'code interpreter', 'custom GPTs', 'reasoning models: max_completion_tokens'] },
+  { id: 'gemini', label: 'Gemini (Flash latest / Pro)', description: 'Google, multimodal reasoning', syntaxHints: ['multimodal input', 'Google integration', 'long context', 'grounding'] },
   { id: 'llama', label: 'Llama', description: 'Meta, open weights, local deployment', syntaxHints: ['open weights', 'system prompts', 'local deployment', 'fine-tunable', 'Ollama/vLLM'] },
   { id: 'deepseek', label: 'DeepSeek', description: 'Open weights, strong reasoning (R1/V3)', syntaxHints: ['open weights', 'system prompts', 'chain of thought', 'deep reasoning', 'local deployment'] },
   { id: 'qwen', label: 'Qwen', description: 'Alibaba, open weights, multilingual', syntaxHints: ['open weights', 'system prompts', 'multilingual', 'tool use', 'local deployment'] },
   { id: 'kimi', label: 'Kimi', description: 'Moonshot AI, ultra-long context (2M tokens)', syntaxHints: ['ultra-long context', 'document analysis', 'natural language', 'file upload'] },
-  { id: 'glm', label: 'GLM', description: 'Zhipu AI, ChatGLM series, open weights', syntaxHints: ['open weights', 'system prompts', 'multilingual', 'tool use', 'local deployment'] },
+  { id: 'glm', label: 'GLM (Z.ai)', description: 'Z.ai (formerly Zhipu AI), GLM-4.6+ line, open weights', syntaxHints: ['open weights', 'system prompts', 'multilingual', 'tool use', 'local deployment'] },
   { id: 'minimax-chat', label: 'Minimax', description: 'Minimax, strong general reasoning', syntaxHints: ['system prompts', 'function calling', 'long context', 'multilingual'] },
 ];
 

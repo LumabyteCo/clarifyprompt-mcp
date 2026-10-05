@@ -38,7 +38,7 @@ export function buildAgentCard(baseUrl: string, version: string): AgentCard {
         id: "compile-prompt-for-platform",
         name: "Compile a prompt for an AI platform",
         description:
-          "Takes a rough prompt and an optional target platform (midjourney, sora, claude, cursor, suno, …) and category, runs the clarify → optimize → critique pipeline, and returns a platform-optimized prompt. Input may be plain text (the prompt) or a JSON object { prompt, platform?, category?, post_critique?, auto_revise?, max_iterations? }. The compiled prompt is returned both as text and as a structured artifact with the full pipeline result.",
+          "Takes a rough prompt and an optional target platform (midjourney, veo, runway, claude, cursor, suno, …) and category, runs the clarify → optimize → critique pipeline, and returns a platform-optimized prompt. Input may be plain text (the prompt) or a JSON object { prompt, platform?, category?, post_critique?, auto_revise?, max_iterations? }. The compiled prompt is returned both as text and as a structured artifact with the full pipeline result.",
         tags: ["prompt-engineering", "prompt-optimization", "mcp", "creative", "code"],
         examples: [
           "Compile 'a dragon flying over a castle at sunset' for midjourney",

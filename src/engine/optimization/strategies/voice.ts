@@ -33,22 +33,20 @@ ${modeInstructions}`;
   private getPlatformGuidance(platform?: string): string {
     const guidance: Record<string, string> = {
       elevenlabs: `
-Platform-Specific Guidance for ELEVENLABS:
+Platform-Specific Guidance for ELEVENLABS (v3):
 - Specify voice selection or clone requirements
-- Include stability setting hints (0.0-1.0, lower = more variable)
-- Add clarity/similarity enhancement preferences
-- Include style exaggeration if needed
-- Specify speaker boost for audio quality
-- Add SSML-like markers for pauses: ... or [pause]
-- Include pronunciation guides: [word: pronunciation]
-- Good for cloned voices and realistic TTS`,
+- v3 audio tags: direct delivery inline — [laughs], [whispers], [excited], [sad], [pause]
+- v2 API voice settings: stability (0.0-1.0, lower = more variable), similarity, style
+- Conversational v3 model for real-time agents
+- Pronunciation control via respellings or phonetic hints
+- Good for cloned voices, expressive narration, and character work`,
 
       'openai-tts': `
-Platform-Specific Guidance for OPENAI TTS:
-- Select voice: alloy (neutral), echo (deep), fable (warm), onyx (authoritative), nova (female), shimmer (soft)
+Platform-Specific Guidance for OPENAI TTS (gpt-4o-mini-tts):
+- Instruction-following voices: steer tone with natural language ("speak like a sympathetic agent", "whispered, weary")
+- Legacy voices also available: alloy (neutral), echo (deep), fable (warm), onyx (authoritative), nova (bright), shimmer (soft)
 - Specify speed (0.25 to 4.0, default 1.0)
-- Use natural language for tone and delivery
-- No special syntax - describe the reading style
+- No SSML — describe the delivery in words
 - Good for clear, professional narration`,
 
       'fish-audio': `

@@ -5,16 +5,24 @@ category:
   defaultPlatform: suno
   defaultMode: detailed
 
+# Currency policy (1.16.0): entries touched by a fact-verification pass carry
+# `verifiedAt`. Entries without a date have not been re-verified recently.
+
 platforms:
   - id: suno
-    label: Suno AI
-    description: Music from text prompts
+    label: Suno (v6)
+    description: Music from text prompts; current family is v6 / v6-wild / v6-mini (Sept 2026) — v5/v5.5 retired
+    verifiedAt: "2026-10-05"
+    source: suno.com
     syntaxHints:
-      - genre
-      - mood
-      - lyrics
-      - instrumental
-      - style tags
+      - "models: v6 (flagship) | v6-wild (looser) | v6-mini (free tier)"
+      - genre + mood + tempo in the style field
+      - "Custom Mode lyrics with section tags: [Verse], [Chorus], [Bridge], [Outro]"
+      - plain-language single-section or single-lyric edits ("change 'love' to 'light'")
+      - Max Mode for consistency on songs over 2 minutes
+      - 'add "instrumental" for no vocals'
+      - up to 8 minutes per generation; Extend continues past that
+      - no public API (app only; third-party wrappers are unsanctioned)
 
   - id: udio
     label: Udio
@@ -24,6 +32,31 @@ platforms:
       - mood
       - extend
       - remix
+
+  - id: eleven-music
+    label: ElevenLabs Music (v2.5)
+    description: Music v2.5 (Sept 2026) — richer arrangements, licensed commercially-cleared tracks, public API (music_v2_5, ~$0.15/min)
+    verifiedAt: "2026-10-05"
+    source: elevenlabs.io
+    syntaxHints:
+      - natural-language prompt for a full track
+      - 'API: model_id="music_v2_5", composition plans section-by-section (30 lines x 200 chars)'
+      - up to 5 min prompted; ~10 min via composition plans
+      - inpainting, audio reference, video-to-music
+      - creator-owned tracks, lossless downloads
+      - fast rap, mid-track genre changes, native-language vocals
+
+  - id: lyria
+    label: Google Lyria (3.5)
+    description: Google's music model — full songs up to 3 min; in Flow Music, Gemini app, and Gemini API (preview)
+    verifiedAt: "2026-10-05"
+    source: ai.google.dev
+    syntaxHints:
+      - natural-language description of genre, mood, instruments
+      - 30 seconds to ~3 minutes per generation
+      - Selective Section Painting (rewrite one section)
+      - lyric rewrite, instrument swap
+      - image-to-music in Gemini API (preview)
 
   - id: stable-audio
     label: Stable Audio

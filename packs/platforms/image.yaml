@@ -3,6 +3,10 @@
 # To add a new platform: append an entry under `platforms:` with a unique `id`,
 # a human label, a one-line description, and the platform's syntax hints.
 # Restart the server (or rebuild) to pick up the change.
+#
+# Currency policy (1.16.0): entries touched by a fact-verification pass carry
+# `verifiedAt` (date facts were checked against current docs). Entries without
+# a date have not been re-verified recently — treat their hints as suspect.
 
 category:
   id: image
@@ -13,23 +17,34 @@ category:
 
 platforms:
   - id: midjourney
-    label: Midjourney
-    description: Artistic, stylized imagery
+    label: Midjourney (V8.x)
+    description: Artistic, stylized imagery; current default is V8.2 — Omni Reference replaced by the Edit Model in V8.x
+    verifiedAt: "2026-10-05"
+    source: docs.midjourney.com
     syntaxHints:
-      - "--ar"
-      - "--v 6.1"
+      - "--ar W:H (aspect ratio)"
+      - "--v 8.2 (current default; V7 introduced --draft and --oref)"
       - "--style raw"
-      - "--chaos"
-      - "--weird"
-      - "--q"
-      - "--s"
+      - "--stylize / --s 0-1000 (default 100)"
+      - "--chaos / --c 0-100"
+      - "--quality / --q (V7+: 1, 2, 4)"
+      - "--hd / --sd (V8.1: 2048px vs 1024px output)"
+      - "--sref <url|code> style reference, --sw weight"
+      - "--oref <url> Omni Reference (V7), replaced by Edit Model in V8.x"
+      - "--edit (V8.x Edit Model: modify with written instructions + up to 4 reference images)"
+      - "--draft (V7: half GPU cost)"
+      - "--p / --profile personalization"
 
   - id: dall-e
-    label: DALL-E 3
-    description: Natural language, versatile
+    label: OpenAI image (GPT Image 2 / DALL-E 3)
+    description: Natural-language prompting; GPT Image 2 is OpenAI's current image model, DALL-E 3 still available in ChatGPT legacy
+    verifiedAt: "2026-10-05"
     syntaxHints:
-      - natural language
-      - "size: 1024x1024, 1792x1024, 1024x1792"
+      - natural language, full sentences (no flags)
+      - describe the whole scene conversationally
+      - specify lighting, camera, style explicitly
+      - state aspect ratio in words ("wide 16:9 landscape")
+      - reliable in-image text when quoted
 
   - id: stable-diffusion
     label: Stable Diffusion
@@ -43,12 +58,14 @@ platforms:
       - embeddings
 
   - id: flux
-    label: Flux
-    description: High detail, photorealistic
+    label: Flux (2)
+    description: Black Forest Labs — high detail, photorealistic, strong prompt adherence
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - natural language
       - high detail focus
-      - guidance scale
+      - guidance scale (typically 3-7; Flux tolerates low guidance)
+      - multi-reference editing in Flux 2
 
   - id: ideogram
     label: Ideogram
@@ -84,17 +101,19 @@ platforms:
       - fast generation
 
   - id: imagen
-    label: Google Imagen 3
-    description: Photorealistic, via Gemini
+    label: Google Imagen (4 / 4 Ultra)
+    description: Google's current photorealistic image model (Imagen 4 line), via Gemini/Vertex
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - natural language
       - photorealistic
-      - "size: 1024x1024"
       - aspect ratios
+      - no parameters in the prompt — controls live in the API call
 
   - id: nano-banana
     label: Nano Banana (Gemini 2.5 Flash Image)
     description: Natural-language scene direction; character consistency, multi-image edits, in-image text
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - describe the whole scene in natural language (direct the scene, don't list keywords)
       - photographic terminology to control the look (camera/lens, angle, depth of field)
@@ -116,6 +135,7 @@ platforms:
   - id: higgsfield
     label: Higgsfield (multi-model platform)
     description: Multi-model creative platform via MCP / CLI / Skills. Routes one natural-language prompt to Soul 2.0, Soul Cinema, Soul Cast, Flux 2, Seedream 5, Nano Banana Pro, or GPT Image 2. Soul ID for face-faithful character reuse. No API key — auth via Higgsfield account.
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - "models: soul-2.0 | soul-cinema | soul-cast | flux-2 | seedream-5 | nano-banana-pro | gpt-image-2"
       - long-form natural-language prose (composition + lighting + textures + mood)

@@ -5,70 +5,95 @@ category:
   defaultPlatform: runway
   defaultMode: detailed
 
-platforms:
-  - id: sora
-    label: Sora
-    description: OpenAI, cinematic quality
-    syntaxHints:
-      - natural language
-      - duration
-      - camera motion
-      - scene description
+# Currency policy (1.16.0): every entry touched by a fact-verification pass
+# carries `verifiedAt` (the date its syntax facts were checked against the
+# platform's current docs) and, where useful, `source`. Entries without a
+# date have not been re-verified recently — treat their hints as suspect.
 
+platforms:
   - id: runway
-    label: Runway Gen-3
-    description: Motion control, professional
+    label: Runway (Gen-4.5)
+    description: Gen-4.5 Turbo flagship — best prompt adherence, character References, Act-Two motion capture; multi-model platform that also hosts Kling, Veo, Seedance, Nano Banana Pro
+    verifiedAt: "2026-10-05"
+    source: runway.com
     syntaxHints:
-      - motion brush
-      - camera controls
-      - motion amount
-      - extend
+      - natural-language scene description (no flags)
+      - References — upload a character/object image for consistency across generations
+      - Act-Two — apply recorded human motion to a character reference
+      - camera controls (pan, tilt, zoom, orbit) and motion brush
+      - up to 4K; extend for longer clips
+      - editor-first workflow (timeline, keyframing)
 
   - id: pika
-    label: Pika Labs
-    description: Quick iterations, stylized
+    label: Pika (2.2)
+    description: Fast social-first stylized video — Pikaframes, Pikaswaps, Pikadditions, Pikaformance lip-sync
+    verifiedAt: "2026-10-05"
     syntaxHints:
-      - motion parameters
-      - camera movements
-      - "-gs"
-      - "-motion"
+      - Pikaframes — first/last keyframe interpolation
+      - Pikaswaps (replace objects), Pikadditions (insert elements), Pikaffects (stylized effects)
+      - Pikaformance — fast lip-synced talking images
+      - action-focused, concise prompts; fast iteration
+      - up to 1080p
 
   - id: kling
-    label: Kling AI
-    description: Long clips, high quality
+    label: Kling (3.0 / Omni)
+    description: Kuaishou flagship — best physics and complex motion, native 4K/60fps; Omni adds native audio + 5-language lip-sync
+    verifiedAt: "2026-10-05"
     syntaxHints:
-      - natural language
-      - duration up to 2min
-      - professional mode
+      - natural-language cinematic prose
+      - native 4K at 60fps (Kling 3.0)
+      - Omni variant — native audio, lip-synced dialogue in five languages
+      - multi-shot storyboards (up to 6 shots per clip)
+      - strong fluid dynamics, dance, sports, action
+      - extend to ~60s
 
   - id: luma
-    label: Luma Dream Machine
-    description: Fast, keyframe control
+    label: Luma Dream Machine (Ray 2)
+    description: Fast, keyframe control, natural camera language
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - natural language
-      - keyframes
-      - camera motion
+      - keyframes / start-end frames
+      - camera motion (orbit, push in)
 
   - id: minimax
-    label: Minimax / Hailuo
-    description: Expressive motion, Asian style
+    label: Minimax / Hailuo (2.3)
+    description: Expressive character motion, best value per second, native audio (Hailuo 2.3)
+    verifiedAt: "2026-10-05"
     syntaxHints:
       - natural language
-      - character animation
-      - expressions
+      - character animation and expressions
+      - native audio
 
   - id: veo
-    label: Google Veo 2
-    description: DeepMind, cinematic 4K
+    label: Google Veo (3.1)
+    description: DeepMind flagship — 4K, native/spatial audio, strongest prompt adherence; Veo 3.5 adds camera-control API and lip-synced dialogue
+    verifiedAt: "2026-10-05"
+    source: ai.google.dev
     syntaxHints:
-      - natural language
-      - cinematic quality
-      - 4K output
-      - up to 2 minutes
+      - natural-language cinematic description
+      - tiers: Standard / Fast / Lite (Lite = 720p/1080p volume tier)
+      - 4K (Standard/Fast); 8s clips, extendable
+      - native audio; spatial audio on Standard
+      - legible text-in-video while the camera moves
+      - reference images and start/end frame control
+
+  - id: seedance
+    label: Seedance (2.0 / 2.5)
+    description: ByteDance flagship — 20s clips, complex human motion, multi-reference input, product/logo consistency
+    verifiedAt: "2026-10-05"
+    syntaxHints:
+      - long-form natural-language prose (action + camera + lighting + mood)
+      - up to 20 seconds per clip
+      - "aspect ratios: 16:9, 9:16, 1:1, 4:3, 3:4, custom"
+      - up to 12 reference files (images, video, audio) for identity and brand consistency
+      - native audio-video sync
+      - multi-shot storyboarding
+      - strong on dance, sports, action, product close-ups
 
   - id: wan
-    label: Wan
-    description: Open source, versatile
+    label: Wan (2.6)
+    description: Open source, versatile, image-to-video and text-to-video
     syntaxHints:
       - natural language
       - open source
@@ -107,9 +132,10 @@ platforms:
 
   - id: higgsfield
     label: Higgsfield (multi-model platform)
-    description: Multi-model video platform via MCP / CLI / Skills. Routes one natural-language prompt to Cinema Studio (Higgsfield-original), Sora 2, Veo 3.1, Kling 3.0, WAN 2.6, or Seedance 2.0. No API key — auth via Higgsfield account.
+    description: Multi-model video platform via MCP / CLI / Skills. Routes one natural-language prompt to Cinema Studio (Higgsfield-original), Veo 3.1, Kling 3.0, WAN 2.6, or Seedance 2.0. Sora 2 dropped after OpenAI shut the Videos API on 2026-09-24. No API key — auth via Higgsfield account.
+    verifiedAt: "2026-10-05"
     syntaxHints:
-      - "models: cinema-studio | sora-2 | veo-3.1 | kling-3.0 | wan-2.6 | seedance-2.0"
+      - "models: cinema-studio | veo-3.1 | kling-3.0 | wan-2.6 | seedance-2.0"
       - long-form natural-language prose (camera move + composition + lighting + mood)
       - duration up to 15s
       - image-to-video from uploaded UUID
