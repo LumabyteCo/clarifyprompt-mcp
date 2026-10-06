@@ -21,6 +21,37 @@ Send a raw prompt. ClarifyPrompt gathers the right context, resolves what you're
 >
 > **New in 1.13.0:** **Plain-language rewrites.** Optimized prompts now stick to common, everyday words instead of drifting into formal vocabulary ("use", never "utilize") — specificity comes from concrete details, not fancier synonyms. `critique_prompt` gained a 6th default dimension, **`plain_language`**, so `auto_revise` loops correct register drift automatically. Also fixed: an explicit `mode` (e.g. `simple`) is no longer silently dropped for small local models under compact system-prompt shaping. See [CHANGELOG.md](./CHANGELOG.md).
 
+## The proof this matters — measured, not asserted
+
+Why does this project exist? **Because "just ask the model" quietly went stale, and we measured it.** Models are frozen at training time; platforms ship new versions monthly (and kill old ones). The result is that asking a modern model for a platform prompt is asking a 2024 encyclopedia for 2026 prices.
+
+On 2026-10-05 we ran a public benchmark: asked **12 of the newest Ollama Cloud models** to write prompts for real current platforms, in **two conditions**, same asks, same models:
+
+- **RAW** — the model alone, no help. What a user gets in a plain chat.
+- **GROUNDED** — the same asks with the *verified platform facts* injected first — the same pack data ClarifyPrompt injects on every `optimize_prompt` call. (This is what "grounding" means: the model reads the reference card instead of trusting its frozen memory.)
+
+132 graded answers per condition, verified against vendor docs the same day. **Full audit of every raw reply: [`evals/dialect-benchmark/out/final.json`](./evals/dialect-benchmark/out/final.json).**
+
+**The results, one line:**
+
+| | RAW (model alone) | GROUNDED (pack facts injected) |
+|---|---|---|
+| current dialect | 36 | **117** |
+| **stale** | **35** | **0** |
+| mixed / generic | 7 / 54 | 1 / 14 |
+
+**Same models. Same asks. 35 stale answers → 0.**
+
+What that looks like in practice:
+
+- **Sora 2, 12 of 12.** OpenAI shut the Videos API 2026-09-24 (consumer app April 26). Eleven days later, every model — **including GPT-OSS, OpenAI's own open weights** — wrote fluent, confident prompts for a product that doesn't exist. No one said so. Not a single hedged answer, not one knowledge-cutoff disclaimer.
+- **Midjourney, 12 of 13.** Everyone reached for `--v 6.1`. The current default has been **V8.2** since June. Two major versions stale, uniformly.
+- **With the pack facts injected, every model flipped.** Same models: all 12 said Sora is discontinued; all 12 pinned `--v 8.2`; the worst raw performer went 3 current / 5 stale → 8 / 0.
+
+**Total cost of both conditions: $0.71.** Harness + facts file + grading script: [`evals/dialect-benchmark/`](./evals/dialect-benchmark/) — reproduce with `node evals/dialect-benchmark/run.mjs`.
+
+The honest read: models don't *know* current dialects — but with a maintained knowledge layer they execute perfectly. **The knowledge is the gap; the pack layer is the product.** And that's what `optimize_prompt` is: grounding, on every call, with packs we refresh against live docs and date with `verifiedAt`.
+
 ## How It Works
 
 ClarifyPrompt does two things a plain prompt template can't. Every output below is a **real, unedited capture** from `optimize_prompt` run against this repo (see [Provenance](#provenance) at the end of this section).
